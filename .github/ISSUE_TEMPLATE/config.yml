@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Team Convention
+    url: https://github.com/prgrms-be-devcourse/NBE9-11-final-Team02/issues
+    about: 이슈 생성 전 커밋, 브랜치, PR 규칙을 확인해주세요.
