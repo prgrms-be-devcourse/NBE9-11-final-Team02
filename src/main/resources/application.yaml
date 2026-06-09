@@ -1,13 +1,19 @@
+server:
+  port: 8080
+  forward-headers-strategy: native
+
 spring:
   application:
     name: NBE9-11-final-Team02
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
-    hibernate:
-      ddl-auto: update
-    show-sql: true
   profiles:
+    active: dev
     include: secret
-
-server:
-  port: 8080
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always

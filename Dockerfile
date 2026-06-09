@@ -1,24 +1,25 @@
 # GraalVM JDK 24 기반 Gradle 이미지 (빌드 전용, 최종 이미지에 포함되지 않음)
-FROM gradle:jdk25-graal AS builder
+FROM gradle:jdk24-graal AS builder
 
 WORKDIR /app
 
 # 의존성 파일만 먼저 복사하여 Docker 레이어 캐시 활용
 # → 소스 변경 시에도 의존성 레이어는 재사용되어 빌드 속도 향상
 COPY build.gradle.kts settings.gradle.kts ./
-RUN gradle dependencies --no-daemon || true
+RUN gradle dependencies --no-daemon
 
 # 소스 복사
 COPY src ./src
 
 # --no-daemon: 컨테이너 내 일회성 빌드이므로 데몬 불필요
 RUN gradle build --no-daemon
+RUN rm -f /app/build/libs/*-plain.jar
 
 # =========================
 # 2️⃣ Run Stage
 # =========================
 # Oracle GraalVM JDK 24 런타임 (Graal JIT 컴파일러 포함)
-FROM container-registry.oracle.com/graalvm/jdk:25
+FROM container-registry.oracle.com/graalvm/jdk:24
 
 WORKDIR /app
 
