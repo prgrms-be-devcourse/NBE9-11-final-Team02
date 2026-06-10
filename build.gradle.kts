@@ -2,6 +2,22 @@ plugins {
     java
     id("org.springframework.boot") version "4.0.6"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "7.3.1.8318"
+    id("jacoco")
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "Phj1225_NBE9-11-final-Team02")
+        property("sonar.organization", "hufphj1225")
+        property("sonar.host.url", "https://sonarcloud.io")
+    }
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+    }
 }
 
 group = "com.back"
@@ -38,4 +54,5 @@ dependencies {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
 }
