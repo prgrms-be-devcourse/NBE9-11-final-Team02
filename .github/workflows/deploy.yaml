@@ -5,12 +5,12 @@ env:
   CONTAINER_1_NAME: app1_1
   CONTAINER_2_NAME: app1_2
   CONTAINER_PORT: 8080
-  EC2_INSTANCE_TAG_NAME: 2run2run-ec2-1
+  EC2_INSTANCE_TAG_NAME: team02-web  # terraform/variables.tf의 prefix + "-web"과 일치해야 함
   DOCKER_NETWORK: common
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   push:
@@ -24,10 +24,6 @@ on:
       - main
       - develop
 
-permissions:
-  contents: write
-  packages: write
-
 defaults:
   run:
     shell: bash
@@ -35,6 +31,8 @@ defaults:
 jobs:
   calculateTag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       tag_name: ${{ steps.dry_run.outputs.new_tag }}
     steps:
@@ -51,15 +49,11 @@ jobs:
     name: 도커 이미지 빌드와 푸시
     needs: calculateTag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: application-secret 추가
-        env:
-          APPLICATION_SECRET: ${{ secrets.APPLICATION_SECRET }}
-        run: |
-          [[ -z "$APPLICATION_SECRET" ]] && { echo "❌ APPLICATION_SECRET이 설정되지 않았습니다."; exit 1; }
-          echo "$APPLICATION_SECRET" > src/main/resources/application-secret.yaml
 
       - name: Docker Buildx 설치
         uses: docker/setup-buildx-action@v3
@@ -71,7 +65,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: set lower case owner name
+      - name: 소유자 이름 소문자 변환
         run: |
           echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_ENV}"
         env:
@@ -92,6 +86,8 @@ jobs:
     name: Blue/Green 무중단 배포
     runs-on: ubuntu-latest
     needs: [calculateTag, buildImageAndPush]
+    permissions:
+      contents: read
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -107,10 +103,33 @@ jobs:
           [[ -n "${INSTANCE_ID}" && "${INSTANCE_ID}" != "None" ]] || { echo "No running instance found"; exit 1; }
           echo "INSTANCE_ID=${INSTANCE_ID}" >> "${GITHUB_ENV}"
 
+      - name: Parameter Store에 secret 업로드
+        env:
+          APPLICATION_SECRET: ${{ secrets.APPLICATION_SECRET }}
+        run: |
+          [[ -z "$APPLICATION_SECRET" ]] && { echo "❌ APPLICATION_SECRET이 설정되지 않았습니다."; exit 1; }
+          aws ssm put-parameter \
+            --region "${{ secrets.AWS_REGION }}" \
+            --name "/team02/application-secret" \
+            --value "$APPLICATION_SECRET" \
+            --type "SecureString" \
+            --overwrite
+          echo "✅ Parameter Store 업로드 완료"
+
       - name: AWS SSM 배포
         run: |
           DEPLOY_SCRIPT=$(cat << 'SCRIPT_EOF'
             set -Eeuo pipefail
+
+            # Parameter Store에서 시크릿 가져오기
+            mkdir -p /home/ec2-user/secrets
+            aws ssm get-parameter \
+              --name "/team02/application-secret" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text > /home/ec2-user/secrets/application-secret.yaml
+            chmod 600 /home/ec2-user/secrets/application-secret.yaml
+            echo "✅ Secret 파일 갱신 완료"
 
             OWNER_LC="${{ github.repository_owner }}"
             OWNER_LC="${OWNER_LC,,}"
@@ -137,7 +156,9 @@ jobs:
             docker run -d --name "${GREEN}" \
               --restart unless-stopped \
               --network "${NET}" \
+              --memory 600m \
               -e TZ=Asia/Seoul \
+              -v /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro \
               "${IMAGE}"
 
             echo "헬스체크 대기: ${GREEN}"
@@ -206,16 +227,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create Tag
+      - name: 태그 생성
         id: create_tag
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Release
+      - name: 릴리즈 생성
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.create_tag.outputs.new_tag }}
