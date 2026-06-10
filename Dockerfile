@@ -31,7 +31,7 @@ RUN microdnf install -y curl && microdnf clean all
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# ── t3.micro (1 vCPU, 1GB RAM + 4GB swap) 환경 최적화 JVM 옵션 ──
+# ── t3.small (1 vCPU, 2GB RAM + 4GB swap) / 컨테이너 메모리 제한 600MB 환경 최적화 JVM 옵션 ──
 #
 # -XX:+UseJVMCICompiler
 #   GraalVM Graal JIT 컴파일러 사용 (C2 대체)

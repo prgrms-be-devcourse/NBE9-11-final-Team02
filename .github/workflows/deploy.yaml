@@ -156,6 +156,7 @@ jobs:
             docker run -d --name "${GREEN}" \
               --restart unless-stopped \
               --network "${NET}" \
+              --memory 600m \
               -e TZ=Asia/Seoul \
               -v /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro \
               "${IMAGE}"
