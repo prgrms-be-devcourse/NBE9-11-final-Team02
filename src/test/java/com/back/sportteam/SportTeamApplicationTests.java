@@ -10,6 +10,7 @@ class SportTeamApplicationTests {
 
     @Test
     void contextLoads() {
+        // Spring context loading itself is the assertion for this smoke test.
     }
 
 }
