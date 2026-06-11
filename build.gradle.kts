@@ -8,8 +8,8 @@ plugins {
 
 sonar {
     properties {
-        property("sonar.projectKey", "Phj1225_NBE9-11-final-Team02")
-        property("sonar.organization", "hufphj1225")
+        property("sonar.projectKey", "prgrms-be-devcourse_NBE9-11-final-Team02")
+        property("sonar.organization", "prgrms-be-devcourse")
         property("sonar.host.url", "https://sonarcloud.io")
     }
 }
