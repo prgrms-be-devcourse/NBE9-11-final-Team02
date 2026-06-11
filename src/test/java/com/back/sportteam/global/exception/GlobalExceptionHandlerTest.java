@@ -46,8 +46,7 @@ class GlobalExceptionHandlerTest {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new SampleRequest(), "request");
         bindingResult.addError(new FieldError("request", "title", "제목은 필수입니다."));
 
-        Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("sampleMethod", SampleRequest.class);
-        MethodParameter methodParameter = new MethodParameter(method, 0);
+        MethodParameter methodParameter = validationExceptionParameter();
         MethodArgumentNotValidException exception = new MethodArgumentNotValidException(methodParameter, bindingResult);
 
         ResponseEntity<ApiResponse<Void>> response = handler.handleValidationException(exception, request);
@@ -146,8 +145,7 @@ class GlobalExceptionHandlerTest {
         MockHttpServletRequest request = request("/api/v1/matches");
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new SampleRequest(), "request");
 
-        Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("sampleMethod", SampleRequest.class);
-        MethodParameter methodParameter = new MethodParameter(method, 0);
+        MethodParameter methodParameter = validationExceptionParameter();
         MethodArgumentNotValidException exception = new MethodArgumentNotValidException(methodParameter, bindingResult);
 
         ResponseEntity<ApiResponse<Void>> response = handler.handleValidationException(exception, request);
@@ -161,8 +159,7 @@ class GlobalExceptionHandlerTest {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new SampleRequest(), "request");
         bindingResult.addError(new FieldError("request", "title", null));
 
-        Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("sampleMethod", SampleRequest.class);
-        MethodParameter methodParameter = new MethodParameter(method, 0);
+        MethodParameter methodParameter = validationExceptionParameter();
         MethodArgumentNotValidException exception = new MethodArgumentNotValidException(methodParameter, bindingResult);
 
         ResponseEntity<ApiResponse<Void>> response = handler.handleValidationException(exception, request);
@@ -174,6 +171,15 @@ class GlobalExceptionHandlerTest {
 
     private MockHttpServletRequest request(String uri) {
         return new MockHttpServletRequest("GET", uri);
+    }
+
+    private MethodParameter validationExceptionParameter() throws NoSuchMethodException {
+        Method method = GlobalExceptionHandler.class.getDeclaredMethod(
+                "handleValidationException",
+                MethodArgumentNotValidException.class,
+                jakarta.servlet.http.HttpServletRequest.class
+        );
+        return new MethodParameter(method, 0);
     }
 
     private void assertErrorResponse(
@@ -191,9 +197,6 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getError().getMessage()).isEqualTo(message);
         assertThat(response.getBody().getError().getStatus()).isEqualTo(status.value());
         assertThat(response.getBody().getError().getPath()).isEqualTo(path);
-    }
-
-    private void sampleMethod(SampleRequest request) {
     }
 
     private static class SampleRequest {

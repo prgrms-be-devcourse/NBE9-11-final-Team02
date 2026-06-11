@@ -124,6 +124,7 @@ class ErrorCodeConventionTest {
 
     private void assertPrefix(String prefix, ErrorCode[] errorCodes) {
         assertThat(errorCodes)
+                .isNotEmpty()
                 .extracting(ErrorCode::getCode)
                 .allMatch(code -> code.startsWith(prefix + "_"));
     }
