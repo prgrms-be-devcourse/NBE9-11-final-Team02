@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.time.Month;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,8 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MatchControllerTest {
 
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, 6, 12, 10, 0);
-    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 6, 11, 10, 0);
+    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
     private MatchService matchService;
     private MockMvc mockMvc;
