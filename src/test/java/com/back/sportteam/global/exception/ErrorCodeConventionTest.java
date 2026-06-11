@@ -83,6 +83,15 @@ class ErrorCodeConventionTest {
     }
 
     @Test
+    void 데이터가_없는_성공_응답을_만든다() {
+        ApiResponse<Void> response = ApiResponse.ok();
+
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getData()).isNull();
+        assertThat(response.getError()).isNull();
+    }
+
+    @Test
     void 실패_응답은_에러정보와_요청경로를_담는다() {
         ApiResponse<Void> response = ApiResponse.error(
                 MatchErrorCode.MATCH_FULL,
