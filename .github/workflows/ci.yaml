@@ -40,7 +40,7 @@ jobs:
 
       - name: Validate SonarCloud access
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_SECRET }}
         run: |
           test -n "$SONAR_TOKEN" || {
             echo "SONAR_TOKEN is not configured"
@@ -59,7 +59,7 @@ jobs:
       - name: Run tests and SonarCloud analysis
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_SECRET }}
         run: |
           ./gradlew clean test sonar \
             -Dsonar.token="$SONAR_TOKEN" \
