@@ -1,3 +1,7 @@
+server:
+  port: 8080
+  forward-headers-strategy: native
+
 spring:
   application:
     name: NBE9-11-final-Team02
@@ -11,3 +15,16 @@ app:
     refresh-token-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refreshToken}
     secure-cookie: ${JWT_SECURE_COOKIE:false}
     same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+  profiles:
+    active: dev
+    include: secret
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
