@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Getter
@@ -21,6 +22,8 @@ import java.util.UUID;
 @Table(name = "match_participants")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MatchParticipant {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -50,7 +53,7 @@ public class MatchParticipant {
         this.userId = userId;
         this.role = role;
         this.status = MatchParticipantStatus.ACTIVE;
-        this.joinedAt = LocalDateTime.now();
+        this.joinedAt = LocalDateTime.now(SERVICE_ZONE);
     }
 
     public static MatchParticipant host(Match match, String userId) {

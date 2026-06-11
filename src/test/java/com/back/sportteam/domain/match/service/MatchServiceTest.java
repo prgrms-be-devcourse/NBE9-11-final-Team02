@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MatchServiceTest {
 
+    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, 6, 12, 10, 0);
+
     @Mock
     private MatchRepository matchRepository;
 
@@ -105,7 +107,7 @@ class MatchServiceTest {
                 SkillLevel.ANY,
                 SkillLevel.ANY,
                 RequiredGender.ANY,
-                LocalDateTime.now().plusDays(1)
+                CANCEL_DEADLINE
         );
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -164,7 +166,7 @@ class MatchServiceTest {
                 minSkillLevel,
                 maxSkillLevel,
                 RequiredGender.MIXED,
-                LocalDateTime.now().plusDays(1)
+                CANCEL_DEADLINE
         );
     }
 }

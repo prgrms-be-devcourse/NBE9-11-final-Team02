@@ -3,6 +3,7 @@ package com.back.sportteam.domain.match.service;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.entity.Match;
+import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
@@ -26,19 +27,19 @@ public class MatchService {
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
         validateReservationAvailable(request.reservationId());
 
-        Match match = Match.create(
-                request.reservationId(),
-                hostId,
-                request.title(),
-                request.sportType(),
-                request.minParticipants(),
-                request.maxParticipants(),
-                request.feePerPerson(),
-                request.minSkillLevel(),
-                request.maxSkillLevel(),
-                request.requiredGender(),
-                request.cancelDeadline()
-        );
+        Match match = Match.create(MatchCreateCommand.builder()
+                .reservationId(request.reservationId())
+                .hostId(hostId)
+                .title(request.title())
+                .sportType(request.sportType())
+                .minParticipants(request.minParticipants())
+                .maxParticipants(request.maxParticipants())
+                .feePerPerson(request.feePerPerson())
+                .minSkillLevel(request.minSkillLevel())
+                .maxSkillLevel(request.maxSkillLevel())
+                .requiredGender(request.requiredGender())
+                .cancelDeadline(request.cancelDeadline())
+                .build());
 
         Match savedMatch = matchRepository.save(match);
         matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));

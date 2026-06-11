@@ -27,6 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MatchControllerTest {
 
+    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, 6, 12, 10, 0);
+    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 6, 11, 10, 0);
+
     private MatchService matchService;
     private MockMvc mockMvc;
 
@@ -83,7 +86,7 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
-                LocalDateTime.now().plusDays(1)
+                CANCEL_DEADLINE
         );
     }
 
@@ -103,7 +106,7 @@ class MatchControllerTest {
                 request.requiredGender(),
                 request.cancelDeadline(),
                 MatchStatus.RECRUITING,
-                LocalDateTime.now()
+                CREATED_AT
         );
     }
 

@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Getter
@@ -23,6 +24,8 @@ import java.util.UUID;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Match {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -78,65 +81,29 @@ public class Match {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    private Match(
-            String reservationId,
-            String hostId,
-            String title,
-            SportType sportType,
-            int minParticipants,
-            int maxParticipants,
-            int feePerPerson,
-            SkillLevel minSkillLevel,
-            SkillLevel maxSkillLevel,
-            RequiredGender requiredGender,
-            LocalDateTime cancelDeadline
-    ) {
-        LocalDateTime now = LocalDateTime.now();
+    private Match(MatchCreateCommand command) {
+        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
         this.id = UUID.randomUUID().toString();
-        this.reservationId = reservationId;
-        this.hostId = hostId;
-        this.title = title;
-        this.sportType = sportType;
-        this.minParticipants = minParticipants;
-        this.maxParticipants = maxParticipants;
+        this.reservationId = command.getReservationId();
+        this.hostId = command.getHostId();
+        this.title = command.getTitle();
+        this.sportType = command.getSportType();
+        this.minParticipants = command.getMinParticipants();
+        this.maxParticipants = command.getMaxParticipants();
         this.currentCount = 1;
-        this.feePerPerson = feePerPerson;
-        this.minSkillLevel = defaultSkillLevel(minSkillLevel);
-        this.maxSkillLevel = defaultSkillLevel(maxSkillLevel);
-        this.requiredGender = defaultRequiredGender(requiredGender);
-        this.cancelDeadline = cancelDeadline;
+        this.feePerPerson = command.getFeePerPerson();
+        this.minSkillLevel = defaultSkillLevel(command.getMinSkillLevel());
+        this.maxSkillLevel = defaultSkillLevel(command.getMaxSkillLevel());
+        this.requiredGender = defaultRequiredGender(command.getRequiredGender());
+        this.cancelDeadline = command.getCancelDeadline();
         this.status = MatchStatus.RECRUITING;
         this.createdAt = now;
         this.updatedAt = now;
     }
 
-    public static Match create(
-            String reservationId,
-            String hostId,
-            String title,
-            SportType sportType,
-            int minParticipants,
-            int maxParticipants,
-            int feePerPerson,
-            SkillLevel minSkillLevel,
-            SkillLevel maxSkillLevel,
-            RequiredGender requiredGender,
-            LocalDateTime cancelDeadline
-    ) {
-        validateParticipantRange(minParticipants, maxParticipants);
-        return new Match(
-                reservationId,
-                hostId,
-                title,
-                sportType,
-                minParticipants,
-                maxParticipants,
-                feePerPerson,
-                minSkillLevel,
-                maxSkillLevel,
-                requiredGender,
-                cancelDeadline
-        );
+    public static Match create(MatchCreateCommand command) {
+        validateParticipantRange(command.getMinParticipants(), command.getMaxParticipants());
+        return new Match(command);
     }
 
     private static void validateParticipantRange(int minParticipants, int maxParticipants) {
@@ -161,6 +128,6 @@ public class Match {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(SERVICE_ZONE);
     }
 }
