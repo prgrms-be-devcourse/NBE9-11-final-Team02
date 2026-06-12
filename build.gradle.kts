@@ -1,3 +1,5 @@
+import org.gradle.internal.impldep.org.jsoup.nodes.Document
+
 plugins {
     java
     id("org.springframework.boot") version "4.0.6"
