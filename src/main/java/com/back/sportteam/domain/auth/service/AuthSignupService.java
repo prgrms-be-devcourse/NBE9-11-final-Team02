@@ -1,10 +1,9 @@
 package com.back.sportteam.domain.auth.service;
 
-import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
-import com.back.sportteam.domain.auth.security.PasswordHasher;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.user.domain.User;
@@ -20,7 +19,7 @@ import org.springframework.util.StringUtils;
 public class AuthSignupService {
 
     private final UserRepository userRepository;
-    private final PasswordHasher passwordHasher;
+    private final com.back.sportteam.auth.security.PasswordHasher passwordHasher;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
