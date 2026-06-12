@@ -1,8 +1,12 @@
 package com.back.sportteam.global.exception;
 
-import com.back.sportteam.global.exception.errorcode.ErrorCode;
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
+@Getter
 public class BusinessException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
 
     private final ErrorCode errorCode;
 
@@ -11,7 +15,12 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
-    public ErrorCode getErrorCode() {
-        return errorCode;
+    public BusinessException(ErrorCode errorCode, String detail) {
+        super(detail);
+        this.errorCode = errorCode;
+    }
+
+    public HttpStatus getStatus() {
+        return errorCode.getStatus();
     }
 }
