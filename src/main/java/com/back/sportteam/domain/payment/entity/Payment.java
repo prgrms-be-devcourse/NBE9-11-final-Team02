@@ -28,8 +28,11 @@ public class Payment {
     @Column(name = "user_id", columnDefinition = "CHAR(36)", nullable = false)
     private String userId;
 
-    @Column(name = "match_id", columnDefinition = "CHAR(36)", nullable = false)
+    @Column(name = "match_id", columnDefinition = "CHAR(36)")
     private String matchId;
+
+    @Column(name = "facility_slot_id", columnDefinition = "CHAR(36)")
+    private String facilitySlotId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false, length = 20)
@@ -40,6 +43,9 @@ public class Payment {
 
     @Column(nullable = false)
     private Integer amount;
+
+    @Column(name = "refunded_amount", nullable = false)
+    private Integer refundedAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "pg_provider", nullable = false, length = 30)
@@ -59,6 +65,7 @@ public class Payment {
             String participantId,
             String userId,
             String matchId,
+            String facilitySlotId,
             PaymentType paymentType,
             String merchantUid,
             Integer amount
@@ -67,9 +74,11 @@ public class Payment {
         this.participantId = participantId;
         this.userId = userId;
         this.matchId = matchId;
+        this.facilitySlotId = facilitySlotId;
         this.paymentType = paymentType;
         this.merchantUid = merchantUid;
         this.amount = amount;
+        this.refundedAmount = 0;
         this.pgProvider = PaymentProvider.TOSSPAYMENTS;
         this.status = PaymentStatus.PENDING;
     }
@@ -78,10 +87,19 @@ public class Payment {
             String participantId,
             String userId,
             String matchId,
+            String facilitySlotId,
             PaymentType paymentType,
             String merchantUid,
             Integer amount
     ) {
-        return new Payment(participantId, userId, matchId, paymentType, merchantUid, amount);
+        return new Payment(
+                participantId,
+                userId,
+                matchId,
+                facilitySlotId,
+                paymentType,
+                merchantUid,
+                amount
+        );
     }
 }

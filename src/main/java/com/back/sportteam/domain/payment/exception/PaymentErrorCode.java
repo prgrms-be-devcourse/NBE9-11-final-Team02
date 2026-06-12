@@ -21,6 +21,11 @@ public enum PaymentErrorCode implements ErrorCode {
             "PAYMENT_006",
             "결제 대상 참가자 정보를 찾을 수 없습니다.",
             HttpStatus.NOT_FOUND
+    ),
+    INVALID_PAYMENT_TARGET(
+            "PAYMENT_007",
+            "결제 유형과 결제 대상 정보가 일치하지 않습니다.",
+            HttpStatus.BAD_REQUEST
     );
 
     private final String code;

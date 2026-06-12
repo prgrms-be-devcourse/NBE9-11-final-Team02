@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,9 @@ class MatchPaymentAmountReaderTest {
     @Mock
     private MatchRepository matchRepository;
 
+    @Mock
+    private FacilitySlotRepository facilitySlotRepository;
+
     @InjectMocks
     private MatchPaymentAmountReader paymentAmountReader;
 
@@ -34,6 +39,17 @@ class MatchPaymentAmountReaderTest {
         Integer amount = paymentAmountReader.getParticipationAmount("match-id");
 
         assertThat(amount).isEqualTo(10_000);
+    }
+
+    @Test
+    void 시설_결제_금액은_시설_슬롯_가격으로_조회한다() {
+        FacilitySlot facilitySlot = mock(FacilitySlot.class);
+        when(facilitySlot.getPrice()).thenReturn(100_000);
+        when(facilitySlotRepository.findById("slot-id")).thenReturn(Optional.of(facilitySlot));
+
+        Integer amount = paymentAmountReader.getFacilityAmount("slot-id");
+
+        assertThat(amount).isEqualTo(100_000);
     }
 
     @Test

@@ -26,6 +26,8 @@ public class PaymentService {
 
     @Transactional
     public PaymentPrepareResponse prepare(String userId, PaymentPrepareRequest request) {
+        validatePaymentTarget(request);
+
         Integer expectedAmount = getExpectedAmount(request);
         if (!expectedAmount.equals(request.amount())) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH);
@@ -35,6 +37,7 @@ public class PaymentService {
                 getParticipantId(userId, request),
                 userId,
                 request.matchId(),
+                request.facilitySlotId(),
                 request.paymentType(),
                 generateMerchantUid(),
                 expectedAmount
@@ -45,7 +48,7 @@ public class PaymentService {
 
     private Integer getExpectedAmount(PaymentPrepareRequest request) {
         Integer expectedAmount = switch (request.paymentType()) {
-            case FACILITY -> paymentAmountReader.getFacilityAmount(request.matchId());
+            case FACILITY -> paymentAmountReader.getFacilityAmount(request.facilitySlotId());
             case PARTICIPATION -> paymentAmountReader.getParticipationAmount(request.matchId());
         };
 
@@ -54,6 +57,19 @@ public class PaymentService {
         }
 
         return expectedAmount;
+    }
+
+    private void validatePaymentTarget(PaymentPrepareRequest request) {
+        boolean validFacilityPayment = request.paymentType() == PaymentType.FACILITY
+                && hasText(request.facilitySlotId())
+                && !hasText(request.matchId());
+        boolean validParticipationPayment = request.paymentType() == PaymentType.PARTICIPATION
+                && hasText(request.matchId())
+                && !hasText(request.facilitySlotId());
+
+        if (!validFacilityPayment && !validParticipationPayment) {
+            throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_TARGET);
+        }
     }
 
     private String getParticipantId(String userId, PaymentPrepareRequest request) {
@@ -72,5 +88,9 @@ public class PaymentService {
 
     private String generateMerchantUid() {
         return MERCHANT_UID_PREFIX + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

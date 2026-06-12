@@ -52,14 +52,15 @@ class PaymentControllerTest {
     }
 
     @Test
-    void 매칭_ID가_비어_있으면_400_응답을_반환한다() throws Exception {
+    void 결제_금액이_0원이면_400_응답을_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/payments/prepare")
                         .header("X-USER-ID", "user-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "matchId": "",
-                                  "amount": 10000,
+                                  "matchId": "match-id",
+                                  "facilitySlotId": null,
+                                  "amount": 0,
                                   "paymentType": "PARTICIPATION"
                                 }
                                 """))
@@ -99,6 +100,7 @@ class PaymentControllerTest {
         return """
                 {
                   "matchId": "match-id",
+                  "facilitySlotId": null,
                   "amount": 10000,
                   "paymentType": "PARTICIPATION"
                 }
