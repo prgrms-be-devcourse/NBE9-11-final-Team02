@@ -79,6 +79,37 @@ public class MatchService {
                 .toList();
     }
 
+    @Transactional
+    public MatchParticipantResponse joinMatch(String matchId, String userId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        validateJoinable(match);
+        validateNotParticipated(matchId, userId);
+
+        match.increaseCurrentCount();
+        MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
+
+        return MatchParticipantResponse.from(participant);
+    }
+
+    @Transactional
+    public void leaveMatch(String matchId, String userId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+        MatchParticipant participant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                        matchId,
+                        userId,
+                        MatchParticipantStatus.ACTIVE
+                )
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
+
+        validateLeaveable(participant);
+
+        participant.cancel();
+        match.decreaseCurrentCount();
+    }
+
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
@@ -101,6 +132,32 @@ public class MatchService {
     private void validateMatchExists(String matchId) {
         if (!matchRepository.existsById(matchId)) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
+        }
+    }
+
+    private void validateJoinable(Match match) {
+        if (!match.isRecruiting()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
+        }
+        if (match.isFull()) {
+            throw new BusinessException(MatchErrorCode.MATCH_FULL);
+        }
+    }
+
+    private void validateNotParticipated(String matchId, String userId) {
+        boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+                matchId,
+                userId,
+                MatchParticipantStatus.ACTIVE
+        );
+        if (alreadyParticipated) {
+            throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);
+        }
+    }
+
+    private void validateLeaveable(MatchParticipant participant) {
+        if (participant.isHost()) {
+            throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
     }
 }

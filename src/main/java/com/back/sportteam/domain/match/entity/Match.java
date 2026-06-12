@@ -106,6 +106,24 @@ public class Match {
         return new Match(command);
     }
 
+    public boolean isRecruiting() {
+        return status == MatchStatus.RECRUITING;
+    }
+
+    public boolean isFull() {
+        return currentCount >= maxParticipants;
+    }
+
+    public void increaseCurrentCount() {
+        this.currentCount++;
+    }
+
+    public void decreaseCurrentCount() {
+        if (currentCount > 0) {
+            this.currentCount--;
+        }
+    }
+
     private static void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new IllegalArgumentException("최소 인원은 최대 인원보다 클 수 없습니다.");
