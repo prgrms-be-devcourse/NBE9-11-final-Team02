@@ -1,4 +1,4 @@
-package com.back.sportteam.auth.security;
+package com.back.sportteam.domain.auth.security;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
