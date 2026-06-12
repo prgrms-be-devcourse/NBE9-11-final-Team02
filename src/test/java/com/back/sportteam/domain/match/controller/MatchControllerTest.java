@@ -30,6 +30,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -153,6 +155,68 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.error.path").value("/api/v1/matches/missing-id/participants"));
     }
 
+    @Test
+    void 매칭방_참가_요청을_201_응답으로_반환한다() throws Exception {
+        when(matchService.joinMatch("match-id", "user-id")).thenReturn(createParticipantResponse("participant-id", "user-id"));
+
+        mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.participantId").value("participant-id"))
+                .andExpect(jsonPath("$.data.userId").value("user-id"))
+                .andExpect(jsonPath("$.data.role").value("PARTICIPANT"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+        verify(matchService).joinMatch("match-id", "user-id");
+    }
+
+    @Test
+    void 매칭방_참가시_이미_참가한_유저면_409_응답으로_반환한다() throws Exception {
+        when(matchService.joinMatch("match-id", "user-id"))
+                .thenThrow(new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED));
+
+        mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_003"));
+    }
+
+    @Test
+    void 매칭방_참가_취소를_200_응답으로_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(matchService).leaveMatch("match-id", "user-id");
+    }
+
+    @Test
+    void 매칭방_참가_취소시_참가정보가_없으면_404_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND))
+                .when(matchService).leaveMatch("match-id", "user-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_009"));
+    }
+
+    @Test
+    void 매칭방_참가_취소시_방장이면_400_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE))
+                .when(matchService).leaveMatch("match-id", "host-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
+                        .header("X-USER-ID", "host-id"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_010"));
+    }
+
     private MatchCreateRequest createRequest(String title) {
         return new MatchCreateRequest(
                 "reservation-id",
@@ -225,10 +289,22 @@ class MatchControllerTest {
     }
 
     private MatchParticipantResponse createParticipantResponse() {
+        return createParticipantResponse("participant-id", "host-id", MatchParticipantRole.HOST);
+    }
+
+    private MatchParticipantResponse createParticipantResponse(String participantId, String userId) {
+        return createParticipantResponse(participantId, userId, MatchParticipantRole.PARTICIPANT);
+    }
+
+    private MatchParticipantResponse createParticipantResponse(
+            String participantId,
+            String userId,
+            MatchParticipantRole role
+    ) {
         return new MatchParticipantResponse(
-                "participant-id",
-                "host-id",
-                MatchParticipantRole.HOST,
+                participantId,
+                userId,
+                role,
                 MatchParticipantStatus.ACTIVE,
                 CREATED_AT
         );
