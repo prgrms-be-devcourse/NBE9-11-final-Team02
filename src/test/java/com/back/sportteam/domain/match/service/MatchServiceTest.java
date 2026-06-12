@@ -217,6 +217,128 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
     }
 
+    @Test
+    void 매칭방에_참가한다() {
+        Match match = createMatch();
+        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+                match.getId(),
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(false);
+        when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchParticipantResponse response = matchService.joinMatch(match.getId(), "participant-id");
+
+        assertThat(response.participantId()).isNotBlank();
+        assertThat(response.userId()).isEqualTo("participant-id");
+        assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(match.getCurrentCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 매칭방_참가시_매칭방이_없으면_예외를_던진다() {
+        when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.joinMatch("missing-id", "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가시_정원이_가득차면_예외를_던진다() {
+        Match match = createMatch(1);
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_FULL);
+    }
+
+    @Test
+    void 매칭방_참가시_이미_참가한_유저면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+                matchId,
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.ALREADY_PARTICIPATED);
+    }
+
+    @Test
+    void 매칭방_참가를_취소한다() {
+        Match match = createMatch();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        match.increaseCurrentCount();
+        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                match.getId(),
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+
+        matchService.leaveMatch(match.getId(), "participant-id");
+
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(match.getCurrentCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 매칭방_참가_취소시_매칭방이_없으면_예외를_던진다() {
+        when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.leaveMatch("missing-id", "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가_취소시_참가정보가_없으면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                matchId,
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.PARTICIPANT_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가_취소시_방장이면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        MatchParticipant host = MatchParticipant.host(match, "host-id");
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                matchId,
+                "host-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(host));
+
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.HOST_CANNOT_LEAVE);
+    }
+
     private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
         return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
@@ -242,13 +364,17 @@ class MatchServiceTest {
     }
 
     private Match createMatch() {
+        return createMatch(10);
+    }
+
+    private Match createMatch(int maxParticipants) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(2)
-                .maxParticipants(10)
+                .minParticipants(Math.min(2, maxParticipants))
+                .maxParticipants(maxParticipants)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.LEVEL_2)
                 .maxSkillLevel(SkillLevel.LEVEL_4)

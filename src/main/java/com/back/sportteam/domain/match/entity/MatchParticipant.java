@@ -59,4 +59,16 @@ public class MatchParticipant {
     public static MatchParticipant host(Match match, String userId) {
         return new MatchParticipant(match, userId, MatchParticipantRole.HOST);
     }
+
+    public static MatchParticipant participant(Match match, String userId) {
+        return new MatchParticipant(match, userId, MatchParticipantRole.PARTICIPANT);
+    }
+
+    public boolean isHost() {
+        return role == MatchParticipantRole.HOST;
+    }
+
+    public void cancel() {
+        this.status = MatchParticipantStatus.CANCELLED;
+    }
 }

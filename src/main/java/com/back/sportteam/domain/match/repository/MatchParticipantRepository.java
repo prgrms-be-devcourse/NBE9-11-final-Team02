@@ -11,9 +11,7 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
     List<MatchParticipant> findByMatchIdAndStatus(String matchId, MatchParticipantStatus status);
 
-    Optional<MatchParticipant> findByMatchIdAndUserIdAndStatus(
-            String matchId,
-            String userId,
-            MatchParticipantStatus status
-    );
+    boolean existsByMatchIdAndUserIdAndStatus(String matchId, String userId, MatchParticipantStatus status);
+
+    Optional<MatchParticipant> findByMatchIdAndUserIdAndStatus(String matchId, String userId, MatchParticipantStatus status);
 }
