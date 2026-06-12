@@ -10,12 +10,14 @@ import static org.mockito.Mockito.when;
 import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
 import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,7 +48,10 @@ class PaymentServiceTest {
 
         assertThat(response.merchantUid()).startsWith("mid_");
         assertThat(response.amount()).isEqualTo(10_000L);
-        verify(paymentRepository).save(any(Payment.class));
+
+        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository).save(paymentCaptor.capture());
+        assertThat(paymentCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
     }
 
     @Test

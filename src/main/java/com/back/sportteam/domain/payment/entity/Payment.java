@@ -56,7 +56,7 @@ public class Payment {
         this.matchId = matchId;
         this.amount = amount;
         this.paymentType = paymentType;
-        this.status = PaymentStatus.READY;
+        this.status = PaymentStatus.PENDING;
         this.createdAt = LocalDateTime.now(SERVICE_ZONE);
     }
 
