@@ -2,7 +2,6 @@ package com.back.sportteam.global.exception;
 
 import com.back.sportteam.global.exception.errorcode.CommonErrorCode;
 import com.back.sportteam.global.response.ApiResponse;
-import com.back.sportteam.global.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;

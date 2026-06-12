@@ -9,10 +9,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
 @Entity
 @Table(name = "payments")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,8 +29,8 @@ public class Payment {
     @Column(name = "merchant_uid", nullable = false, unique = true, length = 64)
     private String merchantUid;
 
-    @Column(name = "match_id")
-    private Long matchId;
+    @Column(name = "match_id", columnDefinition = "CHAR(36)", nullable = false)
+    private String matchId;
 
     @Column(nullable = false)
     private Long amount;
@@ -38,12 +46,9 @@ public class Payment {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    protected Payment() {
-    }
-
     private Payment(
             String merchantUid,
-            Long matchId,
+            String matchId,
             Long amount,
             PaymentType paymentType
     ) {
@@ -52,43 +57,15 @@ public class Payment {
         this.amount = amount;
         this.paymentType = paymentType;
         this.status = PaymentStatus.READY;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(SERVICE_ZONE);
     }
 
     public static Payment create(
             String merchantUid,
-            Long matchId,
+            String matchId,
             Long amount,
             PaymentType paymentType
     ) {
         return new Payment(merchantUid, matchId, amount, paymentType);
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getMerchantUid() {
-        return merchantUid;
-    }
-
-    public Long getMatchId() {
-        return matchId;
-    }
-
-    public Long getAmount() {
-        return amount;
-    }
-
-    public PaymentType getPaymentType() {
-        return paymentType;
-    }
-
-    public PaymentStatus getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 }

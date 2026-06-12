@@ -13,6 +13,6 @@ public class HealthController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<HealthResponse>> getHealth() {
-        return ResponseEntity.ok(ApiResponse.success(new HealthResponse("UP")));
+        return ResponseEntity.ok(ApiResponse.ok(new HealthResponse("UP")));
     }
 }

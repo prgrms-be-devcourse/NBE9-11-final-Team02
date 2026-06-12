@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MatchServiceTest {
 
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JANUARY, 1, 10, 0);
 
     @Mock
     private MatchRepository matchRepository;

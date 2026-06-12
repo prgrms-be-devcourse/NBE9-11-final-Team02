@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MatchControllerTest {
 
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JANUARY, 1, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
     private MatchService matchService;
