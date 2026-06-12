@@ -1,14 +1,12 @@
-import org.gradle.internal.impldep.org.jsoup.nodes.Document
-
 plugins {
     java
     id("org.springframework.boot") version "4.0.6"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.sonarqube") version "7.3.1.8318"
-    id("jacoco")
+    jacoco
 }
 
-sonar {
+sonarqube {
     properties {
         property("sonar.projectKey", "prgrms-be-devcourse_NBE9-11-final-Team02")
         property("sonar.organization", "prgrms-be-devcourse")
@@ -18,7 +16,7 @@ sonar {
 
 tasks.jacocoTestReport {
     reports {
-        Document.OutputSettings.Syntax.xml.required.set(true)
+        xml.required.set(true)
     }
 }
 
@@ -36,26 +34,19 @@ repositories {
     mavenCentral()
 }
 
-dependencyLocking {
-    lockAllConfigurations()
-}
-
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     runtimeOnly("com.mysql:mysql-connector-j")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("com.h2database:h2")
