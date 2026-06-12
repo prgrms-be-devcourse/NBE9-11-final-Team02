@@ -3,6 +3,7 @@ package com.back.sportteam.domain.match.service;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
+import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
@@ -184,6 +185,33 @@ class MatchServiceTest {
         when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> matchService.getMatch("missing-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가자_목록을_조회한다() {
+        Match match = createMatch();
+        MatchParticipant participant = MatchParticipant.host(match, "host-id");
+        when(matchRepository.existsById(match.getId())).thenReturn(true);
+        when(matchParticipantRepository.findByMatchIdAndStatus(match.getId(), MatchParticipantStatus.ACTIVE))
+                .thenReturn(List.of(participant));
+
+        List<MatchParticipantResponse> response = matchService.getParticipants(match.getId());
+
+        assertThat(response).hasSize(1);
+        assertThat(response.getFirst().participantId()).isNotBlank();
+        assertThat(response.getFirst().userId()).isEqualTo("host-id");
+        assertThat(response.getFirst().role()).isEqualTo(MatchParticipantRole.HOST);
+        assertThat(response.getFirst().status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+    }
+
+    @Test
+    void 매칭방_참가자_목록_조회시_매칭방이_없으면_예외를_던진다() {
+        when(matchRepository.existsById("missing-id")).thenReturn(false);
+
+        assertThatThrownBy(() -> matchService.getParticipants("missing-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);

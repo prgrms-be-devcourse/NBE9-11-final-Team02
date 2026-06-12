@@ -3,7 +3,10 @@ package com.back.sportteam.domain.match.controller;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
+import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
+import com.back.sportteam.domain.match.entity.MatchParticipantRole;
+import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
@@ -124,6 +127,32 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.error.path").value("/api/v1/matches/missing-id"));
     }
 
+    @Test
+    void 매칭방_참가자_목록을_200_응답으로_반환한다() throws Exception {
+        when(matchService.getParticipants("match-id")).thenReturn(List.of(createParticipantResponse()));
+
+        mockMvc.perform(get("/api/v1/matches/{matchId}/participants", "match-id"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].participantId").value("participant-id"))
+                .andExpect(jsonPath("$.data[0].userId").value("host-id"))
+                .andExpect(jsonPath("$.data[0].role").value("HOST"))
+                .andExpect(jsonPath("$.data[0].status").value("ACTIVE"));
+
+        verify(matchService).getParticipants("match-id");
+    }
+
+    @Test
+    void 매칭방_참가자_목록_조회시_매칭방이_없으면_404_응답으로_반환한다() throws Exception {
+        when(matchService.getParticipants("missing-id")).thenThrow(new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/matches/{matchId}/participants", "missing-id"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_001"))
+                .andExpect(jsonPath("$.error.path").value("/api/v1/matches/missing-id/participants"));
+    }
+
     private MatchCreateRequest createRequest(String title) {
         return new MatchCreateRequest(
                 "reservation-id",
@@ -191,6 +220,16 @@ class MatchControllerTest {
                 CANCEL_DEADLINE,
                 MatchStatus.RECRUITING,
                 CREATED_AT,
+                CREATED_AT
+        );
+    }
+
+    private MatchParticipantResponse createParticipantResponse() {
+        return new MatchParticipantResponse(
+                "participant-id",
+                "host-id",
+                MatchParticipantRole.HOST,
+                MatchParticipantStatus.ACTIVE,
                 CREATED_AT
         );
     }

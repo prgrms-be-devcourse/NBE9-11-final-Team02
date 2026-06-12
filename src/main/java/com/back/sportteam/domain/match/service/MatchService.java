@@ -3,10 +3,12 @@ package com.back.sportteam.domain.match.service;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
+import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
+import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
@@ -67,6 +69,16 @@ public class MatchService {
         return MatchDetailResponse.from(match);
     }
 
+    @Transactional(readOnly = true)
+    public List<MatchParticipantResponse> getParticipants(String matchId) {
+        validateMatchExists(matchId);
+
+        return matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
+                .stream()
+                .map(MatchParticipantResponse::from)
+                .toList();
+    }
+
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
@@ -83,6 +95,12 @@ public class MatchService {
     private void validateReservationAvailable(String reservationId) {
         if (matchRepository.existsByReservationId(reservationId)) {
             throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
+        }
+    }
+
+    private void validateMatchExists(String matchId) {
+        if (!matchRepository.existsById(matchId)) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
         }
     }
 }
