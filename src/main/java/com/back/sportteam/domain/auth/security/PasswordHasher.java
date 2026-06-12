@@ -1,5 +1,6 @@
-package com.back.sportteam.domain.auth.security;
+package com.back.sportteam.auth.security;
 
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -24,6 +25,15 @@ public class PasswordHasher {
         return ALGORITHM + "$" + ITERATIONS + "$"
                 + Base64.getEncoder().encodeToString(salt) + "$"
                 + Base64.getEncoder().encodeToString(hash);
+    }
+
+    public boolean verify(String rawPassword, String storedHash) {
+        String[] parts = storedHash.split("\\$");
+        int iterations = Integer.parseInt(parts[1]);
+        byte[] salt = Base64.getDecoder().decode(parts[2]);
+        byte[] expectedHash = Base64.getDecoder().decode(parts[3]);
+        byte[] actualHash = pbkdf2(rawPassword, salt, iterations, expectedHash.length * 8);
+        return MessageDigest.isEqual(expectedHash, actualHash);
     }
 
     private byte[] pbkdf2(String password, byte[] salt, int iterations, int keyLength) {
