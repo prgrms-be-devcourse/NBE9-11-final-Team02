@@ -16,15 +16,15 @@ public class MatchPaymentAmountReader implements PaymentAmountReader {
     private final MatchRepository matchRepository;
 
     @Override
-    public Long getFacilityAmount(String matchId) {
+    public Integer getFacilityAmount(String matchId) {
         getMatch(matchId);
         throw new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_SOURCE_UNAVAILABLE);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Long getParticipationAmount(String matchId) {
-        return (long) getMatch(matchId).getFeePerPerson();
+    public Integer getParticipationAmount(String matchId) {
+        return getMatch(matchId).getFeePerPerson();
     }
 
     private Match getMatch(String matchId) {

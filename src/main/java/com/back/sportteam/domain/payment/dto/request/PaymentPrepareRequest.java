@@ -11,7 +11,7 @@ public record PaymentPrepareRequest(
 
         @NotNull(message = "결제 금액은 필수입니다.")
         @Positive(message = "결제 금액은 0원보다 커야 합니다.")
-        Long amount,
+        Integer amount,
 
         @NotNull(message = "결제 유형은 필수입니다.")
         PaymentType paymentType

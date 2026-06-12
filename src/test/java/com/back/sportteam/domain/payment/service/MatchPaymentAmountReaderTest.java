@@ -31,9 +31,9 @@ class MatchPaymentAmountReaderTest {
         when(match.getFeePerPerson()).thenReturn(10_000);
         when(matchRepository.findById("match-id")).thenReturn(Optional.of(match));
 
-        Long amount = paymentAmountReader.getParticipationAmount("match-id");
+        Integer amount = paymentAmountReader.getParticipationAmount("match-id");
 
-        assertThat(amount).isEqualTo(10_000L);
+        assertThat(amount).isEqualTo(10_000);
     }
 
     @Test

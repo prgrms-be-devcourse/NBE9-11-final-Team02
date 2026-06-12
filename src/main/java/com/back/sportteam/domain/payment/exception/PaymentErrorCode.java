@@ -16,6 +16,11 @@ public enum PaymentErrorCode implements ErrorCode {
             "PAYMENT_005",
             "결제 금액 정보를 조회할 수 없습니다.",
             HttpStatus.SERVICE_UNAVAILABLE
+    ),
+    PAYMENT_PARTICIPANT_NOT_FOUND(
+            "PAYMENT_006",
+            "결제 대상 참가자 정보를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND
     );
 
     private final String code;

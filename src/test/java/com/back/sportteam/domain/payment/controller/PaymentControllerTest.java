@@ -36,10 +36,11 @@ class PaymentControllerTest {
 
     @Test
     void 결제_준비_요청은_검증된_주문_정보를_반환한다() throws Exception {
-        PaymentPrepareResponse response = new PaymentPrepareResponse("mid_12345", 10_000L);
-        when(paymentService.prepare(any(PaymentPrepareRequest.class))).thenReturn(response);
+        PaymentPrepareResponse response = new PaymentPrepareResponse("mid_12345", 10_000);
+        when(paymentService.prepare(any(String.class), any(PaymentPrepareRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/prepare")
+                        .header("X-USER-ID", "user-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
                 .andExpect(status().isOk())
@@ -47,12 +48,13 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data.merchantUid").value("mid_12345"))
                 .andExpect(jsonPath("$.data.amount").value(10000));
 
-        verify(paymentService).prepare(any(PaymentPrepareRequest.class));
+        verify(paymentService).prepare(any(String.class), any(PaymentPrepareRequest.class));
     }
 
     @Test
     void 매칭_ID가_비어_있으면_400_응답을_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/payments/prepare")
+                        .header("X-USER-ID", "user-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -69,10 +71,11 @@ class PaymentControllerTest {
 
     @Test
     void 결제_금액이_일치하지_않으면_400_응답을_반환한다() throws Exception {
-        when(paymentService.prepare(any(PaymentPrepareRequest.class)))
+        when(paymentService.prepare(any(String.class), any(PaymentPrepareRequest.class)))
                 .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH));
 
         mockMvc.perform(post("/api/v1/payments/prepare")
+                        .header("X-USER-ID", "user-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
                 .andExpect(status().isBadRequest())
@@ -80,6 +83,16 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.error.code").value("PAYMENT_002"))
                 .andExpect(jsonPath("$.error.status").value(400))
                 .andExpect(jsonPath("$.error.path").value("/api/v1/payments/prepare"));
+    }
+
+    @Test
+    void 사용자_ID_헤더가_없으면_400_응답을_반환한다() throws Exception {
+        mockMvc.perform(post("/api/v1/payments/prepare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestJson()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"));
     }
 
     private String validRequestJson() {

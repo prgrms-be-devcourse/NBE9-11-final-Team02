@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -19,53 +18,70 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
 
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
     private String id;
 
-    @Column(name = "merchant_uid", nullable = false, unique = true, length = 64)
-    private String merchantUid;
+    @Column(name = "participant_id", columnDefinition = "CHAR(36)")
+    private String participantId;
+
+    @Column(name = "user_id", columnDefinition = "CHAR(36)", nullable = false)
+    private String userId;
 
     @Column(name = "match_id", columnDefinition = "CHAR(36)", nullable = false)
     private String matchId;
-
-    @Column(nullable = false)
-    private Long amount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false, length = 20)
     private PaymentType paymentType;
 
+    @Column(name = "merchant_uid", nullable = false, unique = true, length = 100)
+    private String merchantUid;
+
+    @Column(nullable = false)
+    private Integer amount;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "pg_provider", nullable = false, length = 30)
+    private PaymentProvider pgProvider;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
     private PaymentStatus status;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
 
     private Payment(
-            String merchantUid,
+            String participantId,
+            String userId,
             String matchId,
-            Long amount,
-            PaymentType paymentType
+            PaymentType paymentType,
+            String merchantUid,
+            Integer amount
     ) {
         this.id = UUID.randomUUID().toString();
-        this.merchantUid = merchantUid;
+        this.participantId = participantId;
+        this.userId = userId;
         this.matchId = matchId;
-        this.amount = amount;
         this.paymentType = paymentType;
+        this.merchantUid = merchantUid;
+        this.amount = amount;
+        this.pgProvider = PaymentProvider.TOSSPAYMENTS;
         this.status = PaymentStatus.PENDING;
-        this.createdAt = LocalDateTime.now(SERVICE_ZONE);
     }
 
     public static Payment create(
-            String merchantUid,
+            String participantId,
+            String userId,
             String matchId,
-            Long amount,
-            PaymentType paymentType
+            PaymentType paymentType,
+            String merchantUid,
+            Integer amount
     ) {
-        return new Payment(merchantUid, matchId, amount, paymentType);
+        return new Payment(participantId, userId, matchId, paymentType, merchantUid, amount);
     }
 }
