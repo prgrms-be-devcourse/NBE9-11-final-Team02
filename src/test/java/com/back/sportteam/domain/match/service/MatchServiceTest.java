@@ -250,9 +250,10 @@ class MatchServiceTest {
     @Test
     void 매칭방_참가시_정원이_가득차면_예외를_던진다() {
         Match match = createMatch(1);
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
-        assertThatThrownBy(() -> matchService.joinMatch(match.getId(), "participant-id"))
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.MATCH_FULL);
@@ -261,14 +262,15 @@ class MatchServiceTest {
     @Test
     void 매칭방_참가시_이미_참가한_유저면_예외를_던진다() {
         Match match = createMatch();
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
-                match.getId(),
+                matchId,
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(true);
 
-        assertThatThrownBy(() -> matchService.joinMatch(match.getId(), "participant-id"))
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.ALREADY_PARTICIPATED);
@@ -305,14 +307,15 @@ class MatchServiceTest {
     @Test
     void 매칭방_참가_취소시_참가정보가_없으면_예외를_던진다() {
         Match match = createMatch();
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
+                matchId,
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> matchService.leaveMatch(match.getId(), "participant-id"))
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.PARTICIPANT_NOT_FOUND);
@@ -321,15 +324,16 @@ class MatchServiceTest {
     @Test
     void 매칭방_참가_취소시_방장이면_예외를_던진다() {
         Match match = createMatch();
+        String matchId = match.getId();
         MatchParticipant host = MatchParticipant.host(match, "host-id");
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
+                matchId,
                 "host-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(host));
 
-        assertThatThrownBy(() -> matchService.leaveMatch(match.getId(), "host-id"))
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "host-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.HOST_CANNOT_LEAVE);
