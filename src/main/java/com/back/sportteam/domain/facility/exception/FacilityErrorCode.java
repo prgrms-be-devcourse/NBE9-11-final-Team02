@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum FacilityErrorCode implements ErrorCode {
     FACILITY_NOT_FOUND("FACILITY_001", "시설 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    FACILITY_SLOT_NOT_FOUND("FACILITY_002", "시설 시간대 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    FACILITY_SLOT_NOT_FOUND("FACILITY_002", "시설 시간대 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    FACILITY_ACCESS_DENIED("FACILITY_003", "해당 시설에 대한 권한이 없습니다.", HttpStatus.FORBIDDEN);
 
     private final String code;
     private final String message;
