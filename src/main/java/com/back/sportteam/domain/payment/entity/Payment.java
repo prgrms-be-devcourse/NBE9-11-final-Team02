@@ -4,12 +4,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,8 +22,8 @@ public class Payment {
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
+    private String id;
 
     @Column(name = "merchant_uid", nullable = false, unique = true, length = 64)
     private String merchantUid;
@@ -52,6 +51,7 @@ public class Payment {
             Long amount,
             PaymentType paymentType
     ) {
+        this.id = UUID.randomUUID().toString();
         this.merchantUid = merchantUid;
         this.matchId = matchId;
         this.amount = amount;

@@ -51,6 +51,7 @@ class PaymentServiceTest {
 
         ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentRepository).save(paymentCaptor.capture());
+        assertThat(paymentCaptor.getValue().getId()).hasSize(36);
         assertThat(paymentCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
     }
 
