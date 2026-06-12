@@ -2,6 +2,8 @@ package com.back.sportteam.domain.match.service;
 
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
+import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
+import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
@@ -13,6 +15,8 @@ import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +49,22 @@ public class MatchService {
         matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));
 
         return MatchCreateResponse.from(savedMatch);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MatchSummaryResponse> getMatches() {
+        return matchRepository.findAll()
+                .stream()
+                .map(MatchSummaryResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MatchDetailResponse getMatch(String matchId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        return MatchDetailResponse.from(match);
     }
 
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
