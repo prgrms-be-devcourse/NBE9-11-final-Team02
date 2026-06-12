@@ -1,5 +1,3 @@
-import org.gradle.internal.impldep.org.jsoup.nodes.Document
-
 plugins {
     java
     id("org.springframework.boot") version "4.0.6"
@@ -8,29 +6,29 @@ plugins {
     id("jacoco")
 }
 
-sonar {
-    properties {
-        property("sonar.projectKey", "prgrms-be-devcourse_NBE9-11-final-Team02")
-        property("sonar.organization", "prgrms-be-devcourse")
-        property("sonar.host.url", "https://sonarcloud.io")
-    }
-}
+//sonar {
+//    properties {
+//        property("sonar.projectKey", "prgrms-be-devcourse_NBE9-11-final-Team02")
+//        property("sonar.organization", "prgrms-be-devcourse")
+//        property("sonar.host.url", "https://sonarcloud.io")
+//    }
+//}
 
-tasks.jacocoTestReport {
-    reports {
-        Document.OutputSettings.Syntax.xml.required.set(true)
-    }
-}
+//tasks.jacocoTestReport {
+//    reports {
+//        Document.OutputSettings.Syntax.xml.required.set(true)
+//    }
+//}
 
 group = "com.back"
 version = "0.0.1-SNAPSHOT"
 description = "NBE9-11-final-Team02"
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
-    }
-}
+//java {
+//    toolchain {
+//        languageVersion = JavaLanguageVersion.of(24)
+//    }
+//}
 
 repositories {
     mavenCentral()
