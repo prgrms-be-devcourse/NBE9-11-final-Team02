@@ -1,4 +1,4 @@
-name: deploy
+name: CD
 
 env:
   IMAGE_REPOSITORY: nbe9-11-team02
@@ -222,6 +222,15 @@ jobs:
           echo "Status: ${STATUS}"
 
           [[ "$STATUS" == "Success" ]] || exit 1
+
+      - name: 슬랙 배포 실패 알림
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,took
+          text: "⚠️ 배포 실패!"
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: failure()
 
   makeTagAndRelease:
     runs-on: ubuntu-latest
