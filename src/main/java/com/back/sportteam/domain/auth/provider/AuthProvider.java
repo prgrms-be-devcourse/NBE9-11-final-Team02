@@ -1,4 +1,4 @@
-package com.back.sportteam.auth.domain;
+package com.back.sportteam.domain.auth.provider;
 
 public enum AuthProvider {
     LOCAL,

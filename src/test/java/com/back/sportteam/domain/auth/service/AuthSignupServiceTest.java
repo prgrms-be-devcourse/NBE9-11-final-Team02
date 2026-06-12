@@ -8,7 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.back.sportteam.auth.domain.AuthProvider;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;

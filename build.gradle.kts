@@ -1,5 +1,3 @@
-import org.gradle.internal.impldep.org.jsoup.nodes.Document
-
 plugins {
     java
     id("org.springframework.boot") version "4.0.6"
@@ -18,7 +16,7 @@ sonarqube {
 
 tasks.jacocoTestReport {
     reports {
-        Document.OutputSettings.Syntax.xml.required.set(true)
+        xml.required.set(true)
     }
 }
 

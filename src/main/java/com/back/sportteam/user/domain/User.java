@@ -1,6 +1,6 @@
 package com.back.sportteam.user.domain;
 
-import com.back.sportteam.auth.domain.AuthProvider;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -1,6 +1,6 @@
 package com.back.sportteam.domain.auth.service;
 
-import com.back.sportteam.auth.domain.AuthProvider;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;

@@ -1,6 +1,6 @@
 package com.back.sportteam.domain.auth.dto.response;
 
-import com.back.sportteam.auth.domain.AuthProvider;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.user.domain.User;
 import com.back.sportteam.user.domain.UserRole;
 
