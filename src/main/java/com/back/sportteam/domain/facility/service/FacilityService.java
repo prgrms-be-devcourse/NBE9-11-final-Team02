@@ -6,9 +6,13 @@ import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FacilityService {
 
     private final FacilityRepository facilityRepository;
+    private final FacilitySlotRepository facilitySlotRepository;
 
     @Transactional
     public FacilityResponse createFacility(String managerId, FacilityCreateRequest request) {
@@ -52,6 +57,21 @@ public class FacilityService {
                 request.imageUrls()
         );
         return FacilityResponse.from(facility);
+    }
+
+    @Transactional
+    public void deleteFacility(String managerId, String facilityId) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+
+        boolean hasActiveSlots = facilitySlotRepository.existsByFacilityIdAndStatusIn(
+                facilityId, List.of(SlotStatus.RESERVED, SlotStatus.PENDING)
+        );
+        if (hasActiveSlots) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_HAS_ACTIVE_RESERVATIONS);
+        }
+
+        facility.close();
     }
 
     private Facility getFacilityOrThrow(String facilityId) {

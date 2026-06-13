@@ -5,8 +5,10 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
+import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -22,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +34,9 @@ class FacilityServiceTest {
 
     @Mock
     private FacilityRepository facilityRepository;
+
+    @Mock
+    private FacilitySlotRepository facilitySlotRepository;
 
     @InjectMocks
     private FacilityService facilityService;
@@ -97,6 +104,49 @@ class FacilityServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
+    }
+
+    @Test
+    void 예약된_슬롯이_없으면_시설을_삭제할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.existsByFacilityIdAndStatusIn(
+                eq(facility.getId()), eq(List.of(SlotStatus.RESERVED, SlotStatus.PENDING))))
+                .thenReturn(false);
+
+        facilityService.deleteFacility("manager-id", facility.getId());
+
+        assertThat(facility.getStatus()).isEqualTo(FacilityStatus.CLOSED);
+    }
+
+    @Test
+    void 예약된_슬롯이_있으면_시설을_삭제할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.existsByFacilityIdAndStatusIn(
+                eq(facility.getId()), eq(List.of(SlotStatus.RESERVED, SlotStatus.PENDING))))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> facilityService.deleteFacility("manager-id", facility.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_HAS_ACTIVE_RESERVATIONS);
+    }
+
+    @Test
+    void 본인_시설이_아니면_삭제할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.deleteFacility("other-manager-id", facility.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+
+        verify(facilitySlotRepository, never()).existsByFacilityIdAndStatusIn(any(), any());
     }
 
     private FacilityCreateRequest createRequest() {

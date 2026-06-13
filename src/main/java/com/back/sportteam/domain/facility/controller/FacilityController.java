@@ -39,4 +39,13 @@ public class FacilityController {
         FacilityResponse response = facilityService.updateFacility(managerId, facilityId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @DeleteMapping("/{facilityId}")
+    public ResponseEntity<ApiResponse<Void>> deleteFacility(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId,
+            @PathVariable String facilityId
+    ) {
+        facilityService.deleteFacility(managerId, facilityId);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
 }
