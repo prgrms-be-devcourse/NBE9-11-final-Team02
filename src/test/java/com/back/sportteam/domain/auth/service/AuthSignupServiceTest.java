@@ -8,11 +8,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
-import com.back.sportteam.domain.auth.security.PasswordHasher;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.user.domain.User;
@@ -31,7 +30,7 @@ class AuthSignupServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        authSignupService = new AuthSignupService(userRepository, new PasswordHasher());
+        authSignupService = new AuthSignupService(userRepository, new com.back.sportteam.auth.security.PasswordHasher());
     }
 
     @DisplayName("일반 회원가입")

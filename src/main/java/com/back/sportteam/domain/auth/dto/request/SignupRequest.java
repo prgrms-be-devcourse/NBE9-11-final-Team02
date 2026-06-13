@@ -24,4 +24,6 @@ public record SignupRequest(
 
         AuthProvider provider,
         String providerId
-) {}
+) {
+
+}
