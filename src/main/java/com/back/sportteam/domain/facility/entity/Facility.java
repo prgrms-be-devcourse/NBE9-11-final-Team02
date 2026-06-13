@@ -54,9 +54,6 @@ public class Facility {
     @Column(name = "slot_duration_minutes", nullable = false)
     private int slotDurationMinutes;
 
-    @Column(name = "max_slots", nullable = false)
-    private int maxSlots;
-
     @Column(name = "slot_open_at")
     private LocalDateTime slotOpenAt;
 
@@ -65,7 +62,7 @@ public class Facility {
     private FacilityStatus status;
 
     @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "facilities_sports", joinColumns = @JoinColumn(name = "facilities"))
+    @CollectionTable(name = "facilities_sports", joinColumns = @JoinColumn(name = "facility_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "sport_type", nullable = false, length = 30)
     private Set<SportType> sportTypes = new HashSet<>();
@@ -88,7 +85,7 @@ public class Facility {
     private LocalDateTime updatedAt;
 
     private Facility(String managerId, String name, String address, String phone,
-                     String description, int slotDurationMinutes, int maxSlots,
+                     String description, int slotDurationMinutes,
                      LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                      Set<Amenity> amenities, List<String> imageUrls) {
         LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
@@ -99,7 +96,6 @@ public class Facility {
         this.phone = phone;
         this.description = description;
         this.slotDurationMinutes = slotDurationMinutes;
-        this.maxSlots = maxSlots;
         this.slotOpenAt = slotOpenAt;
         this.status = FacilityStatus.ACTIVE;
         this.sportTypes = new HashSet<>(sportTypes);
@@ -110,20 +106,19 @@ public class Facility {
     }
 
     public static Facility create(String managerId, String name, String address, String phone,
-                                  String description, int slotDurationMinutes, int maxSlots,
+                                  String description, int slotDurationMinutes,
                                   LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                                   Set<Amenity> amenities, List<String> imageUrls) {
         return new Facility(managerId, name, address, phone, description,
-                slotDurationMinutes, maxSlots, slotOpenAt, sportTypes, amenities, imageUrls);
+                slotDurationMinutes, slotOpenAt, sportTypes, amenities, imageUrls);
     }
 
-    public void update(String phone, String description, int slotDurationMinutes, int maxSlots,
+    public void update(String phone, String description, int slotDurationMinutes,
                        LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                        Set<Amenity> amenities, List<String> imageUrls) {
         this.phone = phone;
         this.description = description;
         this.slotDurationMinutes = slotDurationMinutes;
-        this.maxSlots = maxSlots;
         this.slotOpenAt = slotOpenAt;
         this.sportTypes = sportTypes != null ? new HashSet<>(sportTypes) : new HashSet<>();
         this.amenities = amenities != null ? new HashSet<>(amenities) : new HashSet<>();

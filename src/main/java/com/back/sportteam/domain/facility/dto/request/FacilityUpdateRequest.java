@@ -18,10 +18,6 @@ public record FacilityUpdateRequest(
         @Min(value = 30, message = "슬롯 단위는 최소 30분입니다.")
         Integer slotDurationMinutes,
 
-        @NotNull
-        @Min(value = 1, message = "최대 슬롯 수는 1 이상이어야 합니다.")
-        Integer maxSlots,
-
         LocalDateTime slotOpenAt,
 
         Set<SportType> sportTypes,

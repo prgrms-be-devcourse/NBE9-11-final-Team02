@@ -1,6 +1,5 @@
 package com.back.sportteam.domain.facility.dto.response;
 
-
 import com.back.sportteam.domain.facility.entity.Amenity;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
@@ -17,7 +16,6 @@ public record FacilityResponse(
         String phone,
         String description,
         int slotDurationMinutes,
-        int maxSlots,
         LocalDateTime slotOpenAt,
         FacilityStatus status,
         Set<SportType> sportTypes,
@@ -33,7 +31,6 @@ public record FacilityResponse(
                 facility.getPhone(),
                 facility.getDescription(),
                 facility.getSlotDurationMinutes(),
-                facility.getMaxSlots(),
                 facility.getSlotOpenAt(),
                 facility.getStatus(),
                 facility.getSportTypes(),

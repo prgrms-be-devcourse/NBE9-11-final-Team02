@@ -45,7 +45,7 @@ public class FacilitySlot {
     private int price;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
+    @Column(name = "status", nullable = false, length = 20)
     private SlotStatus status;
 
     @Column(name = "pending_until")

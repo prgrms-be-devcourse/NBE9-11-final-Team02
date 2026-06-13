@@ -2,7 +2,9 @@ package com.back.sportteam.domain.facility.controller;
 
 import com.back.sportteam.domain.facility.dto.request.FacilityCreateRequest;
 import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
+import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.service.FacilityService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -10,6 +12,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.util.List;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,5 +51,15 @@ public class FacilityController {
     ) {
         facilityService.deleteFacility(managerId, facilityId);
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @PostMapping("/{facilityId}/slots")
+    public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> setupSlots(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @Valid @RequestBody SlotSetupRequest request
+    ) {
+        List<FacilitySlotResponse> response = facilityService.setupSlots(managerId, facilityId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 }
