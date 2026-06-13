@@ -39,10 +39,10 @@ public class Facility {
     @Column(name = "manager_id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
     private String managerId;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, updatable = false, length = 100)
     private String name;
 
-    @Column(name = "address", nullable = false, length = 255)
+    @Column(name = "address", nullable = false, updatable = false, length = 255)
     private String address;
 
     @Column(name = "phone", length = 20)
@@ -117,12 +117,15 @@ public class Facility {
                 slotDurationMinutes, maxSlots, slotOpenAt, sportTypes, amenities, imageUrls);
     }
 
-    public void update(String name, String address, String phone, String description,
+    public void update(String phone, String description, int slotDurationMinutes, int maxSlots,
+                       LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                        Set<Amenity> amenities, List<String> imageUrls) {
-        this.name = name;
-        this.address = address;
         this.phone = phone;
         this.description = description;
+        this.slotDurationMinutes = slotDurationMinutes;
+        this.maxSlots = maxSlots;
+        this.slotOpenAt = slotOpenAt;
+        this.sportTypes = sportTypes != null ? new HashSet<>(sportTypes) : new HashSet<>();
         this.amenities = amenities != null ? new HashSet<>(amenities) : new HashSet<>();
         this.imageUrls = imageUrls != null ? new ArrayList<>(imageUrls) : new ArrayList<>();
     }
