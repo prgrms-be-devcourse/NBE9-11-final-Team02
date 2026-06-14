@@ -18,11 +18,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MatchService {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
@@ -31,6 +35,7 @@ public class MatchService {
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
         validateParticipantRange(request.minParticipants(), request.maxParticipants());
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
+        validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
         validateReservationAvailable(request.reservationId());
 
         Match match = Match.create(MatchCreateCommand.builder()
@@ -44,6 +49,7 @@ public class MatchService {
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())
                 .requiredGender(request.requiredGender())
+                .recruitDeadline(request.recruitDeadline())
                 .cancelDeadline(request.cancelDeadline())
                 .build());
 
@@ -129,6 +135,12 @@ public class MatchService {
         }
     }
 
+    private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
+        if (recruitDeadline.isAfter(cancelDeadline)) {
+            throw new BusinessException(MatchErrorCode.INVALID_DEADLINE_RANGE);
+        }
+    }
+
     private void validateMatchExists(String matchId) {
         if (!matchRepository.existsById(matchId)) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
@@ -138,6 +150,9 @@ public class MatchService {
     private void validateJoinable(Match match) {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
+        }
+        if (match.isRecruitClosed(LocalDateTime.now(SERVICE_ZONE))) {
+            throw new BusinessException(MatchErrorCode.RECRUIT_DEADLINE_PASSED);
         }
         if (match.isFull()) {
             throw new BusinessException(MatchErrorCode.MATCH_FULL);

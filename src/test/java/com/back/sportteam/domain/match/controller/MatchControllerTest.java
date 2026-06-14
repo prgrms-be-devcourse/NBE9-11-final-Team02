@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MatchControllerTest {
 
+    private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
     private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
@@ -228,6 +229,7 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
     }
@@ -246,7 +248,10 @@ class MatchControllerTest {
                 request.minSkillLevel(),
                 request.maxSkillLevel(),
                 request.requiredGender(),
+                request.recruitDeadline(),
                 request.cancelDeadline(),
+                null,
+                null,
                 MatchStatus.RECRUITING,
                 CREATED_AT
         );
@@ -263,6 +268,7 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 MatchStatus.RECRUITING
         );
     }
@@ -281,7 +287,10 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE,
+                null,
+                null,
                 MatchStatus.RECRUITING,
                 CREATED_AT,
                 CREATED_AT
@@ -322,6 +331,7 @@ class MatchControllerTest {
                   "minSkillLevel": "%s",
                   "maxSkillLevel": "%s",
                   "requiredGender": "%s",
+                  "recruitDeadline": "%s",
                   "cancelDeadline": "%s"
                 }
                 """.formatted(
@@ -334,6 +344,7 @@ class MatchControllerTest {
                 request.minSkillLevel(),
                 request.maxSkillLevel(),
                 request.requiredGender(),
+                request.recruitDeadline(),
                 request.cancelDeadline()
         );
     }
