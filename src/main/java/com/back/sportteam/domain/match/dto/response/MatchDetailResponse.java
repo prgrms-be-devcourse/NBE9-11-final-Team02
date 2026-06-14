@@ -21,7 +21,10 @@ public record MatchDetailResponse(
         SkillLevel minSkillLevel,
         SkillLevel maxSkillLevel,
         RequiredGender requiredGender,
+        LocalDateTime recruitDeadline,
         LocalDateTime cancelDeadline,
+        LocalDateTime confirmedAt,
+        LocalDateTime cancelledAt,
         MatchStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -41,7 +44,10 @@ public record MatchDetailResponse(
                 match.getMinSkillLevel(),
                 match.getMaxSkillLevel(),
                 match.getRequiredGender(),
+                match.getRecruitDeadline(),
                 match.getCancelDeadline(),
+                match.getConfirmedAt(),
+                match.getCancelledAt(),
                 match.getStatus(),
                 match.getCreatedAt(),
                 match.getUpdatedAt()

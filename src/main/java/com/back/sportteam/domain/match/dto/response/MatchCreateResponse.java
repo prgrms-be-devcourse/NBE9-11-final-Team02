@@ -21,7 +21,10 @@ public record MatchCreateResponse(
         SkillLevel minSkillLevel,
         SkillLevel maxSkillLevel,
         RequiredGender requiredGender,
+        LocalDateTime recruitDeadline,
         LocalDateTime cancelDeadline,
+        LocalDateTime confirmedAt,
+        LocalDateTime cancelledAt,
         MatchStatus status,
         LocalDateTime createdAt
 ) {
@@ -40,7 +43,10 @@ public record MatchCreateResponse(
                 match.getMinSkillLevel(),
                 match.getMaxSkillLevel(),
                 match.getRequiredGender(),
+                match.getRecruitDeadline(),
                 match.getCancelDeadline(),
+                match.getConfirmedAt(),
+                match.getCancelledAt(),
                 match.getStatus(),
                 match.getCreatedAt()
         );

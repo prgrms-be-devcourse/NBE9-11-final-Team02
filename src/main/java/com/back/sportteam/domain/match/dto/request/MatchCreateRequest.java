@@ -40,6 +40,10 @@ public record MatchCreateRequest(
         @NotNull(message = "성별 조건을 선택해주세요.")
         RequiredGender requiredGender,
 
+        @NotNull(message = "모집 마감 시간은 필수입니다.")
+        @Future(message = "모집 마감 시간은 현재 시간 이후여야 합니다.")
+        LocalDateTime recruitDeadline,
+
         @NotNull(message = "취소 마감 시간은 필수입니다.")
         @Future(message = "취소 마감 시간은 현재 시간 이후여야 합니다.")
         LocalDateTime cancelDeadline

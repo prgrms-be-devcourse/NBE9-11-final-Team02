@@ -6,6 +6,8 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 
+import java.time.LocalDateTime;
+
 public record MatchSummaryResponse(
         String matchId,
         String title,
@@ -16,6 +18,7 @@ public record MatchSummaryResponse(
         SkillLevel minSkillLevel,
         SkillLevel maxSkillLevel,
         RequiredGender requiredGender,
+        LocalDateTime recruitDeadline,
         MatchStatus status
 ) {
     public static MatchSummaryResponse from(Match match) {
@@ -29,6 +32,7 @@ public record MatchSummaryResponse(
                 match.getMinSkillLevel(),
                 match.getMaxSkillLevel(),
                 match.getRequiredGender(),
+                match.getRecruitDeadline(),
                 match.getStatus()
         );
     }

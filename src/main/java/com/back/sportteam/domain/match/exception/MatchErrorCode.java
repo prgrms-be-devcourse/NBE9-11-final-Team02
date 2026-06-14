@@ -17,7 +17,9 @@ public enum MatchErrorCode implements ErrorCode {
     INVALID_SKILL_LEVEL_RANGE("MATCH_007", "실력 레벨 범위가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     MATCH_NOT_RECRUITING("MATCH_008", "모집 중인 매칭방만 참가할 수 있습니다.", HttpStatus.CONFLICT),
     PARTICIPANT_NOT_FOUND("MATCH_009", "매칭방 참가 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    HOST_CANNOT_LEAVE("MATCH_010", "방장은 참가 취소가 아닌 매칭방 취소를 해야 합니다.", HttpStatus.BAD_REQUEST);
+    HOST_CANNOT_LEAVE("MATCH_010", "방장은 참가 취소가 아닌 매칭방 취소를 해야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_DEADLINE_RANGE("MATCH_011", "모집 마감 시간은 취소 마감 시간보다 늦을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    RECRUIT_DEADLINE_PASSED("MATCH_012", "모집 마감 시간이 지난 매칭방입니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;
