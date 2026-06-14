@@ -3,7 +3,9 @@ package com.back.sportteam.domain.facility.service;
 import com.back.sportteam.domain.facility.dto.request.FacilityCreateRequest;
 import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
+import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
@@ -63,7 +65,10 @@ class FacilityServiceTest {
         FacilityUpdateRequest request = new FacilityUpdateRequest(
                 "02-9876-5432",
                 "수정된 설명입니다.",
+                20,
                 90,
+                50000,
+                70000,
                 null,
                 null,
                 null,
@@ -82,7 +87,7 @@ class FacilityServiceTest {
     void 본인_시설이_아니면_수정할_수_없다() {
         Facility facility = createFacility("manager-id");
         FacilityUpdateRequest request = new FacilityUpdateRequest(
-                null, null, 60, null, null, null, null
+                null, null, 20, 60, 50000, 70000, null, null, null, null
         );
         when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.of(facility));
@@ -96,12 +101,23 @@ class FacilityServiceTest {
     @Test
     void 존재하지_않는_시설은_수정할_수_없다() {
         FacilityUpdateRequest request = new FacilityUpdateRequest(
-                null, null, 60, null, null, null, null
+                null, null, 20, 60, 50000, 70000, null, null, null, null
         );
         when(facilityRepository.findByIdAndStatusNot(eq("missing-id"), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> facilityService.updateFacility("manager-id", "missing-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
+    }
+
+    @Test
+    void 존재하지_않는_시설은_삭제할_수_없다() {
+        when(facilityRepository.findByIdAndStatusNot(eq("missing-id"), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> facilityService.deleteFacility("manager-id", "missing-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
@@ -194,6 +210,26 @@ class FacilityServiceTest {
     }
 
     @Test
+    void 시작시간과_종료시간이_같으면_슬롯을_생성할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        SlotSetupRequest request = new SlotSetupRequest(
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(9, 0),
+                50000,
+                70000
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.setupSlots("manager-id", facility.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_INVALID_TIME);
+    }
+
+    @Test
     void 같은_날짜와_시작시간에_슬롯을_중복_생성할_수_없다() {
         Facility facility = createFacility("manager-id");
         SlotSetupRequest request = new SlotSetupRequest(
@@ -215,13 +251,224 @@ class FacilityServiceTest {
                 .isEqualTo(FacilityErrorCode.FACILITY_SLOT_DUPLICATE);
     }
 
+    @Test
+    void 슬롯_가격과_상태를_수정할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        FacilitySlot slot = FacilitySlot.create(
+                facility.getId(),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                50000
+        );
+        SlotUpdateRequest request = new SlotUpdateRequest(60000, SlotStatus.AVAILABLE);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findByIdAndFacilityId(eq(slot.getId()), eq(facility.getId())))
+                .thenReturn(Optional.of(slot));
+
+        FacilitySlotResponse response = facilityService.updateSlot("manager-id", facility.getId(), slot.getId(), request);
+
+        assertThat(response.price()).isEqualTo(60000);
+        assertThat(response.status()).isEqualTo(SlotStatus.AVAILABLE);
+    }
+
+    @Test
+    void 예약_중인_슬롯은_수정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        FacilitySlot slot = FacilitySlot.create(
+                facility.getId(),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                50000
+        );
+        SlotUpdateRequest request = new SlotUpdateRequest(60000, SlotStatus.AVAILABLE);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findByIdAndFacilityId(eq(slot.getId()), eq(facility.getId())))
+                .thenReturn(Optional.of(slot));
+
+        // RESERVED 상태로 변경 시도
+        SlotUpdateRequest invalidRequest = new SlotUpdateRequest(60000, SlotStatus.RESERVED);
+
+        assertThatThrownBy(() -> facilityService.updateSlot("manager-id", facility.getId(), slot.getId(), invalidRequest))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_INVALID_STATUS);
+    }
+
+    @Test
+    void 요금_미입력시_시설_기본_요금으로_슬롯이_생성된다() {
+        Facility facility = createFacility("manager-id");
+        SlotSetupRequest request = new SlotSetupRequest(
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                null,
+                null
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
+                .thenReturn(false);
+        when(facilitySlotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<FacilitySlotResponse> response = facilityService.setupSlots("manager-id", facility.getId(), request);
+
+        // 7/1은 화요일(평일)이므로 기본 평일 요금 50000원 적용
+        assertThat(response.getFirst().price()).isEqualTo(50000);
+    }
+
+    @Test
+    void 주말_슬롯은_주말_요금으로_생성된다() {
+        Facility facility = createFacility("manager-id");
+        SlotSetupRequest request = new SlotSetupRequest(
+                java.time.LocalDate.of(2026, 7, 4), // 토요일
+                java.time.LocalDate.of(2026, 7, 4),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                null,
+                null
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
+                .thenReturn(false);
+        when(facilitySlotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<FacilitySlotResponse> response = facilityService.setupSlots("manager-id", facility.getId(), request);
+
+        assertThat(response.getFirst().price()).isEqualTo(70000);
+    }
+
+    @Test
+    void 본인_시설이_아니면_슬롯을_설정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        SlotSetupRequest request = new SlotSetupRequest(
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                50000,
+                70000
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.setupSlots("other-manager-id", facility.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+    }
+
+    @Test
+    void 이미_예약된_상태인_슬롯은_수정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        FacilitySlot slot = FacilitySlot.create(
+                facility.getId(),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                50000
+        );
+        // 슬롯 자체를 RESERVED 상태로 만들기 위해 update 호출
+        slot.update(50000, SlotStatus.RESERVED);
+
+        SlotUpdateRequest request = new SlotUpdateRequest(60000, SlotStatus.AVAILABLE);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findByIdAndFacilityId(eq(slot.getId()), eq(facility.getId())))
+                .thenReturn(Optional.of(slot));
+
+        assertThatThrownBy(() -> facilityService.updateSlot("manager-id", facility.getId(), slot.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_NOT_EDITABLE);
+    }
+
+    @Test
+    void 존재하지_않는_슬롯은_수정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        SlotUpdateRequest request = new SlotUpdateRequest(60000, SlotStatus.AVAILABLE);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findByIdAndFacilityId(eq("missing-slot-id"), eq(facility.getId())))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> facilityService.updateSlot("manager-id", facility.getId(), "missing-slot-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND);
+    }
+
+    @Test
+    void 본인_시설이_아니면_슬롯을_수정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        SlotUpdateRequest request = new SlotUpdateRequest(60000, SlotStatus.AVAILABLE);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.updateSlot("other-manager-id", facility.getId(), "slot-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+    }
+
+    @Test
+    void 날짜별_슬롯_목록을_조회할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        java.time.LocalDate date = java.time.LocalDate.of(2026, 7, 1);
+        FacilitySlot slot = FacilitySlot.create(
+                facility.getId(),
+                date,
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(11, 0),
+                50000
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(eq(facility.getId()), eq(date)))
+                .thenReturn(List.of(slot));
+
+        List<FacilitySlotResponse> response = facilityService.getSlotsByDate(facility.getId(), date);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.getFirst().startTime()).isEqualTo(java.time.LocalTime.of(9, 0));
+        assertThat(response.getFirst().status()).isEqualTo(SlotStatus.AVAILABLE);
+    }
+
+    @Test
+    void 슬롯이_없는_날짜는_빈_목록을_반환한다() {
+        Facility facility = createFacility("manager-id");
+        java.time.LocalDate date = java.time.LocalDate.of(2026, 7, 1);
+
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(eq(facility.getId()), eq(date)))
+                .thenReturn(List.of());
+
+        List<FacilitySlotResponse> response = facilityService.getSlotsByDate(facility.getId(), date);
+
+        assertThat(response).isEmpty();
+    }
+
     private FacilityCreateRequest createRequest() {
         return new FacilityCreateRequest(
                 "테스트 풋살장",
                 "서울시 강남구",
                 "02-1234-5678",
                 "테스트 시설입니다.",
+                20,
                 60,
+                50000,
+                70000,
                 null,
                 Set.of(SportType.FUTSAL),
                 null,
@@ -236,7 +483,10 @@ class FacilityServiceTest {
                 "서울시 강남구",
                 "02-1234-5678",
                 "테스트 시설입니다.",
+                20,
                 60,
+                50000,
+                70000,
                 null,
                 Set.of(SportType.FUTSAL),
                 null,

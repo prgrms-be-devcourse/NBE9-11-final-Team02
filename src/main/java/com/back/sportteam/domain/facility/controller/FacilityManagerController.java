@@ -3,6 +3,7 @@ package com.back.sportteam.domain.facility.controller;
 import com.back.sportteam.domain.facility.dto.request.FacilityCreateRequest;
 import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
+import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.service.FacilityService;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/facilities")
-public class FacilityController {
+public class FacilityManagerController {
 
     private final FacilityService facilityService;
 
@@ -61,5 +62,16 @@ public class FacilityController {
     ) {
         List<FacilitySlotResponse> response = facilityService.setupSlots(managerId, facilityId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
+
+    @PatchMapping("/{facilityId}/slots/{slotId}")
+    public ResponseEntity<ApiResponse<FacilitySlotResponse>> updateSlot(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @PathVariable String slotId,
+            @Valid @RequestBody SlotUpdateRequest request
+    ) {
+        FacilitySlotResponse response = facilityService.updateSlot(managerId, facilityId, slotId, request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

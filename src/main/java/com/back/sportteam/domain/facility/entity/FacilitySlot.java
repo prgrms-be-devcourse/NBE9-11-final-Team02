@@ -76,8 +76,17 @@ public class FacilitySlot {
         return new FacilitySlot(facilityId, slotDate, startTime, endTime, price);
     }
 
+    public void update(int price, SlotStatus status) {
+        this.price = price;
+        this.status = status;
+    }
+
     public boolean isReservable() {
         return this.status == SlotStatus.AVAILABLE;
+    }
+
+    public boolean isManagerEditable() {
+        return this.status == SlotStatus.AVAILABLE || this.status == SlotStatus.CLOSED;
     }
 
     @PreUpdate

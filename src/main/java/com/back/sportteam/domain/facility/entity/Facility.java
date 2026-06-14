@@ -51,8 +51,17 @@ public class Facility {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "capacity", nullable = false)
+    private int capacity;
+
     @Column(name = "slot_duration_minutes", nullable = false)
     private int slotDurationMinutes;
+
+    @Column(name = "default_weekday_price", nullable = false)
+    private int defaultWeekdayPrice;
+
+    @Column(name = "default_weekend_price", nullable = false)
+    private int defaultWeekendPrice;
 
     @Column(name = "slot_open_at")
     private LocalDateTime slotOpenAt;
@@ -85,7 +94,8 @@ public class Facility {
     private LocalDateTime updatedAt;
 
     private Facility(String managerId, String name, String address, String phone,
-                     String description, int slotDurationMinutes,
+                     String description, int capacity, int slotDurationMinutes,
+                     int defaultWeekdayPrice, int defaultWeekendPrice,
                      LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                      Set<Amenity> amenities, List<String> imageUrls) {
         LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
@@ -95,7 +105,10 @@ public class Facility {
         this.address = address;
         this.phone = phone;
         this.description = description;
+        this.capacity = capacity;
         this.slotDurationMinutes = slotDurationMinutes;
+        this.defaultWeekdayPrice = defaultWeekdayPrice;
+        this.defaultWeekendPrice = defaultWeekendPrice;
         this.slotOpenAt = slotOpenAt;
         this.status = FacilityStatus.ACTIVE;
         this.sportTypes = new HashSet<>(sportTypes);
@@ -106,19 +119,25 @@ public class Facility {
     }
 
     public static Facility create(String managerId, String name, String address, String phone,
-                                  String description, int slotDurationMinutes,
+                                  String description, int capacity, int slotDurationMinutes,
+                                  int defaultWeekdayPrice, int defaultWeekendPrice,
                                   LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                                   Set<Amenity> amenities, List<String> imageUrls) {
         return new Facility(managerId, name, address, phone, description,
-                slotDurationMinutes, slotOpenAt, sportTypes, amenities, imageUrls);
+                capacity, slotDurationMinutes, defaultWeekdayPrice, defaultWeekendPrice,
+                slotOpenAt, sportTypes, amenities, imageUrls);
     }
 
-    public void update(String phone, String description, int slotDurationMinutes,
+    public void update(String phone, String description, int capacity, int slotDurationMinutes,
+                       int defaultWeekdayPrice, int defaultWeekendPrice,
                        LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                        Set<Amenity> amenities, List<String> imageUrls) {
         this.phone = phone;
         this.description = description;
+        this.capacity = capacity;
         this.slotDurationMinutes = slotDurationMinutes;
+        this.defaultWeekdayPrice = defaultWeekdayPrice;
+        this.defaultWeekendPrice = defaultWeekendPrice;
         this.slotOpenAt = slotOpenAt;
         this.sportTypes = sportTypes != null ? new HashSet<>(sportTypes) : new HashSet<>();
         this.amenities = amenities != null ? new HashSet<>(amenities) : new HashSet<>();

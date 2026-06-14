@@ -13,4 +13,8 @@ public interface FacilitySlotRepository extends JpaRepository<FacilitySlot, Stri
     boolean existsByFacilityIdAndStatusIn(String facilityId, List<SlotStatus> statuses);
 
     boolean existsByFacilityIdAndSlotDateAndStartTime(String facilityId, LocalDate slotDate, LocalTime startTime);
+
+    java.util.Optional<FacilitySlot> findByIdAndFacilityId(String id, String facilityId);
+
+    List<FacilitySlot> findAllByFacilityIdAndSlotDateOrderByStartTime(String facilityId, LocalDate slotDate);
 }

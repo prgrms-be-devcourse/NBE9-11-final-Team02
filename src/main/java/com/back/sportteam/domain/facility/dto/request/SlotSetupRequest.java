@@ -19,11 +19,9 @@ public record SlotSetupRequest(
         @NotNull(message = "영업 종료 시간은 필수입니다.")
         LocalTime endTime,
 
-        @NotNull
         @Min(value = 0, message = "평일 요금은 0원 이상이어야 합니다.")
         Integer weekdayPrice,
 
-        @NotNull
         @Min(value = 0, message = "주말 요금은 0원 이상이어야 합니다.")
         Integer weekendPrice
 ) {

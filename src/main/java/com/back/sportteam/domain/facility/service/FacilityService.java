@@ -3,6 +3,7 @@ package com.back.sportteam.domain.facility.service;
 import com.back.sportteam.domain.facility.dto.request.FacilityCreateRequest;
 import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
+import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
@@ -38,7 +39,10 @@ public class FacilityService {
                 request.address(),
                 request.phone(),
                 request.description(),
+                request.capacity(),
                 request.slotDurationMinutes(),
+                request.defaultWeekdayPrice(),
+                request.defaultWeekendPrice(),
                 request.slotOpenAt(),
                 request.sportTypes(),
                 request.amenities(),
@@ -55,7 +59,10 @@ public class FacilityService {
         facility.update(
                 request.phone(),
                 request.description(),
+                request.capacity(),
                 request.slotDurationMinutes(),
+                request.defaultWeekdayPrice(),
+                request.defaultWeekendPrice(),
                 request.slotOpenAt(),
                 request.sportTypes(),
                 request.amenities(),
@@ -79,6 +86,15 @@ public class FacilityService {
         facility.close();
     }
 
+    @Transactional(readOnly = true)
+    public List<FacilitySlotResponse> getSlotsByDate(String facilityId, LocalDate date) {
+        getFacilityOrThrow(facilityId);
+        return facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(facilityId, date)
+                .stream()
+                .map(FacilitySlotResponse::from)
+                .toList();
+    }
+
     @Transactional
     public List<FacilitySlotResponse> setupSlots(String managerId, String facilityId, SlotSetupRequest request) {
         Facility facility = getFacilityOrThrow(facilityId);
@@ -99,7 +115,9 @@ public class FacilityService {
 
             boolean isWeekend = current.getDayOfWeek() == DayOfWeek.SATURDAY
                     || current.getDayOfWeek() == DayOfWeek.SUNDAY;
-            int price = isWeekend ? request.weekendPrice() : request.weekdayPrice();
+            int price = isWeekend
+                    ? (request.weekendPrice() != null ? request.weekendPrice() : facility.getDefaultWeekendPrice())
+                    : (request.weekdayPrice() != null ? request.weekdayPrice() : facility.getDefaultWeekdayPrice());
 
             slots.addAll(generateDailySlots(facility, current, request.startTime(), request.endTime(), price));
             current = current.plusDays(1);
@@ -107,6 +125,27 @@ public class FacilityService {
 
         facilitySlotRepository.saveAll(slots);
         return slots.stream().map(FacilitySlotResponse::from).toList();
+    }
+
+    @Transactional
+    public FacilitySlotResponse updateSlot(String managerId, String facilityId,
+                                           String slotId, SlotUpdateRequest request) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+
+        FacilitySlot slot = facilitySlotRepository.findByIdAndFacilityId(slotId, facilityId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+
+        if (!slot.isManagerEditable()) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_EDITABLE);
+        }
+
+        if (request.status() == SlotStatus.PENDING || request.status() == SlotStatus.RESERVED) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_STATUS);
+        }
+
+        slot.update(request.price(), request.status());
+        return FacilitySlotResponse.from(slot);
     }
 
     private List<FacilitySlot> generateDailySlots(Facility facility, LocalDate date,
