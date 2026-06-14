@@ -19,14 +19,21 @@ import lombok.RequiredArgsConstructor;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class FacilityService {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final int MAX_MONTHS_AHEAD = 3;
+    private static final List<SlotStatus> PRICE_UPDATABLE_STATUSES = List.of(SlotStatus.AVAILABLE, SlotStatus.CLOSED);
 
     private final FacilityRepository facilityRepository;
     private final FacilitySlotRepository facilitySlotRepository;
@@ -68,6 +75,10 @@ public class FacilityService {
                 request.amenities(),
                 request.imageUrls()
         );
+
+        facilitySlotRepository.updateWeekdayPrice(facilityId, PRICE_UPDATABLE_STATUSES, request.defaultWeekdayPrice());
+        facilitySlotRepository.updateWeekendPrice(facilityId, PRICE_UPDATABLE_STATUSES, request.defaultWeekendPrice());
+
         return FacilityResponse.from(facility);
     }
 
@@ -104,12 +115,24 @@ public class FacilityService {
             throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_TIME);
         }
 
+        if (request.fromDate().isAfter(request.toDate())) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_DATE_RANGE);
+        }
+
+        LocalDate maxSetupDate = LocalDate.now(SERVICE_ZONE).plusMonths(MAX_MONTHS_AHEAD).with(TemporalAdjusters.lastDayOfMonth());
+        if (request.toDate().isAfter(maxSetupDate)) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_TOO_FAR_AHEAD);
+        }
+
+        Set<LocalDate> existingDates = facilitySlotRepository
+                .findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(
+                        facilityId, request.fromDate(), request.toDate(), request.startTime());
+
         List<FacilitySlot> slots = new ArrayList<>();
         LocalDate current = request.fromDate();
 
         while (!current.isAfter(request.toDate())) {
-            if (facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(
-                    facilityId, current, request.startTime())) {
+            if (existingDates.contains(current)) {
                 throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_DUPLICATE);
             }
 
