@@ -5,6 +5,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,7 @@ public class JwtProvider {
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenExpiry = accessTokenExpiry * 1000;  // 초 → ms 변환
+        this.accessTokenExpiry = accessTokenExpiry * 1000;
         this.refreshTokenExpiry = refreshTokenExpiry * 1000;
     }
 
@@ -45,8 +46,8 @@ public class JwtProvider {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (JwtException e) {
-            throw new IllegalArgumentException("유효하지 않은 토큰입니다.", e);
+        } catch (JwtException _) {
+            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
         }
     }
 
@@ -54,18 +55,18 @@ public class JwtProvider {
         try {
             parse(token);
             return true;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             return false;
         }
     }
 
     private String buildToken(Long userId, String role, long expiry) {
-        Date now = new Date();
+        Instant now = Instant.now();
         return Jwts.builder()
                 .claim(CLAIM_USER_ID, userId)
                 .claim(CLAIM_ROLE, role)
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + expiry))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(expiry)))
                 .signWith(secretKey)
                 .compact();
     }
