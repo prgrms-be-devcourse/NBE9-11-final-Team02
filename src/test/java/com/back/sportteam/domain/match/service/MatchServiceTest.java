@@ -40,6 +40,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MatchServiceTest {
 
+    private static final LocalDateTime CLOSED_RECRUIT_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 1, 10, 0);
+    private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
     private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
 
     @Mock
@@ -114,6 +116,7 @@ class MatchServiceTest {
                 SkillLevel.ANY,
                 SkillLevel.ANY,
                 RequiredGender.ANY,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
@@ -148,6 +151,31 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.INVALID_SKILL_LEVEL_RANGE);
+
+        verify(matchRepository, never()).existsByReservationId(any());
+        verify(matchRepository, never()).save(any(Match.class));
+    }
+
+    @Test
+    void 모집_마감이_취소_마감보다_늦으면_매칭방을_생성하지_않는다() {
+        MatchCreateRequest request = new MatchCreateRequest(
+                "reservation-id",
+                "풋살 매칭",
+                SportType.FUTSAL,
+                2,
+                10,
+                10000,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4,
+                RequiredGender.MIXED,
+                CANCEL_DEADLINE.plusDays(1),
+                CANCEL_DEADLINE
+        );
+
+        assertThatThrownBy(() -> matchService.createMatch("host-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.INVALID_DEADLINE_RANGE);
 
         verify(matchRepository, never()).existsByReservationId(any());
         verify(matchRepository, never()).save(any(Match.class));
@@ -260,6 +288,18 @@ class MatchServiceTest {
     }
 
     @Test
+    void 매칭방_참가시_모집_마감_시간이_지났으면_예외를_던진다() {
+        Match match = createMatch(10, CLOSED_RECRUIT_DEADLINE);
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.RECRUIT_DEADLINE_PASSED);
+    }
+
+    @Test
     void 매칭방_참가시_이미_참가한_유저면_예외를_던진다() {
         Match match = createMatch();
         String matchId = match.getId();
@@ -359,6 +399,7 @@ class MatchServiceTest {
                 minSkillLevel,
                 maxSkillLevel,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
     }
@@ -368,6 +409,10 @@ class MatchServiceTest {
     }
 
     private Match createMatch(int maxParticipants) {
+        return createMatch(maxParticipants, RECRUIT_DEADLINE);
+    }
+
+    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
@@ -379,6 +424,7 @@ class MatchServiceTest {
                 .minSkillLevel(SkillLevel.LEVEL_2)
                 .maxSkillLevel(SkillLevel.LEVEL_4)
                 .requiredGender(RequiredGender.MIXED)
+                .recruitDeadline(recruitDeadline)
                 .cancelDeadline(CANCEL_DEADLINE)
                 .build());
     }
