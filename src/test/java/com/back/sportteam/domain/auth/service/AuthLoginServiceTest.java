@@ -9,7 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.back.sportteam.auth.security.PasswordHasher;
+import com.back.sportteam.domain.auth.security.PasswordHasher;
 import com.back.sportteam.domain.auth.dto.request.LoginRequest;
 import com.back.sportteam.domain.auth.dto.response.LoginResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;

@@ -30,7 +30,7 @@ class AuthSignupServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        authSignupService = new AuthSignupService(userRepository, new com.back.sportteam.auth.security.PasswordHasher());
+        authSignupService = new AuthSignupService(userRepository, new com.back.sportteam.domain.auth.security.PasswordHasher());
     }
 
     @DisplayName("일반 회원가입")
