@@ -160,6 +160,7 @@ jobs:
               --network "${NET}" \
               --memory 600m \
               -e TZ=Asia/Seoul \
+              -e SPRING_CONFIG_IMPORT=optional:file:/app/application-secret.yaml \
               -v /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro \
               "${IMAGE}"
 
@@ -232,10 +233,12 @@ jobs:
           PR_AUTHOR=$(gh api "repos/$GH_REPO/commits/${{ github.sha }}/pulls" --jq '.[0].user.login')
           echo "pr_author=${PR_AUTHOR:-unknown}" >> "$GITHUB_OUTPUT"
 
-          # 슬랙 custom_payload(JSON)에 안전하게 넣기 위해 첫 줄만 추출 후 JSON 문자열로 이스케이프
           FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
-          ESCAPED=$(echo "$FIRST_LINE" | jq -Rs '.' | sed 's/^"//;s/"$//')
-          echo "commit_message=${ESCAPED}" >> "$GITHUB_OUTPUT"
+          {
+            echo "commit_message<<COMMIT_MSG_EOF"
+            echo "$FIRST_LINE"
+            echo "COMMIT_MSG_EOF"
+          } >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -245,19 +248,11 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          custom_payload: |
-            {
-              "text": "⚠️ 배포 실패!",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*repo*: ${{ github.repository }}\n*message*: ${{ steps.pr_info.outputs.commit_message }}\n*commit*: ${{ github.sha }}\n*PR 작성자*: ${{ steps.pr_info.outputs.pr_author }}"
-                  }
-                }
-              ]
-            }
+          text: |
+            ⚠️ 배포 실패!
+            *message*: ${{ steps.pr_info.outputs.commit_message }}
+            *PR 작성자*: ${{ steps.pr_info.outputs.pr_author }}
+          fields: repo,commit
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: failure()
