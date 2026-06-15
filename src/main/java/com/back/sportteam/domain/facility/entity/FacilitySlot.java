@@ -1,5 +1,6 @@
 package com.back.sportteam.domain.facility.entity;
 
+import com.back.sportteam.global.util.TimeUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,7 +15,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.UUID;
 
 @Getter
@@ -22,8 +22,6 @@ import java.util.UUID;
 @Table(name = "facility_slots")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FacilitySlot {
-
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -59,7 +57,7 @@ public class FacilitySlot {
 
     private FacilitySlot(String facilityId, LocalDate slotDate, LocalTime startTime,
                          LocalTime endTime, int price) {
-        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
+        LocalDateTime now = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
         this.id = UUID.randomUUID().toString();
         this.facilityId = facilityId;
         this.slotDate = slotDate;
@@ -91,6 +89,6 @@ public class FacilitySlot {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now(SERVICE_ZONE);
+        this.updatedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
     }
 }

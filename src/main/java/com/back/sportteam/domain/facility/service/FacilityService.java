@@ -15,12 +15,12 @@ import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.global.util.TimeUtils;
 import lombok.RequiredArgsConstructor;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FacilityService {
 
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private static final int MAX_MONTHS_AHEAD = 3;
     private static final List<SlotStatus> PRICE_UPDATABLE_STATUSES = List.of(SlotStatus.AVAILABLE, SlotStatus.CLOSED);
 
@@ -124,19 +123,7 @@ public class FacilityService {
     public List<FacilitySlotResponse> setupSlots(String managerId, String facilityId, SlotSetupRequest request) {
         Facility facility = getFacilityOrThrow(facilityId);
         validateOwnership(facility, managerId);
-
-        if (!request.endTime().isAfter(request.startTime())) {
-            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_TIME);
-        }
-
-        if (request.fromDate().isAfter(request.toDate())) {
-            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_DATE_RANGE);
-        }
-
-        LocalDate maxSetupDate = LocalDate.now(SERVICE_ZONE).plusMonths(MAX_MONTHS_AHEAD).with(TemporalAdjusters.lastDayOfMonth());
-        if (request.toDate().isAfter(maxSetupDate)) {
-            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_TOO_FAR_AHEAD);
-        }
+        validateSlotSetupRequest(request);
 
         Set<LocalDate> existingDates = facilitySlotRepository
                 .findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(
@@ -150,18 +137,38 @@ public class FacilityService {
                 throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_DUPLICATE);
             }
 
-            boolean isWeekend = current.getDayOfWeek() == DayOfWeek.SATURDAY
-                    || current.getDayOfWeek() == DayOfWeek.SUNDAY;
-            int price = isWeekend
-                    ? (request.weekendPrice() != null ? request.weekendPrice() : facility.getDefaultWeekendPrice())
-                    : (request.weekdayPrice() != null ? request.weekdayPrice() : facility.getDefaultWeekdayPrice());
-
+            int price = resolveSlotPrice(facility, request, current);
             slots.addAll(generateDailySlots(facility, current, request.startTime(), request.endTime(), price));
             current = current.plusDays(1);
         }
 
         facilitySlotRepository.saveAll(slots);
         return slots.stream().map(FacilitySlotResponse::from).toList();
+    }
+
+    private void validateSlotSetupRequest(SlotSetupRequest request) {
+        if (!request.endTime().isAfter(request.startTime())) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_TIME);
+        }
+
+        if (request.fromDate().isAfter(request.toDate())) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_INVALID_DATE_RANGE);
+        }
+
+        LocalDate maxSetupDate = LocalDate.now(TimeUtils.SERVICE_ZONE)
+                .plusMonths(MAX_MONTHS_AHEAD)
+                .with(TemporalAdjusters.lastDayOfMonth());
+        if (request.toDate().isAfter(maxSetupDate)) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_TOO_FAR_AHEAD);
+        }
+    }
+
+    private int resolveSlotPrice(Facility facility, SlotSetupRequest request, LocalDate date) {
+        boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+        if (isWeekend) {
+            return request.weekendPrice() != null ? request.weekendPrice() : facility.getDefaultWeekendPrice();
+        }
+        return request.weekdayPrice() != null ? request.weekdayPrice() : facility.getDefaultWeekdayPrice();
     }
 
     @Transactional

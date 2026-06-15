@@ -1,6 +1,7 @@
 package com.back.sportteam.domain.facility.entity;
 
 import com.back.sportteam.domain.match.entity.SportType;
+import com.back.sportteam.global.util.TimeUtils;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -18,7 +19,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -30,8 +30,6 @@ import java.util.UUID;
 @Table(name = "facilities")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Facility {
-
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -100,7 +98,7 @@ public class Facility {
                      int defaultWeekdayPrice, int defaultWeekendPrice,
                      LocalDateTime slotOpenAt, Set<SportType> sportTypes,
                      Set<Amenity> amenities, List<String> imageUrls) {
-        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
+        LocalDateTime now = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
         this.id = UUID.randomUUID().toString();
         this.managerId = managerId;
         this.name = name;
@@ -156,6 +154,6 @@ public class Facility {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now(SERVICE_ZONE);
+        this.updatedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
     }
 }
