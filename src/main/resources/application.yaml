@@ -31,6 +31,8 @@ app:
   profiles:
     active: dev
     include: secret
+  config:
+    import: optional:file:/app/application-secret.yaml
   batch:
     job:
       enabled: false
