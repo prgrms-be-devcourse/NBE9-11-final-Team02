@@ -229,7 +229,6 @@ jobs:
         id: pr_info
         if: failure()
         run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
           PR_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#\d+' | head -1 | tr -d '#')
           if [[ -n "$PR_NUMBER" ]]; then
             PR_AUTHOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login')
@@ -237,6 +236,7 @@ jobs:
           echo "pr_author=${PR_AUTHOR:-unknown}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
 
       - name: 슬랙 배포 실패 알림
         uses: 8398a7/action-slack@v3
