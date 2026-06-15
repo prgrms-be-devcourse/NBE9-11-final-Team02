@@ -71,6 +71,15 @@ public class Match {
     @Column(name = "cancel_deadline", nullable = false)
     private LocalDateTime cancelDeadline;
 
+    @Column(name = "recruit_deadline", nullable = false)
+    private LocalDateTime recruitDeadline;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 10)
     private MatchStatus status;
@@ -95,6 +104,7 @@ public class Match {
         this.minSkillLevel = defaultSkillLevel(command.getMinSkillLevel());
         this.maxSkillLevel = defaultSkillLevel(command.getMaxSkillLevel());
         this.requiredGender = defaultRequiredGender(command.getRequiredGender());
+        this.recruitDeadline = command.getRecruitDeadline();
         this.cancelDeadline = command.getCancelDeadline();
         this.status = MatchStatus.RECRUITING;
         this.createdAt = now;
@@ -112,6 +122,23 @@ public class Match {
 
     public boolean isFull() {
         return currentCount >= maxParticipants;
+    }
+
+    public boolean hasEnoughParticipants() {
+        return currentCount >= minParticipants;
+    }
+
+    public boolean isRecruitClosed(LocalDateTime now) {
+        return !now.isBefore(recruitDeadline);
+    }
+
+    public boolean isHostedBy(String userId) {
+        return hostId.equals(userId);
+    }
+
+    public void confirm(LocalDateTime confirmedAt) {
+        this.status = MatchStatus.CONFIRMED;
+        this.confirmedAt = confirmedAt;
     }
 
     public void increaseCurrentCount() {
