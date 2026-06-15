@@ -19,7 +19,7 @@ import org.springframework.util.StringUtils;
 public class AuthSignupService {
 
     private final UserRepository userRepository;
-    private final com.back.sportteam.auth.security.PasswordHasher passwordHasher;
+    private final com.back.sportteam.domain.auth.security.PasswordHasher passwordHasher;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
