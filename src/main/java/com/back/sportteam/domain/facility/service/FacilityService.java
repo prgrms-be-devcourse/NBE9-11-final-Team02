@@ -8,6 +8,7 @@ import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
@@ -44,16 +45,18 @@ public class FacilityService {
                 managerId,
                 request.name(),
                 request.address(),
-                request.phone(),
-                request.description(),
-                request.capacity(),
-                request.slotDurationMinutes(),
-                request.defaultWeekdayPrice(),
-                request.defaultWeekendPrice(),
-                request.slotOpenAt(),
-                request.sportTypes(),
-                request.amenities(),
-                request.imageUrls()
+                FacilityDetails.builder()
+                        .phone(request.phone())
+                        .description(request.description())
+                        .capacity(request.capacity())
+                        .slotDurationMinutes(request.slotDurationMinutes())
+                        .defaultWeekdayPrice(request.defaultWeekdayPrice())
+                        .defaultWeekendPrice(request.defaultWeekendPrice())
+                        .slotOpenAt(request.slotOpenAt())
+                        .sportTypes(request.sportTypes())
+                        .amenities(request.amenities())
+                        .imageUrls(request.imageUrls())
+                        .build()
         );
         return FacilityResponse.from(facilityRepository.save(facility));
     }
@@ -77,16 +80,18 @@ public class FacilityService {
         validateOwnership(facility, managerId);
 
         facility.update(
-                request.phone(),
-                request.description(),
-                request.capacity(),
-                request.slotDurationMinutes(),
-                request.defaultWeekdayPrice(),
-                request.defaultWeekendPrice(),
-                request.slotOpenAt(),
-                request.sportTypes(),
-                request.amenities(),
-                request.imageUrls()
+                FacilityDetails.builder()
+                        .phone(request.phone())
+                        .description(request.description())
+                        .capacity(request.capacity())
+                        .slotDurationMinutes(request.slotDurationMinutes())
+                        .defaultWeekdayPrice(request.defaultWeekdayPrice())
+                        .defaultWeekendPrice(request.defaultWeekendPrice())
+                        .slotOpenAt(request.slotOpenAt())
+                        .sportTypes(request.sportTypes())
+                        .amenities(request.amenities())
+                        .imageUrls(request.imageUrls())
+                        .build()
         );
 
         facilitySlotRepository.updateWeekdayPrice(facilityId, PRICE_UPDATABLE_STATUSES, request.defaultWeekdayPrice());
