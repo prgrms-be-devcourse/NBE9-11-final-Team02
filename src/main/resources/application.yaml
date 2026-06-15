@@ -19,6 +19,10 @@ app:
     toss:
       base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
+  scheduler:
+    match-deadline:
+      fixed-delay-ms: ${MATCH_DEADLINE_FIXED_DELAY_MS:60000}
+      batch-size: ${MATCH_DEADLINE_BATCH_SIZE:100}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
