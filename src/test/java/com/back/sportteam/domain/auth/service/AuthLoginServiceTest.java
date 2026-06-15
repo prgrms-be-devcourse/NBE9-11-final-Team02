@@ -52,7 +52,8 @@ class AuthLoginServiceTest {
                 passwordHasher,
                 jwtProvider,
                 redisTemplate,
-                1209600000L
+                1209600L,
+                false
         );
     }
 

@@ -27,19 +27,22 @@ public class AuthLoginService {
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
     private final long refreshTokenExpiry;
+    private final boolean secureCookie;
 
     public AuthLoginService(
             UserRepository userRepository,
             PasswordHasher passwordHasher,
             JwtProvider jwtProvider,
             StringRedisTemplate redisTemplate,
-            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry,
+            @Value("${app.jwt.secure-cookie}") boolean secureCookie
     ) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
         this.jwtProvider = jwtProvider;
         this.redisTemplate = redisTemplate;
         this.refreshTokenExpiry = refreshTokenExpiry * 1000;
+        this.secureCookie = secureCookie;
     }
 
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {
@@ -62,6 +65,7 @@ public class AuthLoginService {
 
         Cookie cookie = new Cookie("refreshToken", refreshToken);
         cookie.setHttpOnly(true);
+        cookie.setSecure(secureCookie);
         cookie.setPath("/");
         cookie.setMaxAge((int) (refreshTokenExpiry / 1000));
         response.addCookie(cookie);
