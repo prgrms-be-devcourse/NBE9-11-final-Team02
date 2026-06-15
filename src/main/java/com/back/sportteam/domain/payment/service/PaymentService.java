@@ -1,9 +1,10 @@
 package com.back.sportteam.domain.payment.service;
 
-import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
-import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
+import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
+import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
@@ -82,7 +83,7 @@ public class PaymentService {
                         userId,
                         MatchParticipantStatus.ACTIVE
                 )
-                .map(participant -> participant.getId())
+                .map(MatchParticipant::getId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
     }
 

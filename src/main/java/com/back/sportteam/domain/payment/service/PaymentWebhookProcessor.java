@@ -61,7 +61,7 @@ public class PaymentWebhookProcessor {
                 return;
             }
             payment.fail(normalize(request.pgTransactionId()));
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
     }

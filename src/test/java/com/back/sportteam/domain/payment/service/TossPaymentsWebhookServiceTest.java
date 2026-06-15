@@ -65,8 +65,9 @@ class TossPaymentsWebhookServiceTest {
         when(tossPaymentsClient.getPayment("payment-key")).thenReturn(
                 new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 9_000)
         );
+        String payload = donePayload();
 
-        assertThatThrownBy(() -> tossPaymentsWebhookService.handle("transmission-1", donePayload()))
+        assertThatThrownBy(() -> tossPaymentsWebhookService.handle("transmission-1", payload))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);

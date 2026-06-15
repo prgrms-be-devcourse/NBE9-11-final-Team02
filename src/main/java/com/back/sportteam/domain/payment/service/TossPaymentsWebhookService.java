@@ -62,7 +62,7 @@ public class TossPaymentsWebhookService {
                 throw new BusinessException(PaymentErrorCode.INVALID_WEBHOOK_PAYLOAD);
             }
             return request;
-        } catch (JacksonException e) {
+        } catch (JacksonException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_WEBHOOK_PAYLOAD);
         }
     }

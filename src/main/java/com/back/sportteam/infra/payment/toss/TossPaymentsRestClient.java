@@ -34,7 +34,7 @@ public class TossPaymentsRestClient implements TossPaymentsClient {
                     .header(HttpHeaders.AUTHORIZATION, authorization)
                     .retrieve()
                     .body(TossPaymentsPaymentResponse.class);
-        } catch (RestClientResponseException e) {
+        } catch (RestClientResponseException _) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);
         }
     }
