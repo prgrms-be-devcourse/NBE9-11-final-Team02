@@ -128,6 +128,18 @@ public class MatchService {
         return MatchDetailResponse.from(match);
     }
 
+    @Transactional
+    public void cancelMatch(String matchId, String hostId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        validateCancellable(match, hostId);
+
+        match.cancel(LocalDateTime.now(SERVICE_ZONE));
+        matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
+                .forEach(MatchParticipant::cancel);
+    }
+
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
@@ -197,6 +209,15 @@ public class MatchService {
         }
         if (!match.hasEnoughParticipants()) {
             throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+        }
+    }
+
+    private void validateCancellable(Match match, String hostId) {
+        if (!match.isHostedBy(hostId)) {
+            throw new BusinessException(MatchErrorCode.NOT_MATCH_OWNER);
+        }
+        if (!match.isCancellable()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
     }
 }

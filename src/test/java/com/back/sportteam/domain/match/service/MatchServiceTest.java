@@ -441,6 +441,59 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
     }
 
+    @Test
+    void 방장이_매칭방을_취소한다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        MatchParticipant host = MatchParticipant.host(match, "host-id");
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
+                .thenReturn(List.of(host, participant));
+
+        matchService.cancelMatch(matchId, "host-id");
+
+        assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
+        assertThat(match.getCancelledAt()).isNotNull();
+        assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+    }
+
+    @Test
+    void 매칭방_취소시_매칭방이_없으면_예외를_던진다() {
+        when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.cancelMatch("missing-id", "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_취소시_방장이_아니면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.cancelMatch(matchId, "other-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.NOT_MATCH_OWNER);
+    }
+
+    @Test
+    void 매칭방_취소시_이미_취소된_상태면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        match.cancel(CREATED_AT);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.cancelMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_CANCELLABLE);
+    }
+
     private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
         return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }

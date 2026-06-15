@@ -88,4 +88,13 @@ public class MatchController {
         MatchDetailResponse response = matchService.confirmMatch(matchId, hostId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @DeleteMapping("/{matchId}")
+    public ResponseEntity<ApiResponse<Void>> cancelMatch(
+            @PathVariable String matchId,
+            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId
+    ) {
+        matchService.cancelMatch(matchId, hostId);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
 }
