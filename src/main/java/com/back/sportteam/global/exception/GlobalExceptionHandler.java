@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -88,6 +89,18 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         String detail = "요청 파라미터 '" + e.getName() + "'의 값이 올바르지 않습니다.";
+
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT, detail, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeaderException(
+            MissingRequestHeaderException e,
+            HttpServletRequest request
+    ) {
+        String detail = "필수 요청 헤더 '" + e.getHeaderName() + "'이(가) 누락되었습니다.";
 
         return ResponseEntity
                 .badRequest()

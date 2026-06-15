@@ -5,6 +5,7 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
@@ -57,6 +58,57 @@ class FacilityServiceTest {
         assertThat(response.status()).isEqualTo(FacilityStatus.ACTIVE);
         assertThat(response.id()).isNotBlank();
         verify(facilityRepository).save(any(Facility.class));
+    }
+
+    @Test
+    void 시설_상세_정보를_조회할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        FacilityResponse response = facilityService.getFacility(facility.getId());
+
+        assertThat(response.id()).isEqualTo(facility.getId());
+        assertThat(response.name()).isEqualTo("테스트 풋살장");
+    }
+
+    @Test
+    void 존재하지_않는_시설을_조회하면_예외가_발생한다() {
+        when(facilityRepository.findByIdAndStatusNot(eq("missing-id"), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> facilityService.getFacility("missing-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
+    }
+
+    @Test
+    void 매니저는_본인이_등록한_시설_목록을_요약_정보로_조회한다() {
+        Facility withImage = Facility.create(
+                "manager-id", "이미지 있는 풋살장", "서울시 강남구", "02-1234-5678",
+                "설명", 20, 60, 50000, 70000, null,
+                Set.of(SportType.FUTSAL), null, List.of("thumb.jpg", "second.jpg")
+        );
+        Facility withoutImage = createFacility("manager-id");
+        when(facilityRepository.findAllByManagerIdAndStatusNot(eq("manager-id"), eq(FacilityStatus.CLOSED)))
+                .thenReturn(List.of(withImage, withoutImage));
+
+        List<FacilitySummaryResponse> response = facilityService.getMyFacilities("manager-id");
+
+        assertThat(response).hasSize(2);
+        assertThat(response.get(0).thumbnailUrl()).isEqualTo("thumb.jpg");
+        assertThat(response.get(1).thumbnailUrl()).isNull();
+    }
+
+    @Test
+    void 등록한_시설이_없으면_빈_목록을_반환한다() {
+        when(facilityRepository.findAllByManagerIdAndStatusNot(eq("manager-id"), eq(FacilityStatus.CLOSED)))
+                .thenReturn(List.of());
+
+        List<FacilitySummaryResponse> response = facilityService.getMyFacilities("manager-id");
+
+        assertThat(response).isEmpty();
     }
 
     @Test
@@ -179,8 +231,8 @@ class FacilityServiceTest {
         );
         when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.of(facility));
-        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
-                .thenReturn(false);
+        when(facilitySlotRepository.findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(any(), any(), any(), any()))
+                .thenReturn(Set.of());
         when(facilitySlotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FacilitySlotResponse> response = facilityService.setupSlots("manager-id", facility.getId(), request);
@@ -230,6 +282,50 @@ class FacilityServiceTest {
     }
 
     @Test
+    void 시작_날짜가_종료_날짜보다_늦으면_슬롯을_생성할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        SlotSetupRequest request = new SlotSetupRequest(
+                java.time.LocalDate.of(2026, 7, 2),
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(21, 0),
+                50000,
+                70000
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.setupSlots("manager-id", facility.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_INVALID_DATE_RANGE);
+    }
+
+    @Test
+    void 오늘이_속한_달로부터_3개월_뒤_달의_마지막_날을_초과하면_슬롯을_생성할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        java.time.LocalDate tooFar = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))
+                .plusMonths(3)
+                .with(java.time.temporal.TemporalAdjusters.lastDayOfMonth())
+                .plusDays(1);
+        SlotSetupRequest request = new SlotSetupRequest(
+                tooFar,
+                tooFar,
+                java.time.LocalTime.of(9, 0),
+                java.time.LocalTime.of(21, 0),
+                50000,
+                70000
+        );
+        when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
+                .thenReturn(Optional.of(facility));
+
+        assertThatThrownBy(() -> facilityService.setupSlots("manager-id", facility.getId(), request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_TOO_FAR_AHEAD);
+    }
+
+    @Test
     void 같은_날짜와_시작시간에_슬롯을_중복_생성할_수_없다() {
         Facility facility = createFacility("manager-id");
         SlotSetupRequest request = new SlotSetupRequest(
@@ -242,8 +338,8 @@ class FacilityServiceTest {
         );
         when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.of(facility));
-        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
-                .thenReturn(true);
+        when(facilitySlotRepository.findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(any(), any(), any(), any()))
+                .thenReturn(Set.of(java.time.LocalDate.of(2026, 7, 1)));
 
         assertThatThrownBy(() -> facilityService.setupSlots("manager-id", facility.getId(), request))
                 .isInstanceOf(BusinessException.class)
@@ -313,8 +409,8 @@ class FacilityServiceTest {
         );
         when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.of(facility));
-        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
-                .thenReturn(false);
+        when(facilitySlotRepository.findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(any(), any(), any(), any()))
+                .thenReturn(Set.of());
         when(facilitySlotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FacilitySlotResponse> response = facilityService.setupSlots("manager-id", facility.getId(), request);
@@ -336,8 +432,8 @@ class FacilityServiceTest {
         );
         when(facilityRepository.findByIdAndStatusNot(eq(facility.getId()), eq(FacilityStatus.CLOSED)))
                 .thenReturn(Optional.of(facility));
-        when(facilitySlotRepository.existsByFacilityIdAndSlotDateAndStartTime(any(), any(), any()))
-                .thenReturn(false);
+        when(facilitySlotRepository.findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(any(), any(), any(), any()))
+                .thenReturn(Set.of());
         when(facilitySlotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FacilitySlotResponse> response = facilityService.setupSlots("manager-id", facility.getId(), request);

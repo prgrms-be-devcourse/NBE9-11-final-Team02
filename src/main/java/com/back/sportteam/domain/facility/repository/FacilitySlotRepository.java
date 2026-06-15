@@ -16,8 +16,6 @@ public interface FacilitySlotRepository extends JpaRepository<FacilitySlot, Stri
 
     boolean existsByFacilityIdAndStatusIn(String facilityId, List<SlotStatus> statuses);
 
-    boolean existsByFacilityIdAndSlotDateAndStartTime(String facilityId, LocalDate slotDate, LocalTime startTime);
-
     @Query("SELECT s.slotDate FROM FacilitySlot s WHERE s.facilityId = :facilityId " +
            "AND s.slotDate BETWEEN :fromDate AND :toDate AND s.startTime = :startTime")
     Set<LocalDate> findExistingSlotDatesByFacilityIdAndDateBetweenAndStartTime(
