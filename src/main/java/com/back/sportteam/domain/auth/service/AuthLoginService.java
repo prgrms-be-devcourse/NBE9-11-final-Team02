@@ -33,13 +33,13 @@ public class AuthLoginService {
             PasswordHasher passwordHasher,
             JwtProvider jwtProvider,
             StringRedisTemplate redisTemplate,
-            @Value("${jwt.refresh-token-expiry}") long refreshTokenExpiry
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry
     ) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
         this.jwtProvider = jwtProvider;
         this.redisTemplate = redisTemplate;
-        this.refreshTokenExpiry = refreshTokenExpiry;
+        this.refreshTokenExpiry = refreshTokenExpiry * 1000;
     }
 
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {

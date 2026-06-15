@@ -21,13 +21,13 @@ public class JwtProvider {
     private final long refreshTokenExpiry;
 
     public JwtProvider(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-token-expiry}") long accessTokenExpiry,
-            @Value("${jwt.refresh-token-expiry}") long refreshTokenExpiry
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.access-token-validity-seconds}") long accessTokenExpiry,
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenExpiry = accessTokenExpiry;
-        this.refreshTokenExpiry = refreshTokenExpiry;
+        this.accessTokenExpiry = accessTokenExpiry * 1000;  // 초 → ms 변환
+        this.refreshTokenExpiry = refreshTokenExpiry * 1000;
     }
 
     public String generateAccessToken(Long userId, String role) {
