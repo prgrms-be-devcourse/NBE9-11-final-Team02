@@ -247,6 +247,28 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.error.code").value("MATCH_004"));
     }
 
+    @Test
+    void 매칭방_취소_요청을_200_응답으로_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
+                        .header("X-USER-ID", "host-id"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(matchService).cancelMatch("match-id", "host-id");
+    }
+
+    @Test
+    void 매칭방_취소시_방장이_아니면_403_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.NOT_MATCH_OWNER))
+                .when(matchService).cancelMatch("match-id", "user-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_004"));
+    }
+
     private MatchCreateRequest createRequest(String title) {
         return new MatchCreateRequest(
                 "reservation-id",

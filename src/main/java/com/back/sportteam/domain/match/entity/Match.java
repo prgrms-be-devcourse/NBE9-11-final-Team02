@@ -120,6 +120,10 @@ public class Match {
         return status == MatchStatus.RECRUITING;
     }
 
+    public boolean isCancellable() {
+        return status == MatchStatus.RECRUITING || status == MatchStatus.CONFIRMED;
+    }
+
     public boolean isFull() {
         return currentCount >= maxParticipants;
     }
@@ -139,6 +143,11 @@ public class Match {
     public void confirm(LocalDateTime confirmedAt) {
         this.status = MatchStatus.CONFIRMED;
         this.confirmedAt = confirmedAt;
+    }
+
+    public void cancel(LocalDateTime cancelledAt) {
+        this.status = MatchStatus.CANCELLED;
+        this.cancelledAt = cancelledAt;
     }
 
     public void increaseCurrentCount() {
