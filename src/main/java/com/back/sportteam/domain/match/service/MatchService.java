@@ -116,6 +116,18 @@ public class MatchService {
         match.decreaseCurrentCount();
     }
 
+    @Transactional
+    public MatchDetailResponse confirmMatch(String matchId, String hostId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        validateConfirmable(match, hostId);
+
+        match.confirm(LocalDateTime.now(SERVICE_ZONE));
+
+        return MatchDetailResponse.from(match);
+    }
+
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
@@ -173,6 +185,18 @@ public class MatchService {
     private void validateLeaveable(MatchParticipant participant) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
+        }
+    }
+
+    private void validateConfirmable(Match match, String hostId) {
+        if (!match.isHostedBy(hostId)) {
+            throw new BusinessException(MatchErrorCode.NOT_MATCH_OWNER);
+        }
+        if (!match.isRecruiting()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
+        }
+        if (!match.hasEnoughParticipants()) {
+            throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
         }
     }
 }

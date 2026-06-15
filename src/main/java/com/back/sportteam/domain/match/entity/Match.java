@@ -124,8 +124,21 @@ public class Match {
         return currentCount >= maxParticipants;
     }
 
+    public boolean hasEnoughParticipants() {
+        return currentCount >= minParticipants;
+    }
+
     public boolean isRecruitClosed(LocalDateTime now) {
         return !now.isBefore(recruitDeadline);
+    }
+
+    public boolean isHostedBy(String userId) {
+        return hostId.equals(userId);
+    }
+
+    public void confirm(LocalDateTime confirmedAt) {
+        this.status = MatchStatus.CONFIRMED;
+        this.confirmedAt = confirmedAt;
     }
 
     public void increaseCurrentCount() {
