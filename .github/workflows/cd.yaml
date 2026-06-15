@@ -88,6 +88,8 @@ jobs:
     needs: [calculateTag, buildImageAndPush]
     permissions:
       contents: read
+      actions: read
+      pull-requests: read
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -223,12 +225,36 @@ jobs:
 
           [[ "$STATUS" == "Success" ]] || exit 1
 
+      - name: PR 작성자 조회
+        id: pr_info
+        if: failure()
+        run: |
+          PR_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#\d+' | head -1 | tr -d '#')
+          if [[ -n "$PR_NUMBER" ]]; then
+            PR_AUTHOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login')
+          fi
+          echo "pr_author=${PR_AUTHOR:-unknown}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+
       - name: 슬랙 배포 실패 알림
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          fields: repo,message,commit,author,took
-          text: "⚠️ 배포 실패!"
+          custom_payload: |
+            {
+              "text": "⚠️ 배포 실패!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*repo*: ${{ github.repository }}\n*message*: ${{ github.event.head_commit.message }}\n*commit*: ${{ github.sha }}\n*PR 작성자*: ${{ steps.pr_info.outputs.pr_author }}"
+                  }
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: failure()
