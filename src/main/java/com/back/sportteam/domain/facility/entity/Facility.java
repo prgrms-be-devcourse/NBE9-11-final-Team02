@@ -93,55 +93,37 @@ public class Facility {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    private Facility(String managerId, String name, String address, String phone,
-                     String description, int capacity, int slotDurationMinutes,
-                     int defaultWeekdayPrice, int defaultWeekendPrice,
-                     LocalDateTime slotOpenAt, Set<SportType> sportTypes,
-                     Set<Amenity> amenities, List<String> imageUrls) {
+    private Facility(String managerId, String name, String address, FacilityDetails details) {
         LocalDateTime now = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
         this.id = UUID.randomUUID().toString();
         this.managerId = managerId;
         this.name = name;
         this.address = address;
-        this.phone = phone;
-        this.description = description;
-        this.capacity = capacity;
-        this.slotDurationMinutes = slotDurationMinutes;
-        this.defaultWeekdayPrice = defaultWeekdayPrice;
-        this.defaultWeekendPrice = defaultWeekendPrice;
-        this.slotOpenAt = slotOpenAt;
         this.status = FacilityStatus.ACTIVE;
-        this.sportTypes = new HashSet<>(sportTypes);
-        this.amenities = amenities != null ? new HashSet<>(amenities) : new HashSet<>();
-        this.imageUrls = imageUrls != null ? new ArrayList<>(imageUrls) : new ArrayList<>();
         this.createdAt = now;
         this.updatedAt = now;
+        applyDetails(details);
     }
 
-    public static Facility create(String managerId, String name, String address, String phone,
-                                  String description, int capacity, int slotDurationMinutes,
-                                  int defaultWeekdayPrice, int defaultWeekendPrice,
-                                  LocalDateTime slotOpenAt, Set<SportType> sportTypes,
-                                  Set<Amenity> amenities, List<String> imageUrls) {
-        return new Facility(managerId, name, address, phone, description,
-                capacity, slotDurationMinutes, defaultWeekdayPrice, defaultWeekendPrice,
-                slotOpenAt, sportTypes, amenities, imageUrls);
+    public static Facility create(String managerId, String name, String address, FacilityDetails details) {
+        return new Facility(managerId, name, address, details);
     }
 
-    public void update(String phone, String description, int capacity, int slotDurationMinutes,
-                       int defaultWeekdayPrice, int defaultWeekendPrice,
-                       LocalDateTime slotOpenAt, Set<SportType> sportTypes,
-                       Set<Amenity> amenities, List<String> imageUrls) {
-        this.phone = phone;
-        this.description = description;
-        this.capacity = capacity;
-        this.slotDurationMinutes = slotDurationMinutes;
-        this.defaultWeekdayPrice = defaultWeekdayPrice;
-        this.defaultWeekendPrice = defaultWeekendPrice;
-        this.slotOpenAt = slotOpenAt;
-        this.sportTypes = sportTypes != null ? new HashSet<>(sportTypes) : new HashSet<>();
-        this.amenities = amenities != null ? new HashSet<>(amenities) : new HashSet<>();
-        this.imageUrls = imageUrls != null ? new ArrayList<>(imageUrls) : new ArrayList<>();
+    public void update(FacilityDetails details) {
+        applyDetails(details);
+    }
+
+    private void applyDetails(FacilityDetails details) {
+        this.phone = details.phone();
+        this.description = details.description();
+        this.capacity = details.capacity();
+        this.slotDurationMinutes = details.slotDurationMinutes();
+        this.defaultWeekdayPrice = details.defaultWeekdayPrice();
+        this.defaultWeekendPrice = details.defaultWeekendPrice();
+        this.slotOpenAt = details.slotOpenAt();
+        this.sportTypes = details.sportTypes() != null ? new HashSet<>(details.sportTypes()) : new HashSet<>();
+        this.amenities = details.amenities() != null ? new HashSet<>(details.amenities()) : new HashSet<>();
+        this.imageUrls = details.imageUrls() != null ? new ArrayList<>(details.imageUrls()) : new ArrayList<>();
     }
 
     public void close() {

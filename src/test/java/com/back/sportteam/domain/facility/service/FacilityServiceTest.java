@@ -9,6 +9,7 @@ import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
 import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
@@ -85,9 +86,17 @@ class FacilityServiceTest {
     @Test
     void 매니저는_본인이_등록한_시설_목록을_요약_정보로_조회한다() {
         Facility withImage = Facility.create(
-                "manager-id", "이미지 있는 풋살장", "서울시 강남구", "02-1234-5678",
-                "설명", 20, 60, 50000, 70000, null,
-                Set.of(SportType.FUTSAL), null, List.of("thumb.jpg", "second.jpg")
+                "manager-id", "이미지 있는 풋살장", "서울시 강남구",
+                FacilityDetails.builder()
+                        .phone("02-1234-5678")
+                        .description("설명")
+                        .capacity(20)
+                        .slotDurationMinutes(60)
+                        .defaultWeekdayPrice(50000)
+                        .defaultWeekendPrice(70000)
+                        .sportTypes(Set.of(SportType.FUTSAL))
+                        .imageUrls(List.of("thumb.jpg", "second.jpg"))
+                        .build()
         );
         Facility withoutImage = createFacility("manager-id");
         when(facilityRepository.findAllByManagerIdAndStatusNot("manager-id", FacilityStatus.CLOSED))
@@ -589,16 +598,15 @@ class FacilityServiceTest {
                 managerId,
                 "테스트 풋살장",
                 "서울시 강남구",
-                "02-1234-5678",
-                "테스트 시설입니다.",
-                20,
-                60,
-                50000,
-                70000,
-                null,
-                Set.of(SportType.FUTSAL),
-                null,
-                null
+                FacilityDetails.builder()
+                        .phone("02-1234-5678")
+                        .description("테스트 시설입니다.")
+                        .capacity(20)
+                        .slotDurationMinutes(60)
+                        .defaultWeekdayPrice(50000)
+                        .defaultWeekendPrice(70000)
+                        .sportTypes(Set.of(SportType.FUTSAL))
+                        .build()
         );
     }
 }
