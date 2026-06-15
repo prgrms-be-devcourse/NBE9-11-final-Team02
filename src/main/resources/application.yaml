@@ -28,7 +28,7 @@ app:
     active: dev
     include: secret
   config:
-    import: optional:file:/app/application-secret.yaml
+    import: optional:file:./application-secret.yaml
   batch:
     job:
       enabled: false
