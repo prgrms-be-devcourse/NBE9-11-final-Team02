@@ -8,15 +8,15 @@ import com.back.sportteam.domain.auth.security.JwtProvider;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.user.domain.User;
 import com.back.sportteam.user.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthLoginService {
 
@@ -26,11 +26,23 @@ public class AuthLoginService {
     private final PasswordHasher passwordHasher;
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
+    private final long refreshTokenExpiry;
 
-    @Value("${jwt.refresh-token-expiry}")
-    private long refreshTokenExpiry;
+    public AuthLoginService(
+            UserRepository userRepository,
+            PasswordHasher passwordHasher,
+            JwtProvider jwtProvider,
+            StringRedisTemplate redisTemplate,
+            @Value("${jwt.refresh-token-expiry}") long refreshTokenExpiry
+    ) {
+        this.userRepository = userRepository;
+        this.passwordHasher = passwordHasher;
+        this.jwtProvider = jwtProvider;
+        this.redisTemplate = redisTemplate;
+        this.refreshTokenExpiry = refreshTokenExpiry;
+    }
 
-    public LoginResponse login(LoginRequest request, jakarta.servlet.http.HttpServletResponse response) {
+    public LoginResponse login(LoginRequest request, HttpServletResponse response) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
 
@@ -48,7 +60,7 @@ public class AuthLoginService {
                 TimeUnit.MILLISECONDS
         );
 
-        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("refreshToken", refreshToken);
+        Cookie cookie = new Cookie("refreshToken", refreshToken);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
         cookie.setMaxAge((int) (refreshTokenExpiry / 1000));
