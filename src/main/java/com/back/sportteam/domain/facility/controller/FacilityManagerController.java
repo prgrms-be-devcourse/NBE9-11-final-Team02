@@ -5,6 +5,7 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.service.FacilityService;
 import com.back.sportteam.global.response.ApiResponse;
@@ -25,6 +26,14 @@ import org.springframework.web.bind.annotation.*;
 public class FacilityManagerController {
 
     private final FacilityService facilityService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<FacilitySummaryResponse>>> getMyFacilities(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId
+    ) {
+        List<FacilitySummaryResponse> response = facilityService.getMyFacilities(managerId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(

@@ -5,6 +5,7 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityStatus;
@@ -56,6 +57,19 @@ public class FacilityService {
                 request.imageUrls()
         );
         return FacilityResponse.from(facilityRepository.save(facility));
+    }
+
+    @Transactional(readOnly = true)
+    public FacilityResponse getFacility(String facilityId) {
+        return FacilityResponse.from(getFacilityOrThrow(facilityId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<FacilitySummaryResponse> getMyFacilities(String managerId) {
+        return facilityRepository.findAllByManagerIdAndStatusNot(managerId, FacilityStatus.CLOSED)
+                .stream()
+                .map(FacilitySummaryResponse::from)
+                .toList();
     }
 
     @Transactional

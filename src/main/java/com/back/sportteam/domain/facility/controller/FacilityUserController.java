@@ -1,5 +1,6 @@
 package com.back.sportteam.domain.facility.controller;
 
+import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.service.FacilityService;
 import com.back.sportteam.global.response.ApiResponse;
@@ -21,6 +22,14 @@ import java.util.List;
 public class FacilityUserController {
 
     private final FacilityService facilityService;
+
+    @GetMapping("/{facilityId}")
+    public ResponseEntity<ApiResponse<FacilityResponse>> getFacility(
+            @PathVariable String facilityId
+    ) {
+        FacilityResponse response = facilityService.getFacility(facilityId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
 
     @GetMapping("/{facilityId}/slots")
     public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> getSlotsByDate(
