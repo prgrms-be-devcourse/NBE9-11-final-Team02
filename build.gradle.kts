@@ -42,6 +42,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -51,6 +55,9 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 }
 
 tasks.named<Test>("test") {

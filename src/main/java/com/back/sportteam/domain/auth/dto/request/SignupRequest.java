@@ -1,6 +1,6 @@
 package com.back.sportteam.domain.auth.dto.request;
 
-import com.back.sportteam.auth.domain.AuthProvider;
+import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.user.domain.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -24,4 +24,6 @@ public record SignupRequest(
 
         AuthProvider provider,
         String providerId
-) {}
+) {
+
+}
