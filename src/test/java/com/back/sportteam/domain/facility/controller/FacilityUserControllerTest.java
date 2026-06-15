@@ -11,7 +11,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -39,7 +38,7 @@ class FacilityUserControllerTest {
                 "설명", 10, 60, 10000, 15000, null,
                 FacilityStatus.ACTIVE, Set.of(), Set.of(), null, null
         );
-        when(facilityService.getFacility(eq("facility-id"))).thenReturn(response);
+        when(facilityService.getFacility("facility-id")).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/facilities/facility-id"))
                 .andExpect(status().isOk())
