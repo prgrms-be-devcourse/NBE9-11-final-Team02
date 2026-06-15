@@ -4,12 +4,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,52 +19,116 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
 
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
+    private String id;
 
-    @Column(name = "merchant_uid", nullable = false, unique = true, length = 64)
-    private String merchantUid;
+    @Column(name = "participant_id", columnDefinition = "CHAR(36)")
+    private String participantId;
 
-    @Column(name = "match_id", columnDefinition = "CHAR(36)", nullable = false)
+    @Column(name = "user_id", columnDefinition = "CHAR(36)", nullable = false)
+    private String userId;
+
+    @Column(name = "match_id", columnDefinition = "CHAR(36)")
     private String matchId;
 
-    @Column(nullable = false)
-    private Long amount;
+    @Column(name = "facility_slot_id", columnDefinition = "CHAR(36)")
+    private String facilitySlotId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false, length = 20)
     private PaymentType paymentType;
 
+    @Column(name = "merchant_uid", nullable = false, unique = true, length = 100)
+    private String merchantUid;
+
+    @Column(name = "pg_transaction_id", unique = true, length = 100)
+    private String pgTransactionId;
+
+    @Column(nullable = false)
+    private Integer amount;
+
+    @Column(name = "refunded_amount", nullable = false)
+    private Integer refundedAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pg_provider", nullable = false, length = 30)
+    private PaymentProvider pgProvider;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
 
     private Payment(
-            String merchantUid,
+            String participantId,
+            String userId,
             String matchId,
-            Long amount,
-            PaymentType paymentType
+            String facilitySlotId,
+            PaymentType paymentType,
+            String merchantUid,
+            Integer amount
     ) {
-        this.merchantUid = merchantUid;
+        this.id = UUID.randomUUID().toString();
+        this.participantId = participantId;
+        this.userId = userId;
         this.matchId = matchId;
-        this.amount = amount;
+        this.facilitySlotId = facilitySlotId;
         this.paymentType = paymentType;
-        this.status = PaymentStatus.READY;
-        this.createdAt = LocalDateTime.now(SERVICE_ZONE);
+        this.merchantUid = merchantUid;
+        this.amount = amount;
+        this.refundedAmount = 0;
+        this.pgProvider = PaymentProvider.TOSSPAYMENTS;
+        this.status = PaymentStatus.PENDING;
     }
 
     public static Payment create(
-            String merchantUid,
+            String participantId,
+            String userId,
             String matchId,
-            Long amount,
-            PaymentType paymentType
+            String facilitySlotId,
+            PaymentType paymentType,
+            String merchantUid,
+            Integer amount
     ) {
-        return new Payment(merchantUid, matchId, amount, paymentType);
+        return new Payment(
+                participantId,
+                userId,
+                matchId,
+                facilitySlotId,
+                paymentType,
+                merchantUid,
+                amount
+        );
+    }
+
+    public void complete(String pgTransactionId, LocalDateTime paidAt) {
+        if (status == PaymentStatus.PAID && Objects.equals(this.pgTransactionId, pgTransactionId)) {
+            return;
+        }
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 결제만 완료할 수 있습니다.");
+        }
+
+        this.pgTransactionId = pgTransactionId;
+        this.status = PaymentStatus.PAID;
+        this.paidAt = paidAt;
+    }
+
+    public void fail(String pgTransactionId) {
+        if (status == PaymentStatus.FAILED) {
+            return;
+        }
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 결제만 실패 처리할 수 있습니다.");
+        }
+
+        this.pgTransactionId = pgTransactionId;
+        this.status = PaymentStatus.FAILED;
     }
 }

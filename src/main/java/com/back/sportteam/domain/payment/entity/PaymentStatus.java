@@ -1,8 +1,8 @@
 package com.back.sportteam.domain.payment.entity;
 
 public enum PaymentStatus {
-    READY,
+    PENDING,
     PAID,
     FAILED,
-    CANCELLED
+    REFUNDED
 }

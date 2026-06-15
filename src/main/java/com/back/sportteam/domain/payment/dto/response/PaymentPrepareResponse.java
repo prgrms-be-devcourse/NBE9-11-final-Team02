@@ -4,7 +4,7 @@ import com.back.sportteam.domain.payment.entity.Payment;
 
 public record PaymentPrepareResponse(
         String merchantUid,
-        Long amount
+        Integer amount
 ) {
 
     public static PaymentPrepareResponse from(Payment payment) {

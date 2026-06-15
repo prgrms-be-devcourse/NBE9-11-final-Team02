@@ -2,7 +2,7 @@ package com.back.sportteam.domain.payment.service;
 
 public interface PaymentAmountReader {
 
-    Long getFacilityAmount(String matchId);
+    Integer getFacilityAmount(String facilitySlotId);
 
-    Long getParticipationAmount(String matchId);
+    Integer getParticipationAmount(String matchId);
 }
