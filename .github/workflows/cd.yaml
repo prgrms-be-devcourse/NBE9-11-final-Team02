@@ -229,13 +229,16 @@ jobs:
         id: pr_info
         if: failure()
         run: |
-          PR_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#\d+' | head -1 | tr -d '#')
-          if [[ -n "$PR_NUMBER" ]]; then
-            PR_AUTHOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login')
-          fi
+          PR_AUTHOR=$(gh api "repos/$GH_REPO/commits/${{ github.sha }}/pulls" --jq '.[0].user.login')
           echo "pr_author=${PR_AUTHOR:-unknown}" >> "$GITHUB_OUTPUT"
+
+          # 슬랙 custom_payload(JSON)에 안전하게 넣기 위해 첫 줄만 추출 후 JSON 문자열로 이스케이프
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
+          ESCAPED=$(echo "$FIRST_LINE" | jq -Rs '.' | sed 's/^"//;s/"$//')
+          echo "commit_message=${ESCAPED}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
 
       - name: 슬랙 배포 실패 알림
@@ -250,7 +253,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*repo*: ${{ github.repository }}\n*message*: ${{ github.event.head_commit.message }}\n*commit*: ${{ github.sha }}\n*PR 작성자*: ${{ steps.pr_info.outputs.pr_author }}"
+                    "text": "*repo*: ${{ github.repository }}\n*message*: ${{ steps.pr_info.outputs.commit_message }}\n*commit*: ${{ github.sha }}\n*PR 작성자*: ${{ steps.pr_info.outputs.pr_author }}"
                   }
                 }
               ]
