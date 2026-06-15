@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -41,6 +42,9 @@ public class Payment {
     @Column(name = "merchant_uid", nullable = false, unique = true, length = 100)
     private String merchantUid;
 
+    @Column(name = "pg_transaction_id", unique = true, length = 100)
+    private String pgTransactionId;
+
     @Column(nullable = false)
     private Integer amount;
 
@@ -52,7 +56,7 @@ public class Payment {
     private PaymentProvider pgProvider;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private PaymentStatus status;
 
     @Column(name = "paid_at")
@@ -101,5 +105,30 @@ public class Payment {
                 merchantUid,
                 amount
         );
+    }
+
+    public void complete(String pgTransactionId, LocalDateTime paidAt) {
+        if (status == PaymentStatus.PAID && Objects.equals(this.pgTransactionId, pgTransactionId)) {
+            return;
+        }
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 결제만 완료할 수 있습니다.");
+        }
+
+        this.pgTransactionId = pgTransactionId;
+        this.status = PaymentStatus.PAID;
+        this.paidAt = paidAt;
+    }
+
+    public void fail(String pgTransactionId) {
+        if (status == PaymentStatus.FAILED) {
+            return;
+        }
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 결제만 실패 처리할 수 있습니다.");
+        }
+
+        this.pgTransactionId = pgTransactionId;
+        this.status = PaymentStatus.FAILED;
     }
 }

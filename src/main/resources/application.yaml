@@ -15,6 +15,10 @@ app:
     refresh-token-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refreshToken}
     secure-cookie: ${JWT_SECURE_COOKIE:false}
     same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+  payment:
+    toss:
+      base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
+      secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
