@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -17,7 +18,13 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "refunds")
+@Table(
+        name = "refunds",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_refunds_one_pending_per_payment",
+                columnNames = {"payment_id", "pending_flag"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Refund {
 
@@ -38,6 +45,15 @@ public class Refund {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private RefundStatus status;
+
+    @Column(
+            name = "pending_flag",
+            insertable = false,
+            updatable = false,
+            columnDefinition = "TINYINT GENERATED ALWAYS AS "
+                    + "(CASE WHEN status = 'PENDING' THEN 1 ELSE NULL END)"
+    )
+    private Integer pendingFlag;
 
     @Column(name = "requested_at", nullable = false, updatable = false)
     private LocalDateTime requestedAt;
