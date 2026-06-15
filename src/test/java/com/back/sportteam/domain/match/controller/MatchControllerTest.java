@@ -33,12 +33,14 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class MatchControllerTest {
 
+    private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
     private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
@@ -217,6 +219,56 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.error.code").value("MATCH_010"));
     }
 
+    @Test
+    void 매칭방_확정_요청을_200_응답으로_반환한다() throws Exception {
+        MatchDetailResponse response = createConfirmedDetailResponse();
+        when(matchService.confirmMatch("match-id", "host-id")).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/matches/{matchId}/confirm", "match-id")
+                        .header("X-USER-ID", "host-id"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.matchId").value("match-id"))
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.confirmedAt").exists());
+
+        verify(matchService).confirmMatch("match-id", "host-id");
+    }
+
+    @Test
+    void 매칭방_확정시_방장이_아니면_403_응답으로_반환한다() throws Exception {
+        when(matchService.confirmMatch("match-id", "user-id"))
+                .thenThrow(new BusinessException(MatchErrorCode.NOT_MATCH_OWNER));
+
+        mockMvc.perform(patch("/api/v1/matches/{matchId}/confirm", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_004"));
+    }
+
+    @Test
+    void 매칭방_취소_요청을_200_응답으로_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
+                        .header("X-USER-ID", "host-id"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(matchService).cancelMatch("match-id", "host-id");
+    }
+
+    @Test
+    void 매칭방_취소시_방장이_아니면_403_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.NOT_MATCH_OWNER))
+                .when(matchService).cancelMatch("match-id", "user-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_004"));
+    }
+
     private MatchCreateRequest createRequest(String title) {
         return new MatchCreateRequest(
                 "reservation-id",
@@ -228,6 +280,7 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
     }
@@ -246,7 +299,10 @@ class MatchControllerTest {
                 request.minSkillLevel(),
                 request.maxSkillLevel(),
                 request.requiredGender(),
+                request.recruitDeadline(),
                 request.cancelDeadline(),
+                null,
+                null,
                 MatchStatus.RECRUITING,
                 CREATED_AT
         );
@@ -263,6 +319,7 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 MatchStatus.RECRUITING
         );
     }
@@ -281,8 +338,35 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
                 CANCEL_DEADLINE,
+                null,
+                null,
                 MatchStatus.RECRUITING,
+                CREATED_AT,
+                CREATED_AT
+        );
+    }
+
+    private MatchDetailResponse createConfirmedDetailResponse() {
+        return new MatchDetailResponse(
+                "match-id",
+                "reservation-id",
+                "host-id",
+                "풋살 매칭",
+                SportType.FUTSAL,
+                2,
+                10,
+                1,
+                10000,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4,
+                RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
+                CANCEL_DEADLINE,
+                CREATED_AT,
+                null,
+                MatchStatus.CONFIRMED,
                 CREATED_AT,
                 CREATED_AT
         );
@@ -322,6 +406,7 @@ class MatchControllerTest {
                   "minSkillLevel": "%s",
                   "maxSkillLevel": "%s",
                   "requiredGender": "%s",
+                  "recruitDeadline": "%s",
                   "cancelDeadline": "%s"
                 }
                 """.formatted(
@@ -334,6 +419,7 @@ class MatchControllerTest {
                 request.minSkillLevel(),
                 request.maxSkillLevel(),
                 request.requiredGender(),
+                request.recruitDeadline(),
                 request.cancelDeadline()
         );
     }

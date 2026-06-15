@@ -19,5 +19,6 @@ public class MatchCreateCommand {
     private SkillLevel minSkillLevel;
     private SkillLevel maxSkillLevel;
     private RequiredGender requiredGender;
+    private LocalDateTime recruitDeadline;
     private LocalDateTime cancelDeadline;
 }

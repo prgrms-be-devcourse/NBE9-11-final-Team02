@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -76,6 +77,24 @@ public class MatchController {
             @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
     ) {
         matchService.leaveMatch(matchId, userId);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @PatchMapping("/{matchId}/confirm")
+    public ResponseEntity<ApiResponse<MatchDetailResponse>> confirmMatch(
+            @PathVariable String matchId,
+            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId
+    ) {
+        MatchDetailResponse response = matchService.confirmMatch(matchId, hostId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @DeleteMapping("/{matchId}")
+    public ResponseEntity<ApiResponse<Void>> cancelMatch(
+            @PathVariable String matchId,
+            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId
+    ) {
+        matchService.cancelMatch(matchId, hostId);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

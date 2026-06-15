@@ -95,6 +95,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT, detail, request.getRequestURI()));
     }
 
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeaderException(
+            MissingRequestHeaderException e,
+            HttpServletRequest request
+    ) {
+        String detail = "필수 요청 헤더 '" + e.getHeaderName() + "'이(가) 누락되었습니다.";
+
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT, detail, request.getRequestURI()));
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Void>> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e,

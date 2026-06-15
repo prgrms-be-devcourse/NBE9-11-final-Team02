@@ -20,3 +20,7 @@ logging:
     org.hibernate.orm.jdbc.extract: WARN
     org.springframework.transaction.interceptor: WARN
     com.back: INFO
+
+toss:
+  payment:
+    secret-key: "${custom.prod.toss.secretKey}"

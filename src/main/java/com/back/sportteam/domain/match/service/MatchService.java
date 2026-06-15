@@ -18,11 +18,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MatchService {
+
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
@@ -31,6 +35,7 @@ public class MatchService {
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
         validateParticipantRange(request.minParticipants(), request.maxParticipants());
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
+        validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
         validateReservationAvailable(request.reservationId());
 
         Match match = Match.create(MatchCreateCommand.builder()
@@ -44,6 +49,7 @@ public class MatchService {
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())
                 .requiredGender(request.requiredGender())
+                .recruitDeadline(request.recruitDeadline())
                 .cancelDeadline(request.cancelDeadline())
                 .build());
 
@@ -110,6 +116,30 @@ public class MatchService {
         match.decreaseCurrentCount();
     }
 
+    @Transactional
+    public MatchDetailResponse confirmMatch(String matchId, String hostId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        validateConfirmable(match, hostId);
+
+        match.confirm(LocalDateTime.now(SERVICE_ZONE));
+
+        return MatchDetailResponse.from(match);
+    }
+
+    @Transactional
+    public void cancelMatch(String matchId, String hostId) {
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        validateCancellable(match, hostId);
+
+        match.cancel(LocalDateTime.now(SERVICE_ZONE));
+        matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
+                .forEach(MatchParticipant::cancel);
+    }
+
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
         if (minParticipants > maxParticipants) {
             throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
@@ -129,6 +159,12 @@ public class MatchService {
         }
     }
 
+    private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
+        if (recruitDeadline.isAfter(cancelDeadline)) {
+            throw new BusinessException(MatchErrorCode.INVALID_DEADLINE_RANGE);
+        }
+    }
+
     private void validateMatchExists(String matchId) {
         if (!matchRepository.existsById(matchId)) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
@@ -138,6 +174,9 @@ public class MatchService {
     private void validateJoinable(Match match) {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
+        }
+        if (match.isRecruitClosed(LocalDateTime.now(SERVICE_ZONE))) {
+            throw new BusinessException(MatchErrorCode.RECRUIT_DEADLINE_PASSED);
         }
         if (match.isFull()) {
             throw new BusinessException(MatchErrorCode.MATCH_FULL);
@@ -158,6 +197,27 @@ public class MatchService {
     private void validateLeaveable(MatchParticipant participant) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
+        }
+    }
+
+    private void validateConfirmable(Match match, String hostId) {
+        if (!match.isHostedBy(hostId)) {
+            throw new BusinessException(MatchErrorCode.NOT_MATCH_OWNER);
+        }
+        if (!match.isRecruiting()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
+        }
+        if (!match.hasEnoughParticipants()) {
+            throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+        }
+    }
+
+    private void validateCancellable(Match match, String hostId) {
+        if (!match.isHostedBy(hostId)) {
+            throw new BusinessException(MatchErrorCode.NOT_MATCH_OWNER);
+        }
+        if (!match.isCancellable()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
     }
 }
