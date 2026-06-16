@@ -24,14 +24,12 @@ public class MatchLockTestController {
 
     private final MatchService matchService;
 
-
-    //Todo 비관적락 추후 삭제 예정
+    // dev 환경에서 k6 비교 실험을 하기 위한 비관적 락 전용 엔드포인트
     @PostMapping("/{matchId}/participants/pessimistic-lock")
     public ResponseEntity<ApiResponse<MatchParticipantResponse>> joinMatchWithPessimisticLock(
             @PathVariable String matchId,
             @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
     ) {
-        // dev 환경에서 k6 비교 실험을 하기 위한 비관적 락 전용 엔드포인트
         MatchParticipantResponse response = matchService.joinMatchWithPessimisticLock(matchId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
