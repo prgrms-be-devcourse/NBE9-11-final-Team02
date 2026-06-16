@@ -1,5 +1,8 @@
 package com.back.sportteam.domain.review.service;
 
+import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
@@ -37,6 +40,7 @@ public class ReviewService {
     private final ParticipantReviewRepository participantReviewRepository;
     private final UserSportStatRepository userSportStatRepository;
     private final UserRepository userRepository;
+    private final FacilityRepository facilityRepository;
     private final ReviewValidator reviewValidator;
 
     @Transactional(readOnly = true)
@@ -63,6 +67,10 @@ public class ReviewService {
                     request.getFacilityReview().getRating(),
                     request.getFacilityReview().getComment()
             ));
+
+            Facility facility = facilityRepository.findById(facilityId)
+                    .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+            facility.addRating(request.getFacilityReview().getRating());
         }
 
         if (!request.getParticipantReviews().isEmpty()) {

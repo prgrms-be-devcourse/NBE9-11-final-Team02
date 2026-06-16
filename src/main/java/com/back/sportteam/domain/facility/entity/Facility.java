@@ -18,6 +18,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -87,6 +89,15 @@ public class Facility {
     @Column(name = "image_url", nullable = false, length = 255)
     private List<String> imageUrls = new ArrayList<>();
 
+    @Column(name = "rating_avg", precision = 3, scale = 2)
+    private BigDecimal ratingAvg = BigDecimal.ZERO;
+
+    @Column(name = "rating_sum", precision = 5, scale = 1)
+    private BigDecimal ratingSum = BigDecimal.ZERO;
+
+    @Column(name = "review_count", nullable = false)
+    private int reviewCount = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -124,6 +135,13 @@ public class Facility {
         this.sportTypes = details.sportTypes() != null ? new HashSet<>(details.sportTypes()) : new HashSet<>();
         this.amenities = details.amenities() != null ? new HashSet<>(details.amenities()) : new HashSet<>();
         this.imageUrls = details.imageUrls() != null ? new ArrayList<>(details.imageUrls()) : new ArrayList<>();
+    }
+
+    public void addRating(BigDecimal rating) {
+        this.ratingSum = this.ratingSum.add(rating);
+        this.reviewCount++;
+        this.ratingAvg = this.ratingSum
+                .divide(BigDecimal.valueOf(this.reviewCount), 2, RoundingMode.HALF_UP);
     }
 
     public void close() {
