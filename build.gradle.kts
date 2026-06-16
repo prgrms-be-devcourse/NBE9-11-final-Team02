@@ -24,6 +24,8 @@ group = "com.back"
 version = "0.0.1-SNAPSHOT"
 description = "NBE9-11-final-Team02"
 
+val redissonVersion: String by project
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(24)
@@ -41,6 +43,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.redisson:redisson:$redissonVersion")
 
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")

@@ -5,6 +5,7 @@ import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
+import com.back.sportteam.domain.match.service.MatchJoinFacade;
 import com.back.sportteam.domain.match.service.MatchService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -32,6 +33,7 @@ import java.util.List;
 public class MatchController {
 
     private final MatchService matchService;
+    private final MatchJoinFacade matchJoinFacade;
 
     @PostMapping
     public ResponseEntity<ApiResponse<MatchCreateResponse>> createMatch(
@@ -67,7 +69,7 @@ public class MatchController {
             @PathVariable String matchId,
             @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
     ) {
-        MatchParticipantResponse response = matchService.joinMatch(matchId, userId);
+        MatchParticipantResponse response = matchJoinFacade.joinMatchWithDistributedLock(matchId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
