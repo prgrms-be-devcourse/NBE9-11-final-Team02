@@ -4,6 +4,7 @@ import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,12 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
     List<MatchParticipant> findByMatchIdAndStatus(String matchId, MatchParticipantStatus status);
 
     boolean existsByMatchIdAndUserIdAndStatus(String matchId, String userId, MatchParticipantStatus status);
+
+    boolean existsByMatchIdAndUserIdAndStatusIn(
+            String matchId,
+            String userId,
+            Collection<MatchParticipantStatus> statuses
+    );
 
     Optional<MatchParticipant> findByMatchIdAndUserIdAndStatus(String matchId, String userId, MatchParticipantStatus status);
 }

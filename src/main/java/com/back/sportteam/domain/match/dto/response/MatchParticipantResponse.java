@@ -11,7 +11,8 @@ public record MatchParticipantResponse(
         String userId,
         MatchParticipantRole role,
         MatchParticipantStatus status,
-        LocalDateTime joinedAt
+        LocalDateTime joinedAt,
+        LocalDateTime paymentDeadline
 ) {
 
     public static MatchParticipantResponse from(MatchParticipant participant) {
@@ -20,7 +21,8 @@ public record MatchParticipantResponse(
                 participant.getUserId(),
                 participant.getRole(),
                 participant.getStatus(),
-                participant.getJoinedAt()
+                participant.getJoinedAt(),
+                participant.getPaymentDeadline()
         );
     }
 }

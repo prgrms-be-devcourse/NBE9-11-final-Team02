@@ -13,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class MatchParticipant {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final Duration PAYMENT_HOLD_DURATION = Duration.ofMinutes(10);
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -47,21 +49,47 @@ public class MatchParticipant {
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
-    private MatchParticipant(Match match, String userId, MatchParticipantRole role) {
+    @Column(name = "payment_deadline")
+    private LocalDateTime paymentDeadline;
+
+    private MatchParticipant(
+            Match match,
+            String userId,
+            MatchParticipantRole role,
+            MatchParticipantStatus status,
+            LocalDateTime joinedAt,
+            LocalDateTime paymentDeadline
+    ) {
         this.id = UUID.randomUUID().toString();
         this.match = match;
         this.userId = userId;
         this.role = role;
-        this.status = MatchParticipantStatus.ACTIVE;
-        this.joinedAt = LocalDateTime.now(SERVICE_ZONE);
+        this.status = status;
+        this.joinedAt = joinedAt;
+        this.paymentDeadline = paymentDeadline;
     }
 
     public static MatchParticipant host(Match match, String userId) {
-        return new MatchParticipant(match, userId, MatchParticipantRole.HOST);
+        return new MatchParticipant(
+                match,
+                userId,
+                MatchParticipantRole.HOST,
+                MatchParticipantStatus.ACTIVE,
+                LocalDateTime.now(SERVICE_ZONE),
+                null
+        );
     }
 
     public static MatchParticipant participant(Match match, String userId) {
-        return new MatchParticipant(match, userId, MatchParticipantRole.PARTICIPANT);
+        LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
+        return new MatchParticipant(
+                match,
+                userId,
+                MatchParticipantRole.PARTICIPANT,
+                MatchParticipantStatus.PAYMENT_PENDING,
+                joinedAt,
+                joinedAt.plus(PAYMENT_HOLD_DURATION)
+        );
     }
 
     public boolean isHost() {
@@ -70,5 +98,6 @@ public class MatchParticipant {
 
     public void cancel() {
         this.status = MatchParticipantStatus.CANCELLED;
+        this.paymentDeadline = null;
     }
 }

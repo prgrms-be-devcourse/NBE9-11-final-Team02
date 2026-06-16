@@ -250,10 +250,10 @@ class MatchServiceTest {
     void 매칭방에_참가한다() {
         Match match = createMatch();
         when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 match.getId(),
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -262,7 +262,8 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(10));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -271,10 +272,10 @@ class MatchServiceTest {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findByIdForUpdate(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -283,7 +284,8 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(10));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -326,10 +328,10 @@ class MatchServiceTest {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))

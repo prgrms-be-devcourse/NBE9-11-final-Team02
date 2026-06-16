@@ -197,10 +197,10 @@ public class MatchService {
     }
 
     private void validateNotParticipated(String matchId, String userId) {
-        boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 userId,
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         );
         if (alreadyParticipated) {
             throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);
