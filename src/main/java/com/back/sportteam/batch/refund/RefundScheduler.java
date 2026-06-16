@@ -30,8 +30,7 @@ public class RefundScheduler {
     @Scheduled(fixedDelayString = "${app.scheduler.refund.fixed-delay-ms:60000}")
     public void processPendingRefunds() {
         LocalDateTime processedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
-        refundRepository.recoverStaleProcessingRefunds(
-                RefundStatus.PROCESSING,
+        List<String> refundIds = refundRepository.findIdsByStatus(
                 RefundStatus.PENDING,
                 processedAt.minusMinutes(processingTimeoutMinutes),
                 processedAt

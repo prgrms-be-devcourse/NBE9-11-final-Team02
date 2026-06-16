@@ -2,7 +2,6 @@ package com.back.sportteam.domain.payment.repository;
 
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -16,22 +15,6 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     Optional<Payment> findByMerchantUid(String merchantUid);
 
     List<Payment> findAllByMatchIdAndStatus(String matchId, PaymentStatus status);
-
-    List<Payment> findAllByFacilitySlotIdAndStatus(String facilitySlotId, PaymentStatus status);
-
-    Optional<Payment> findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
-            String userId,
-            String matchId,
-            PaymentType paymentType,
-            PaymentStatus status
-    );
-
-    Optional<Payment> findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-            String userId,
-            String facilitySlotId,
-            PaymentType paymentType,
-            PaymentStatus status
-    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select payment from Payment payment where payment.merchantUid = :merchantUid")

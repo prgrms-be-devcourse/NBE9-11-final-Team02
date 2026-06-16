@@ -48,7 +48,7 @@ public class MatchDeadlineProcessor {
         match.cancel(processedAt);
         reservationSlotService.cancelReservation(match.getReservationId(), processedAt);
         cancelActiveParticipants(matchId);
-        enqueueRefunds(match, processedAt);
+        enqueueRefunds(matchId, processedAt);
     }
 
     private void cancelActiveParticipants(String matchId) {
@@ -59,22 +59,15 @@ public class MatchDeadlineProcessor {
                 .forEach(MatchParticipant::cancel);
     }
 
-    private void enqueueRefunds(Match match, LocalDateTime requestedAt) {
-        List<Payment> paidPayments = new java.util.ArrayList<>(
-                paymentRepository.findAllByMatchIdAndStatus(match.getId(), PaymentStatus.PAID)
-        );
-        reservationRepository.findById(match.getReservationId())
-                .map(reservation -> paymentRepository.findAllByFacilitySlotIdAndStatus(
-                        reservation.getFacilitySlotId(),
-                        PaymentStatus.PAID
-                ))
-                .ifPresent(paidPayments::addAll);
+    private void enqueueRefunds(String matchId, LocalDateTime requestedAt) {
+        List<Payment> paidPayments =
+                paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID);
 
         List<Refund> refunds = paidPayments.stream()
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
-                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
+                .filter(payment -> !refundRepository.existsByPaymentIdAndStatus(
                         payment.getId(),
-                        List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+                        RefundStatus.PENDING
                 ))
                 .map(payment -> Refund.pending(
                         payment,

@@ -124,10 +124,9 @@ class MatchDeadlineProcessorTest {
                 match.getId(),
                 PaymentStatus.PAID
         )).thenReturn(List.of(payment));
-        when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.empty());
-        when(refundRepository.existsByPaymentIdAndStatusIn(
+        when(refundRepository.existsByPaymentIdAndStatus(
                 payment.getId(),
-                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+                RefundStatus.PENDING
         )).thenReturn(true);
 
         matchDeadlineProcessor.process(match.getId(), processedAt);

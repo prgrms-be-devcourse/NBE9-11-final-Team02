@@ -52,7 +52,7 @@ public class Refund {
             insertable = false,
             updatable = false,
             columnDefinition = "TINYINT GENERATED ALWAYS AS "
-                    + "(CASE WHEN status IN ('PENDING', 'PROCESSING') THEN 1 ELSE NULL END)"
+                    + "(CASE WHEN status = 'PENDING' THEN 1 ELSE NULL END)"
     )
     private Integer pendingFlag;
 
@@ -116,8 +116,8 @@ public class Refund {
         if (status == RefundStatus.COMPLETED) {
             return;
         }
-        if (status != RefundStatus.PROCESSING) {
-            throw new IllegalStateException("Only PROCESSING refunds can be completed.");
+        if (status != RefundStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 환불만 완료 처리할 수 있습니다.");
         }
 
         this.status = RefundStatus.COMPLETED;
@@ -129,50 +129,11 @@ public class Refund {
         if (status == RefundStatus.FAILED) {
             return;
         }
-        if (status != RefundStatus.PENDING && status != RefundStatus.PROCESSING) {
-            throw new IllegalStateException("Only PENDING or PROCESSING refunds can be failed.");
+        if (status != RefundStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 환불만 실패 처리할 수 있습니다.");
         }
 
         this.status = RefundStatus.FAILED;
         this.failureReason = failureReason;
-    }
-
-    public void recordFailure(
-            String failureReason,
-            LocalDateTime attemptedAt,
-            int maxRetryCount,
-            Duration retryDelay
-    ) {
-        if (status != RefundStatus.PROCESSING) {
-            throw new IllegalStateException("Only PROCESSING refunds can record failure.");
-        }
-
-        int nextRetryCount = retryCount + 1;
-        this.retryCount = nextRetryCount;
-        this.failureReason = failureReason;
-        this.lastAttemptedAt = attemptedAt;
-
-        if (nextRetryCount >= maxRetryCount) {
-            this.status = RefundStatus.FAILED;
-            this.nextRetryAt = null;
-            return;
-        }
-
-        this.status = RefundStatus.PENDING;
-        this.nextRetryAt = attemptedAt.plus(retryDelay);
-    }
-
-    public void failPermanently(String failureReason, LocalDateTime attemptedAt) {
-        if (status == RefundStatus.FAILED) {
-            return;
-        }
-        if (status != RefundStatus.PENDING && status != RefundStatus.PROCESSING) {
-            throw new IllegalStateException("Only PENDING or PROCESSING refunds can be failed.");
-        }
-
-        this.status = RefundStatus.FAILED;
-        this.failureReason = failureReason;
-        this.lastAttemptedAt = attemptedAt;
-        this.nextRetryAt = null;
     }
 }

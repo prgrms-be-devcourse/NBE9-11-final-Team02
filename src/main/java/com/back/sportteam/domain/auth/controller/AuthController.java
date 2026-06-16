@@ -6,6 +6,7 @@ import com.back.sportteam.domain.auth.dto.response.LoginResponse;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.dto.response.TokenRefreshResponse;
 import com.back.sportteam.domain.auth.service.AuthLoginService;
+import com.back.sportteam.domain.auth.service.AuthLogoutService;
 import com.back.sportteam.domain.auth.service.AuthRefreshService;
 import com.back.sportteam.domain.auth.service.AuthSignupService;
 import com.back.sportteam.global.response.ApiResponse;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,6 +30,7 @@ public class AuthController {
     private final AuthSignupService authSignupService;
     private final AuthLoginService authLoginService;
     private final AuthRefreshService authRefreshService;
+    private final AuthLogoutService authLogoutService;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
@@ -54,5 +57,16 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.ok(authRefreshService.refresh(refreshToken, response)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        String accessToken = authorizationHeader.substring(7);
+        authLogoutService.logout(accessToken);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.ok());
     }
 }
