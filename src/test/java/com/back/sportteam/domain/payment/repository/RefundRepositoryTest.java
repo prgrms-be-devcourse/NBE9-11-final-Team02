@@ -8,6 +8,7 @@ import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import java.time.LocalDateTime;
+import java.time.Month;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,7 +38,7 @@ class RefundRepositoryTest {
                 "mid_12345",
                 10_000
         ));
-        LocalDateTime requestedAt = LocalDateTime.of(2026, 6, 15, 12, 0);
+        LocalDateTime requestedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         refundRepository.saveAndFlush(Refund.pending(
                 payment,
                 10_000,

@@ -25,6 +25,7 @@ import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ class MatchDeadlineProcessorTest {
 
     @Test
     void 최소_인원을_충족한_마감_경기는_자동_확정한다() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 15, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
 
@@ -67,7 +68,7 @@ class MatchDeadlineProcessorTest {
 
     @Test
     void 최소_인원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 15, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(2, processedAt.minusMinutes(1));
         MatchParticipant participant = mock(MatchParticipant.class);
         Payment payment = createPaidPayment(match.getId(), processedAt.minusMinutes(10));
@@ -99,7 +100,7 @@ class MatchDeadlineProcessorTest {
 
     @Test
     void 이미_대기_중인_환불이_있으면_중복_등록하지_않는다() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 15, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(2, processedAt.minusMinutes(1));
         Payment payment = createPaidPayment(match.getId(), processedAt.minusMinutes(10));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
@@ -123,7 +124,7 @@ class MatchDeadlineProcessorTest {
 
     @Test
     void 이미_처리된_경기는_다시_처리하지_않는다() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 15, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         match.confirm(processedAt.minusSeconds(1));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));

@@ -15,6 +15,7 @@ import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +37,7 @@ class PaymentRefundProcessorTest {
 
     @Test
     void processCompletesPendingRefund() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 16, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 16, 12, 0);
         Payment payment = createPaidPayment(10_000);
         Refund refund = Refund.pending(payment, 10_000, "MATCH_CANCELLED", processedAt.minusMinutes(1));
         when(refundRepository.findByIdForUpdate(refund.getId())).thenReturn(Optional.of(refund));
@@ -53,7 +54,7 @@ class PaymentRefundProcessorTest {
 
     @Test
     void processFailsRefundWhenPaymentKeyIsMissing() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 16, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 16, 12, 0);
         Payment payment = createPendingPayment();
         Refund refund = Refund.pending(payment, 10_000, "MATCH_CANCELLED", processedAt.minusMinutes(1));
         when(refundRepository.findByIdForUpdate(refund.getId())).thenReturn(Optional.of(refund));
@@ -67,7 +68,7 @@ class PaymentRefundProcessorTest {
 
     @Test
     void processFailsRefundWhenTossPaymentsCancelFails() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, 6, 16, 12, 0);
+        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 16, 12, 0);
         Payment payment = createPaidPayment(10_000);
         Refund refund = Refund.pending(payment, 10_000, "MATCH_CANCELLED", processedAt.minusMinutes(1));
         when(refundRepository.findByIdForUpdate(refund.getId())).thenReturn(Optional.of(refund));
@@ -85,7 +86,7 @@ class PaymentRefundProcessorTest {
 
     private Payment createPaidPayment(int amount) {
         Payment payment = createPendingPayment(amount);
-        payment.complete("payment-key", LocalDateTime.of(2026, 6, 16, 11, 0));
+        payment.complete("payment-key", LocalDateTime.of(2026, Month.JUNE, 16, 11, 0));
         return payment;
     }
 
