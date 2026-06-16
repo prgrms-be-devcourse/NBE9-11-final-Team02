@@ -6,6 +6,7 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
 import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
@@ -35,12 +36,18 @@ public class PaymentService {
     @Transactional
     public PaymentPrepareResponse prepare(String userId, String queueToken, PaymentPrepareRequest request) {
         validatePaymentTarget(request);
-        validateQueueToken(userId, queueToken, request);
 
         Integer expectedAmount = getExpectedAmount(request);
         if (!expectedAmount.equals(request.amount())) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
+
+        Payment existingPendingPayment = findExistingPendingPayment(userId, request);
+        if (existingPendingPayment != null) {
+            return PaymentPrepareResponse.from(existingPendingPayment);
+        }
+
+        validateQueueToken(userId, queueToken, request);
 
         Payment payment = Payment.create(
                 getParticipantId(userId, request),
@@ -53,6 +60,26 @@ public class PaymentService {
         );
 
         return PaymentPrepareResponse.from(paymentRepository.save(payment));
+    }
+
+    private Payment findExistingPendingPayment(String userId, PaymentPrepareRequest request) {
+        if (request.paymentType() == PaymentType.FACILITY) {
+            return paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
+                            userId,
+                            request.facilitySlotId(),
+                            request.paymentType(),
+                            PaymentStatus.PENDING
+                    )
+                    .orElse(null);
+        }
+
+        return paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                        userId,
+                        request.matchId(),
+                        request.paymentType(),
+                        PaymentStatus.PENDING
+                )
+                .orElse(null);
     }
 
     private void validateQueueToken(String userId, String queueToken, PaymentPrepareRequest request) {

@@ -13,10 +13,13 @@ import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEventType;
+import com.back.sportteam.domain.payment.entity.PaymentWebhookProcessingResult;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +41,7 @@ class PaymentWebhookProcessorTest {
     private PaymentWebhookProcessor paymentWebhookProcessor;
 
     @Test
-    void 결제_성공_웹훅이면_결제를_PAID로_변경하고_이벤트를_저장한다() {
+    void succeededWebhookChangesPaymentToPaidAndStoresEvent() {
         Payment payment = createPendingPayment();
         PaymentWebhookRequest request = createRequest(
                 "event-1",
@@ -60,11 +63,15 @@ class PaymentWebhookProcessorTest {
         PaymentWebhookEvent event = eventCaptor.getValue();
         assertThat(event.getEventId()).isEqualTo("event-1");
         assertThat(event.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(event.getPreviousPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(event.getFinalPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(event.getProcessingResult()).isEqualTo(PaymentWebhookProcessingResult.APPLIED);
+        assertThat(event.getPgTransactionId()).isEqualTo("pg-transaction-1");
         assertThat(event.getAmount()).isEqualTo(10_000);
     }
 
     @Test
-    void 결제_실패_웹훅이면_결제를_FAILED로_변경하고_이벤트를_저장한다() {
+    void failedWebhookChangesPaymentToFailedAndStoresEvent() {
         Payment payment = createPendingPayment();
         PaymentWebhookRequest request = createRequest(
                 "event-2",
@@ -78,11 +85,17 @@ class PaymentWebhookProcessorTest {
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getPgTransactionId()).isNull();
-        verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
+        ArgumentCaptor<PaymentWebhookEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentWebhookEvent.class);
+        verify(paymentWebhookEventRepository).saveAndFlush(eventCaptor.capture());
+        PaymentWebhookEvent event = eventCaptor.getValue();
+        assertThat(event.getPreviousPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(event.getFinalPaymentStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(event.getProcessingResult()).isEqualTo(PaymentWebhookProcessingResult.APPLIED);
     }
 
     @Test
-    void 이미_처리한_eventId면_결제와_이벤트를_다시_처리하지_않는다() {
+    void alreadyProcessedEventIsIgnored() {
         PaymentWebhookRequest request = createRequest(
                 "event-1",
                 PaymentWebhookEventType.PAYMENT_SUCCEEDED,
@@ -98,7 +111,7 @@ class PaymentWebhookProcessorTest {
     }
 
     @Test
-    void 웹훅_금액이_주문_금액과_다르면_상태를_변경하지_않는다() {
+    void amountMismatchDoesNotChangePaymentStatus() {
         Payment payment = createPendingPayment();
         PaymentWebhookRequest request = createRequest(
                 "event-1",
@@ -115,6 +128,32 @@ class PaymentWebhookProcessorTest {
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
         verify(paymentWebhookEventRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void paidPaymentIgnoresFailedWebhookAndStoresEvent() {
+        Payment payment = createPendingPayment();
+        payment.complete("pg-transaction-1", LocalDateTime.of(2026, Month.JUNE, 16, 12, 0));
+        PaymentWebhookRequest request = createRequest(
+                "event-3",
+                PaymentWebhookEventType.PAYMENT_FAILED,
+                null,
+                10_000
+        );
+        when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+
+        paymentWebhookProcessor.process(request);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getPgTransactionId()).isEqualTo("pg-transaction-1");
+        ArgumentCaptor<PaymentWebhookEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentWebhookEvent.class);
+        verify(paymentWebhookEventRepository).saveAndFlush(eventCaptor.capture());
+        PaymentWebhookEvent event = eventCaptor.getValue();
+        assertThat(event.getPreviousPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(event.getFinalPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(event.getProcessingResult()).isEqualTo(PaymentWebhookProcessingResult.IGNORED);
+        assertThat(event.getResultReason()).isNotBlank();
     }
 
     private Payment createPendingPayment() {

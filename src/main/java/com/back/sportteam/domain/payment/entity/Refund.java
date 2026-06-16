@@ -86,12 +86,25 @@ public class Refund {
         return status == RefundStatus.PENDING;
     }
 
+    public boolean isProcessing() {
+        return status == RefundStatus.PROCESSING;
+    }
+
+    public void markProcessing() {
+        if (status != RefundStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING refunds can be marked PROCESSING.");
+        }
+
+        this.status = RefundStatus.PROCESSING;
+        this.failureReason = null;
+    }
+
     public void complete(LocalDateTime completedAt) {
         if (status == RefundStatus.COMPLETED) {
             return;
         }
-        if (status != RefundStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태의 환불만 완료 처리할 수 있습니다.");
+        if (status != RefundStatus.PROCESSING) {
+            throw new IllegalStateException("Only PROCESSING refunds can be completed.");
         }
 
         this.status = RefundStatus.COMPLETED;
@@ -103,8 +116,8 @@ public class Refund {
         if (status == RefundStatus.FAILED) {
             return;
         }
-        if (status != RefundStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태의 환불만 실패 처리할 수 있습니다.");
+        if (status != RefundStatus.PENDING && status != RefundStatus.PROCESSING) {
+            throw new IllegalStateException("Only PENDING or PROCESSING refunds can be failed.");
         }
 
         this.status = RefundStatus.FAILED;

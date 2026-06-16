@@ -40,8 +40,26 @@ public class PaymentWebhookEvent {
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "previous_payment_status", nullable = false, length = 20)
+    private PaymentStatus previousPaymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "final_payment_status", nullable = false, length = 20)
+    private PaymentStatus finalPaymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "processing_result", nullable = false, length = 20)
+    private PaymentWebhookProcessingResult processingResult;
+
+    @Column(name = "pg_transaction_id", length = 100)
+    private String pgTransactionId;
+
     @Column(name = "amount", nullable = false)
     private Integer amount;
+
+    @Column(name = "result_reason", length = 255)
+    private String resultReason;
 
     @Column(name = "processed_at", nullable = false)
     private LocalDateTime processedAt;
@@ -53,7 +71,12 @@ public class PaymentWebhookEvent {
             Payment payment,
             String eventId,
             PaymentWebhookEventType eventType,
+            PaymentStatus previousPaymentStatus,
+            PaymentStatus finalPaymentStatus,
+            PaymentWebhookProcessingResult processingResult,
+            String pgTransactionId,
             Integer amount,
+            String resultReason,
             LocalDateTime processedAt
     ) {
         this.id = UUID.randomUUID().toString();
@@ -61,7 +84,12 @@ public class PaymentWebhookEvent {
         this.eventId = eventId;
         this.eventType = eventType;
         this.paymentStatus = eventType.getPaymentStatus();
+        this.previousPaymentStatus = previousPaymentStatus;
+        this.finalPaymentStatus = finalPaymentStatus;
+        this.processingResult = processingResult;
+        this.pgTransactionId = pgTransactionId;
         this.amount = amount;
+        this.resultReason = resultReason;
         this.processedAt = processedAt;
         this.createdAt = processedAt;
     }
@@ -70,9 +98,25 @@ public class PaymentWebhookEvent {
             Payment payment,
             String eventId,
             PaymentWebhookEventType eventType,
+            PaymentStatus previousPaymentStatus,
+            PaymentStatus finalPaymentStatus,
+            PaymentWebhookProcessingResult processingResult,
+            String pgTransactionId,
             Integer amount,
+            String resultReason,
             LocalDateTime processedAt
     ) {
-        return new PaymentWebhookEvent(payment, eventId, eventType, amount, processedAt);
+        return new PaymentWebhookEvent(
+                payment,
+                eventId,
+                eventType,
+                previousPaymentStatus,
+                finalPaymentStatus,
+                processingResult,
+                pgTransactionId,
+                amount,
+                resultReason,
+                processedAt
+        );
     }
 }
