@@ -90,6 +90,19 @@ public class MatchService {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
+        return joinMatch(match, matchId, userId);
+    }
+
+    @Transactional
+    public MatchParticipantResponse joinMatchWithPessimisticLock(String matchId, String userId) {
+        // 비교용 경로: Redis 분산락과 같은 임계 구역을 DB row lock으로 보호한다.
+        Match match = matchRepository.findByIdForUpdate(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        return joinMatch(match, matchId, userId);
+    }
+
+    private MatchParticipantResponse joinMatch(Match match, String matchId, String userId) {
         validateJoinable(match);
         validateNotParticipated(matchId, userId);
 
