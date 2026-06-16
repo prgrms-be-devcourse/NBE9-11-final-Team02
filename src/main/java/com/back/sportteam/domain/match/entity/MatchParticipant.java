@@ -41,7 +41,7 @@ public class MatchParticipant {
     private MatchParticipantRole role;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
+    @Column(name = "status", nullable = false, length = 20)
     private MatchParticipantStatus status;
 
     @Column(name = "joined_at", nullable = false)
