@@ -7,6 +7,10 @@ import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -34,6 +38,15 @@ public class ReviewController {
     ) {
         reviewService.submitReview(matchId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok());
+    }
+
+    @GetMapping("/api/v1/facilities/{facilityId}/reviews")
+    public ResponseEntity<ApiResponse<Page<FacilityReviewResponse>>> getFacilityReviews(
+            @PathVariable String facilityId,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Page<FacilityReviewResponse> response = reviewService.getFacilityReviews(facilityId, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping("/api/v1/users/me/reviews/facilities")
