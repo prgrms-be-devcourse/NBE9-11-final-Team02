@@ -45,18 +45,16 @@ public class DistributedLockAspect {
             if (!locked) {
                 throw new BusinessException(CommonErrorCode.LOCK_ACQUISITION_FAILED);
             }
+
+            try {
+                // 실제 비즈니스 로직은 락 획득 이후 실행되며, 내부에서 트랜잭션을 시작한다.
+                return joinPoint.proceed();
+            } finally {
+                lock.unlock();
+            }
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new BusinessException(CommonErrorCode.LOCK_ACQUISITION_FAILED);
-        }
-
-        try {
-            // 실제 비즈니스 로직은 락 획득 이후 실행되며, 내부에서 트랜잭션을 시작한다.
-            return joinPoint.proceed();
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
         }
     }
 
