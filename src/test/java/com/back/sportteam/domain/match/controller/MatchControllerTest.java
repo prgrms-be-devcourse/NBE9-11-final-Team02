@@ -12,6 +12,7 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
+import com.back.sportteam.domain.match.service.MatchJoinFacade;
 import com.back.sportteam.domain.match.service.MatchService;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
@@ -45,13 +46,15 @@ class MatchControllerTest {
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
     private MatchService matchService;
+    private MatchJoinFacade matchJoinFacade;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         matchService = mock(MatchService.class);
+        matchJoinFacade = mock(MatchJoinFacade.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new MatchController(matchService))
+                .standaloneSetup(new MatchController(matchService, matchJoinFacade))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -159,7 +162,8 @@ class MatchControllerTest {
 
     @Test
     void 매칭방_참가_요청을_201_응답으로_반환한다() throws Exception {
-        when(matchService.joinMatch("match-id", "user-id")).thenReturn(createParticipantResponse("participant-id", "user-id"));
+        when(matchJoinFacade.joinMatchWithDistributedLock("match-id", "user-id"))
+                .thenReturn(createParticipantResponse("participant-id", "user-id"));
 
         mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
                         .header("X-USER-ID", "user-id"))
@@ -170,12 +174,12 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.data.role").value("PARTICIPANT"))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
 
-        verify(matchService).joinMatch("match-id", "user-id");
+        verify(matchJoinFacade).joinMatchWithDistributedLock("match-id", "user-id");
     }
 
     @Test
     void 매칭방_참가시_이미_참가한_유저면_409_응답으로_반환한다() throws Exception {
-        when(matchService.joinMatch("match-id", "user-id"))
+        when(matchJoinFacade.joinMatchWithDistributedLock("match-id", "user-id"))
                 .thenThrow(new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED));
 
         mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
