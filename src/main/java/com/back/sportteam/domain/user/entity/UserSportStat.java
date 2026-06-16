@@ -1,4 +1,4 @@
-package com.back.sportteam.domain.review.entity;
+package com.back.sportteam.domain.user.entity;
 
 import com.back.sportteam.domain.match.entity.SportType;
 import jakarta.persistence.Column;

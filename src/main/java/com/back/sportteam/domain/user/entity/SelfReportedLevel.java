@@ -1,4 +1,4 @@
-package com.back.sportteam.domain.review.entity;
+package com.back.sportteam.domain.user.entity;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

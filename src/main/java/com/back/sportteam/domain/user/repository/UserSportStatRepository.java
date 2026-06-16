@@ -1,7 +1,7 @@
-package com.back.sportteam.domain.review.repository;
+package com.back.sportteam.domain.user.repository;
 
 import com.back.sportteam.domain.match.entity.SportType;
-import com.back.sportteam.domain.review.entity.UserSportStat;
+import com.back.sportteam.domain.user.entity.UserSportStat;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
