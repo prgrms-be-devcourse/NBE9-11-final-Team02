@@ -71,7 +71,7 @@ public class UserSportStat {
         this.skillRating = calculateEffectiveRating();
     }
 
-    // 콜드 스타트: 리뷰 10개 미만이면 자기신고값 가중치를 점진적으로 줄이며 반영
+    // 콜드 스타트: 리뷰 10개 미만이면 사용자가 등록한 실력값 가중치를 점진적으로 줄이며 반영
     private BigDecimal calculateEffectiveRating() {
         BigDecimal reviewAvg = skillRatingSum.divide(
                 BigDecimal.valueOf(reviewCount), 2, RoundingMode.HALF_UP);

@@ -33,10 +33,10 @@ public class ParticipantReview {
     @Column(name = "reviewee_id", columnDefinition = "CHAR(36)", nullable = false)
     private String revieweeId;
 
-    @Column(name = "manner_rating", nullable = false, precision = 3, scale = 1)
+    @Column(name = "manner_rating", precision = 3, scale = 1)
     private BigDecimal mannerRating;
 
-    @Column(name = "skill_rating", nullable = false, precision = 3, scale = 1)
+    @Column(name = "skill_rating", precision = 3, scale = 1)
     private BigDecimal skillRating;
 
     @Column(name = "comment", columnDefinition = "TEXT")

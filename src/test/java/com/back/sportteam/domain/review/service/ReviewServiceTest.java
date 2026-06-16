@@ -235,6 +235,83 @@ class ReviewServiceTest {
         verify(facilityReviewRepository, never()).save(any());
     }
 
+    @Test
+    void 매너_평점만_보내면_매너만_갱신되고_실력은_갱신되지_않는다() {
+        Match match = completedMatch();
+        User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
+        ReflectionTestUtils.setField(reviewee, "id", 2L);
+
+        MatchParticipant participant = mock(MatchParticipant.class);
+        when(participant.getUserId()).thenReturn("2");
+
+        ParticipantReviewRequest pr = new ParticipantReviewRequest();
+        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "mannerRating", new BigDecimal("4.0"));
+        ReflectionTestUtils.setField(pr, "skillRating", null);
+        ReviewSubmitRequest request = submitRequest(null, List.of(pr));
+
+        when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
+        when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
+                .thenReturn(List.of(participant));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(reviewee));
+        when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        reviewService.submitReview("match-1", "user-1", request);
+
+        verify(participantReviewRepository).save(any(ParticipantReview.class));
+        verify(userSportStatRepository, never()).findByUserIdAndSportType(any(), any());
+    }
+
+    @Test
+    void 실력_평점만_보내면_실력만_갱신되고_매너는_갱신되지_않는다() {
+        Match match = completedMatch();
+        UserSportStat stat = UserSportStat.create("2", SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+
+        MatchParticipant participant = mock(MatchParticipant.class);
+        when(participant.getUserId()).thenReturn("2");
+
+        ParticipantReviewRequest pr = new ParticipantReviewRequest();
+        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "mannerRating", null);
+        ReflectionTestUtils.setField(pr, "skillRating", new BigDecimal("3.5"));
+        ReviewSubmitRequest request = submitRequest(null, List.of(pr));
+
+        when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
+        when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
+                .thenReturn(List.of(participant));
+        when(userSportStatRepository.findByUserIdAndSportType("2", SportType.FUTSAL))
+                .thenReturn(Optional.of(stat));
+        when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        reviewService.submitReview("match-1", "user-1", request);
+
+        verify(participantReviewRepository).save(any(ParticipantReview.class));
+        verify(userRepository, never()).findById(any());
+        assertThat(stat.getReviewCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 매너와_실력_평점_모두_없으면_해당_참가자에_대한_리뷰가_저장되지_않는다() {
+        Match match = completedMatch();
+
+        MatchParticipant participant = mock(MatchParticipant.class);
+        when(participant.getUserId()).thenReturn("2");
+
+        ParticipantReviewRequest pr = new ParticipantReviewRequest();
+        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "mannerRating", null);
+        ReflectionTestUtils.setField(pr, "skillRating", null);
+        ReviewSubmitRequest request = submitRequest(null, List.of(pr));
+
+        when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
+        when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
+                .thenReturn(List.of(participant));
+
+        reviewService.submitReview("match-1", "user-1", request);
+
+        verify(participantReviewRepository, never()).save(any());
+    }
+
     private Match completedMatch() {
         Match match = Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-1")
