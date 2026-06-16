@@ -131,4 +131,24 @@ public class Payment {
         this.pgTransactionId = pgTransactionId;
         this.status = PaymentStatus.FAILED;
     }
+
+    public void refund(Integer refundAmount, LocalDateTime refundedAt) {
+        if (status != PaymentStatus.PAID && status != PaymentStatus.REFUNDED) {
+            throw new IllegalStateException("PAID 상태의 결제만 환불 처리할 수 있습니다.");
+        }
+        if (refundAmount == null || refundAmount <= 0) {
+            throw new IllegalArgumentException("환불 금액은 0보다 커야 합니다.");
+        }
+
+        int nextRefundedAmount = refundedAmount + refundAmount;
+        if (nextRefundedAmount > amount) {
+            throw new IllegalArgumentException("누적 환불 금액은 결제 금액을 초과할 수 없습니다.");
+        }
+
+        this.refundedAmount = nextRefundedAmount;
+        if (nextRefundedAmount == amount) {
+            this.status = PaymentStatus.REFUNDED;
+            this.refundedAt = refundedAt;
+        }
+    }
 }
