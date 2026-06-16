@@ -64,4 +64,26 @@ public class UserSportStat {
                                         SelfReportedLevel selfReportedLevel) {
         return new UserSportStat(userId, sportType, position, selfReportedLevel);
     }
+
+    public void addSkillRating(BigDecimal newRating) {
+        this.skillRatingSum = this.skillRatingSum.add(newRating);
+        this.reviewCount++;
+        this.skillRating = calculateEffectiveRating();
+    }
+
+    // 콜드 스타트: 리뷰 10개 미만이면 자기신고값 가중치를 점진적으로 줄이며 반영
+    private BigDecimal calculateEffectiveRating() {
+        BigDecimal reviewAvg = skillRatingSum.divide(
+                BigDecimal.valueOf(reviewCount), 2, RoundingMode.HALF_UP);
+
+        if (reviewCount >= 10) {
+            return reviewAvg;
+        }
+
+        double decayCoeff = 1.0 - reviewCount / 10.0;
+        double effective = selfReportedLevel.getInitialScore().doubleValue() * decayCoeff
+                + reviewAvg.doubleValue() * (1.0 - decayCoeff);
+
+        return BigDecimal.valueOf(effective).setScale(2, RoundingMode.HALF_UP);
+    }
 }
