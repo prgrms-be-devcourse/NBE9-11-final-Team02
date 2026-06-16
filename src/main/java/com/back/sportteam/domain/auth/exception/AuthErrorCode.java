@@ -14,7 +14,8 @@ public enum AuthErrorCode implements ErrorCode {
     INVALID_SIGNUP_REQUEST("AUTH_004", "회원가입 요청이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     DUPLICATE_SOCIAL_ACCOUNT("AUTH_005", "이미 가입된 소셜 계정입니다.", HttpStatus.CONFLICT),
     REFRESH_TOKEN_NOT_FOUND("AUTH_006", "리프레시 토큰이 존재하지 않습니다.", HttpStatus.UNAUTHORIZED),
-    REFRESH_TOKEN_MISMATCH("AUTH_007", "리프레시 토큰이 일치하지 않습니다.", HttpStatus.UNAUTHORIZED);
+    REFRESH_TOKEN_MISMATCH("AUTH_007", "리프레시 토큰이 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
+    ALREADY_LOGGED_OUT("AUTH_008", "이미 로그아웃된 토큰입니다.", HttpStatus.UNAUTHORIZED);
 
     private final String code;
     private final String message;
