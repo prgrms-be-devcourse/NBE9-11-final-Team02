@@ -93,7 +93,8 @@ class DistributedLockAspectTest {
     private static class LockTarget {
 
         @DistributedLock(key = "'match:join:' + #matchId", waitTime = 3L, leaseTime = 5L)
-        public void join(String matchId) {
+        public String join(String matchId) {
+            return matchId;
         }
     }
 }
