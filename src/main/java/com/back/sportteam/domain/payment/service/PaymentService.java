@@ -10,6 +10,7 @@ import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.infra.redis.queue.WaitingQueueService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,10 +25,17 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentAmountReader paymentAmountReader;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final WaitingQueueService waitingQueueService;
 
     @Transactional
     public PaymentPrepareResponse prepare(String userId, PaymentPrepareRequest request) {
+        return prepare(userId, null, request);
+    }
+
+    @Transactional
+    public PaymentPrepareResponse prepare(String userId, String queueToken, PaymentPrepareRequest request) {
         validatePaymentTarget(request);
+        validateQueueToken(userId, queueToken, request);
 
         Integer expectedAmount = getExpectedAmount(request);
         if (!expectedAmount.equals(request.amount())) {
@@ -45,6 +53,12 @@ public class PaymentService {
         );
 
         return PaymentPrepareResponse.from(paymentRepository.save(payment));
+    }
+
+    private void validateQueueToken(String userId, String queueToken, PaymentPrepareRequest request) {
+        if (request.paymentType() == PaymentType.FACILITY) {
+            waitingQueueService.consumeEnterableToken(queueToken, request.facilitySlotId(), userId);
+        }
     }
 
     private Integer getExpectedAmount(PaymentPrepareRequest request) {

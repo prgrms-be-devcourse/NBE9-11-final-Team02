@@ -26,6 +26,10 @@ app:
     refund:
       fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
       batch-size: ${REFUND_BATCH_SIZE:50}
+  queue:
+    reservation:
+      token-ttl-seconds: ${RESERVATION_QUEUE_TOKEN_TTL_SECONDS:300}
+      entry-limit: ${RESERVATION_QUEUE_ENTRY_LIMIT:1}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

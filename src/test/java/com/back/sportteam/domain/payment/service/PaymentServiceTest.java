@@ -19,6 +19,7 @@ import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.infra.redis.queue.WaitingQueueService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -38,6 +39,9 @@ class PaymentServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private WaitingQueueService waitingQueueService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -151,10 +155,11 @@ class PaymentServiceTest {
         when(paymentAmountReader.getFacilityAmount("slot-id")).thenReturn(100_000);
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        paymentService.prepare("user-id", request);
+        paymentService.prepare("user-id", "queue-token", request);
 
         ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentRepository).save(paymentCaptor.capture());
+        verify(waitingQueueService).consumeEnterableToken("queue-token", "slot-id", "user-id");
         Payment payment = paymentCaptor.getValue();
         assertThat(payment.getParticipantId()).isNull();
         assertThat(payment.getMatchId()).isNull();

@@ -11,6 +11,7 @@ import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class MatchDeadlineProcessor {
     private final MatchParticipantRepository matchParticipantRepository;
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
+    private final ReservationRepository reservationRepository;
 
     @Transactional
     public void process(String matchId, LocalDateTime processedAt) {
@@ -42,7 +44,7 @@ public class MatchDeadlineProcessor {
 
         match.cancel(processedAt);
         cancelActiveParticipants(matchId);
-        enqueueRefunds(matchId, processedAt);
+        enqueueRefunds(match, processedAt);
     }
 
     private void cancelActiveParticipants(String matchId) {
@@ -53,9 +55,16 @@ public class MatchDeadlineProcessor {
                 .forEach(MatchParticipant::cancel);
     }
 
-    private void enqueueRefunds(String matchId, LocalDateTime requestedAt) {
-        List<Payment> paidPayments =
-                paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID);
+    private void enqueueRefunds(Match match, LocalDateTime requestedAt) {
+        List<Payment> paidPayments = new java.util.ArrayList<>(
+                paymentRepository.findAllByMatchIdAndStatus(match.getId(), PaymentStatus.PAID)
+        );
+        reservationRepository.findById(match.getReservationId())
+                .map(reservation -> paymentRepository.findAllByFacilitySlotIdAndStatus(
+                        reservation.getFacilitySlotId(),
+                        PaymentStatus.PAID
+                ))
+                .ifPresent(paidPayments::addAll);
 
         List<Refund> refunds = paidPayments.stream()
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())

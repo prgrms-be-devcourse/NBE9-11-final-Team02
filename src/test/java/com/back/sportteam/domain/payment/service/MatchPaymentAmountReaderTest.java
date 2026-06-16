@@ -10,6 +10,7 @@ import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.reservation.exception.ReservationErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class MatchPaymentAmountReaderTest {
     @Test
     void 시설_결제_금액은_시설_슬롯_가격으로_조회한다() {
         FacilitySlot facilitySlot = mock(FacilitySlot.class);
+        when(facilitySlot.isReservable()).thenReturn(true);
         when(facilitySlot.getPrice()).thenReturn(100_000);
         when(facilitySlotRepository.findById("slot-id")).thenReturn(Optional.of(facilitySlot));
 
@@ -60,5 +62,17 @@ class MatchPaymentAmountReaderTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND);
+    }
+
+    @Test
+    void 예약할_수_없는_슬롯은_시설_결제_금액을_조회할_수_없다() {
+        FacilitySlot facilitySlot = mock(FacilitySlot.class);
+        when(facilitySlot.isReservable()).thenReturn(false);
+        when(facilitySlotRepository.findById("slot-id")).thenReturn(Optional.of(facilitySlot));
+
+        assertThatThrownBy(() -> paymentAmountReader.getFacilityAmount("slot-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReservationErrorCode.SLOT_NOT_AVAILABLE);
     }
 }
