@@ -8,6 +8,7 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.review.dto.request.ParticipantReviewRequest;
 import com.back.sportteam.domain.review.dto.request.ReviewSubmitRequest;
+import com.back.sportteam.domain.review.dto.response.FacilityReviewResponse;
 import com.back.sportteam.domain.review.entity.FacilityReview;
 import com.back.sportteam.domain.review.entity.ParticipantReview;
 import com.back.sportteam.domain.review.entity.UserSportStat;
@@ -22,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,13 @@ public class ReviewService {
     private final UserSportStatRepository userSportStatRepository;
     private final UserRepository userRepository;
     private final ReviewValidator reviewValidator;
+
+    @Transactional(readOnly = true)
+    public List<FacilityReviewResponse> getMyFacilityReviews(String userId) {
+        return facilityReviewRepository.findByUserId(userId).stream()
+                .map(FacilityReviewResponse::from)
+                .toList();
+    }
 
     @Transactional
     public void submitReview(String matchId, String reviewerId, ReviewSubmitRequest request) {
