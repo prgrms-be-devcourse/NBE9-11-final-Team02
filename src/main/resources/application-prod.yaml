@@ -24,3 +24,8 @@ logging:
 toss:
   payment:
     secret-key: "${custom.prod.toss.secretKey}"
+
+match:
+  payment-hold:
+    duration-minutes: 10
+    expiration-check-delay-millis: 60000

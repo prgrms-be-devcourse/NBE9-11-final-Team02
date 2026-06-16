@@ -163,7 +163,7 @@ class MatchControllerTest {
     @Test
     void 매칭방_참가_요청을_201_응답으로_반환한다() throws Exception {
         when(matchJoinFacade.joinMatchWithDistributedLock("match-id", "user-id"))
-                .thenReturn(createParticipantResponse("participant-id", "user-id"));
+                .thenReturn(createPendingParticipantResponse("participant-id", "user-id"));
 
         mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
                         .header("X-USER-ID", "user-id"))
@@ -172,7 +172,7 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.data.participantId").value("participant-id"))
                 .andExpect(jsonPath("$.data.userId").value("user-id"))
                 .andExpect(jsonPath("$.data.role").value("PARTICIPANT"))
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.data.status").value("PAYMENT_PENDING"));
 
         verify(matchJoinFacade).joinMatchWithDistributedLock("match-id", "user-id");
     }
@@ -380,21 +380,38 @@ class MatchControllerTest {
         return createParticipantResponse("participant-id", "host-id", MatchParticipantRole.HOST);
     }
 
-    private MatchParticipantResponse createParticipantResponse(String participantId, String userId) {
-        return createParticipantResponse(participantId, userId, MatchParticipantRole.PARTICIPANT);
-    }
-
     private MatchParticipantResponse createParticipantResponse(
             String participantId,
             String userId,
             MatchParticipantRole role
     ) {
+        return createParticipantResponse(participantId, userId, role, MatchParticipantStatus.ACTIVE, null);
+    }
+
+    private MatchParticipantResponse createPendingParticipantResponse(String participantId, String userId) {
+        return createParticipantResponse(
+                participantId,
+                userId,
+                MatchParticipantRole.PARTICIPANT,
+                MatchParticipantStatus.PAYMENT_PENDING,
+                CREATED_AT.plusMinutes(1)
+        );
+    }
+
+    private MatchParticipantResponse createParticipantResponse(
+            String participantId,
+            String userId,
+            MatchParticipantRole role,
+            MatchParticipantStatus status,
+            LocalDateTime paymentDeadline
+    ) {
         return new MatchParticipantResponse(
                 participantId,
                 userId,
                 role,
-                MatchParticipantStatus.ACTIVE,
-                CREATED_AT
+                status,
+                CREATED_AT,
+                paymentDeadline
         );
     }
 
