@@ -97,9 +97,13 @@ public class MatchParticipant {
         return role == MatchParticipantRole.HOST;
     }
 
-    public void cancel() {
+    public boolean cancel() {
+        if (status == MatchParticipantStatus.CANCELLED) {
+            return false;
+        }
         this.status = MatchParticipantStatus.CANCELLED;
         this.paymentDeadline = null;
+        return true;
     }
 
     public void activate() {

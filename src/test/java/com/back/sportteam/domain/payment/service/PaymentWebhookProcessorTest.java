@@ -11,6 +11,7 @@ import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
+import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
@@ -83,6 +84,8 @@ class PaymentWebhookProcessorTest {
     @Test
     void 결제_실패_웹훅이면_결제를_FAILED로_변경하고_이벤트를_저장한다() {
         Payment payment = createPendingPayment();
+        MatchParticipant participant = createPendingParticipant();
+        participant.getMatch().increaseCurrentCount();
         PaymentWebhookRequest request = createRequest(
                 "event-2",
                 PaymentWebhookEventType.PAYMENT_FAILED,
@@ -90,12 +93,38 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+        when(matchParticipantRepository.findById("participant-id")).thenReturn(Optional.of(participant));
 
         paymentWebhookProcessor.process(request);
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getPgTransactionId()).isNull();
-        verify(matchParticipantRepository, never()).findById(any());
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(participant.getPaymentDeadline()).isNull();
+        assertThat(participant.getMatch().getCurrentCount()).isEqualTo(1);
+        verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
+    }
+
+    @Test
+    void 방장_결제_실패_웹훅이면_매칭방도_취소한다() {
+        Payment payment = createPendingPayment();
+        MatchParticipant host = createPendingHost();
+        PaymentWebhookRequest request = createRequest(
+                "event-3",
+                PaymentWebhookEventType.PAYMENT_FAILED,
+                null,
+                10_000
+        );
+        when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+        when(matchParticipantRepository.findById("participant-id")).thenReturn(Optional.of(host));
+
+        paymentWebhookProcessor.process(request);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(host.getMatch().getCurrentCount()).isZero();
+        assertThat(host.getMatch().getStatus()).isEqualTo(MatchStatus.CANCELLED);
+        assertThat(host.getMatch().getCancelledAt()).isNotNull();
         verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
     }
 
@@ -148,6 +177,14 @@ class PaymentWebhookProcessorTest {
     }
 
     private MatchParticipant createPendingParticipant() {
+        return MatchParticipant.participant(createMatch(), "user-id");
+    }
+
+    private MatchParticipant createPendingHost() {
+        return MatchParticipant.host(createMatch(), "user-id");
+    }
+
+    private Match createMatch() {
         Match match = Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
@@ -162,7 +199,7 @@ class PaymentWebhookProcessorTest {
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
                 .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
-        return MatchParticipant.participant(match, "user-id");
+        return match;
     }
 
     private PaymentWebhookRequest createRequest(

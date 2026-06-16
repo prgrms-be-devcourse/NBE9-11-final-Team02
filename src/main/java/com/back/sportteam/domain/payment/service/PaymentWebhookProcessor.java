@@ -66,6 +66,7 @@ public class PaymentWebhookProcessor {
                 return;
             }
             payment.fail(normalize(request.pgTransactionId()));
+            cancelParticipantIfParticipationPayment(payment, processedAt);
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
@@ -79,6 +80,21 @@ public class PaymentWebhookProcessor {
         MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
         participant.activate();
+    }
+
+    private void cancelParticipantIfParticipationPayment(Payment payment, LocalDateTime processedAt) {
+        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
+            return;
+        }
+
+        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
+        if (participant.cancel()) {
+            participant.getMatch().decreaseCurrentCount();
+        }
+        if (participant.isHost()) {
+            participant.getMatch().cancel(processedAt);
+        }
     }
 
     private String normalize(String value) {
