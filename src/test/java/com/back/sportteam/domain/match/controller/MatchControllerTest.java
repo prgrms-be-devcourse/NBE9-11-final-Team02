@@ -380,10 +380,6 @@ class MatchControllerTest {
         return createParticipantResponse("participant-id", "host-id", MatchParticipantRole.HOST);
     }
 
-    private MatchParticipantResponse createParticipantResponse(String participantId, String userId) {
-        return createParticipantResponse(participantId, userId, MatchParticipantRole.PARTICIPANT);
-    }
-
     private MatchParticipantResponse createParticipantResponse(
             String participantId,
             String userId,

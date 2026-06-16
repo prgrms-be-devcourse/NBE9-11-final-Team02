@@ -185,7 +185,7 @@ class PaymentWebhookProcessorTest {
     }
 
     private Match createMatch() {
-        Match match = Match.create(MatchCreateCommand.builder()
+        return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
                 .title("풋살 매칭")
@@ -199,7 +199,6 @@ class PaymentWebhookProcessorTest {
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
                 .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
-        return match;
     }
 
     private PaymentWebhookRequest createRequest(
