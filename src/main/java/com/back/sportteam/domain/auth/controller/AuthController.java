@@ -4,7 +4,9 @@ import com.back.sportteam.domain.auth.dto.request.LoginRequest;
 import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.LoginResponse;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
+import com.back.sportteam.domain.auth.dto.response.TokenRefreshResponse;
 import com.back.sportteam.domain.auth.service.AuthLoginService;
+import com.back.sportteam.domain.auth.service.AuthRefreshService;
 import com.back.sportteam.domain.auth.service.AuthSignupService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +27,7 @@ public class AuthController {
 
     private final AuthSignupService authSignupService;
     private final AuthLoginService authLoginService;
+    private final AuthRefreshService authRefreshService;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
@@ -40,5 +44,15 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.ok(authLoginService.login(request, response)));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(
+            @CookieValue(name = "refreshToken") String refreshToken,
+            HttpServletResponse response
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.ok(authRefreshService.refresh(refreshToken, response)));
     }
 }
