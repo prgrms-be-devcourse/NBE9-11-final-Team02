@@ -23,6 +23,9 @@ app:
     match-deadline:
       fixed-delay-ms: ${MATCH_DEADLINE_FIXED_DELAY_MS:60000}
       batch-size: ${MATCH_DEADLINE_BATCH_SIZE:100}
+    refund:
+      fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
+      batch-size: ${REFUND_BATCH_SIZE:50}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

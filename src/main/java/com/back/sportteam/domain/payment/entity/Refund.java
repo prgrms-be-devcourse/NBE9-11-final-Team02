@@ -81,4 +81,33 @@ public class Refund {
     ) {
         return new Refund(payment, amount, reason, requestedAt);
     }
+
+    public boolean isPending() {
+        return status == RefundStatus.PENDING;
+    }
+
+    public void complete(LocalDateTime completedAt) {
+        if (status == RefundStatus.COMPLETED) {
+            return;
+        }
+        if (status != RefundStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 환불만 완료 처리할 수 있습니다.");
+        }
+
+        this.status = RefundStatus.COMPLETED;
+        this.completedAt = completedAt;
+        this.failureReason = null;
+    }
+
+    public void fail(String failureReason) {
+        if (status == RefundStatus.FAILED) {
+            return;
+        }
+        if (status != RefundStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태의 환불만 실패 처리할 수 있습니다.");
+        }
+
+        this.status = RefundStatus.FAILED;
+        this.failureReason = failureReason;
+    }
 }

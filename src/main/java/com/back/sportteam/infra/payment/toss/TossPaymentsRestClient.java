@@ -38,4 +38,18 @@ public class TossPaymentsRestClient implements TossPaymentsClient {
             throw new BusinessException(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);
         }
     }
+
+    @Override
+    public void cancelPayment(String paymentKey, Integer cancelAmount, String cancelReason) {
+        try {
+            restClient.post()
+                    .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .body(new TossPaymentsCancelRequest(cancelReason, cancelAmount))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException _) {
+            throw new BusinessException(PaymentErrorCode.REFUND_FAILED);
+        }
+    }
 }
