@@ -31,7 +31,7 @@ class MatchLockTestControllerTest {
                 MatchParticipantRole.PARTICIPANT,
                 MatchParticipantStatus.PAYMENT_PENDING,
                 JOINED_AT,
-                JOINED_AT.plusMinutes(10)
+                JOINED_AT.plusMinutes(1)
         );
         when(matchService.joinMatchWithPessimisticLock("match-id", "user-id")).thenReturn(participantResponse);
 

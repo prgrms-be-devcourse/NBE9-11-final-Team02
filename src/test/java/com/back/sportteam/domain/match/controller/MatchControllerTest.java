@@ -398,7 +398,7 @@ class MatchControllerTest {
                 userId,
                 MatchParticipantRole.PARTICIPANT,
                 MatchParticipantStatus.PAYMENT_PENDING,
-                CREATED_AT.plusMinutes(10)
+                CREATED_AT.plusMinutes(1)
         );
     }
 

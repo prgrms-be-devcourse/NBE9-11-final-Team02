@@ -25,7 +25,7 @@ import java.util.UUID;
 public class MatchParticipant {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-    private static final Duration PAYMENT_HOLD_DURATION = Duration.ofMinutes(10);
+    private static final Duration DEFAULT_PAYMENT_HOLD_DURATION = Duration.ofMinutes(1);
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -70,6 +70,10 @@ public class MatchParticipant {
     }
 
     public static MatchParticipant host(Match match, String userId) {
+        return host(match, userId, DEFAULT_PAYMENT_HOLD_DURATION);
+    }
+
+    public static MatchParticipant host(Match match, String userId, Duration paymentHoldDuration) {
         LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
         return new MatchParticipant(
                 match,
@@ -77,11 +81,15 @@ public class MatchParticipant {
                 MatchParticipantRole.HOST,
                 MatchParticipantStatus.PAYMENT_PENDING,
                 joinedAt,
-                joinedAt.plus(PAYMENT_HOLD_DURATION)
+                joinedAt.plus(paymentHoldDuration)
         );
     }
 
     public static MatchParticipant participant(Match match, String userId) {
+        return participant(match, userId, DEFAULT_PAYMENT_HOLD_DURATION);
+    }
+
+    public static MatchParticipant participant(Match match, String userId, Duration paymentHoldDuration) {
         LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
         return new MatchParticipant(
                 match,
@@ -89,7 +97,7 @@ public class MatchParticipant {
                 MatchParticipantRole.PARTICIPANT,
                 MatchParticipantStatus.PAYMENT_PENDING,
                 joinedAt,
-                joinedAt.plus(PAYMENT_HOLD_DURATION)
+                joinedAt.plus(paymentHoldDuration)
         );
     }
 

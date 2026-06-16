@@ -20,6 +20,11 @@ app:
       base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
 
+match:
+  payment-hold:
+    duration-minutes: 10
+    expiration-check-delay-millis: 60000
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:

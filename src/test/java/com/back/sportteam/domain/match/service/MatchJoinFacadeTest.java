@@ -27,7 +27,7 @@ class MatchJoinFacadeTest {
                 MatchParticipantRole.PARTICIPANT,
                 MatchParticipantStatus.PAYMENT_PENDING,
                 JOINED_AT,
-                JOINED_AT.plusMinutes(10)
+                JOINED_AT.plusMinutes(1)
         );
         when(matchService.joinMatch("match-id", "user-id")).thenReturn(participantResponse);
 

@@ -76,7 +76,7 @@ class MatchServiceTest {
         assertThat(participant.getUserId()).isEqualTo("host-id");
         assertThat(participant.getRole()).isEqualTo(MatchParticipantRole.HOST);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(participant.getPaymentDeadline()).isEqualTo(participant.getJoinedAt().plusMinutes(10));
+        assertThat(participant.getPaymentDeadline()).isEqualTo(participant.getJoinedAt().plusMinutes(1));
     }
 
     @Test
@@ -265,7 +265,7 @@ class MatchServiceTest {
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
         assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(10));
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -287,7 +287,7 @@ class MatchServiceTest {
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
         assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(10));
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
