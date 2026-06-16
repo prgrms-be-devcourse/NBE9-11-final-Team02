@@ -35,10 +35,9 @@ public class DistributedLockAspect {
     public Object applyLock(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
         String lockKey = LOCK_PREFIX + parseKey(joinPoint, distributedLock.key());
         RLock lock = redissonClient.getLock(lockKey);
-        boolean locked = false;
 
         try {
-            locked = lock.tryLock(
+            boolean locked = lock.tryLock(
                     distributedLock.waitTime(),
                     distributedLock.leaseTime(),
                     distributedLock.timeUnit()
@@ -46,13 +45,16 @@ public class DistributedLockAspect {
             if (!locked) {
                 throw new BusinessException(CommonErrorCode.LOCK_ACQUISITION_FAILED);
             }
-            // 실제 비즈니스 로직은 락 획득 이후 실행되며, 내부에서 트랜잭션을 시작한다.
-            return joinPoint.proceed();
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new BusinessException(CommonErrorCode.LOCK_ACQUISITION_FAILED);
+        }
+
+        try {
+            // 실제 비즈니스 로직은 락 획득 이후 실행되며, 내부에서 트랜잭션을 시작한다.
+            return joinPoint.proceed();
         } finally {
-            if (locked && lock.isHeldByCurrentThread()) {
+            if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
