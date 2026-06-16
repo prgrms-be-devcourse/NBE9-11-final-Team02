@@ -27,7 +27,7 @@ public interface RefundRepository extends JpaRepository<Refund, String> {
               and (refund.nextRetryAt is null or refund.nextRetryAt <= :now)
             order by refund.requestedAt asc
             """)
-    List<String> findIdsByStatus(
+    List<String> findProcessableIds(
             @Param("status") RefundStatus status,
             @Param("now") LocalDateTime now,
             Pageable pageable

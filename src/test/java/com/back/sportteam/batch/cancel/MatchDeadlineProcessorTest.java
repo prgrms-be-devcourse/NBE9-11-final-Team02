@@ -124,9 +124,9 @@ class MatchDeadlineProcessorTest {
                 match.getId(),
                 PaymentStatus.PAID
         )).thenReturn(List.of(payment));
-        when(refundRepository.existsByPaymentIdAndStatus(
+        when(refundRepository.existsByPaymentIdAndStatusIn(
                 payment.getId(),
-                RefundStatus.PENDING
+                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
         )).thenReturn(true);
 
         matchDeadlineProcessor.process(match.getId(), processedAt);

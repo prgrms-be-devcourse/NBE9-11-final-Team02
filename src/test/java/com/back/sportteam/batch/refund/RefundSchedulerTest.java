@@ -39,7 +39,7 @@ class RefundSchedulerTest {
 
     @Test
     void processPendingRefundsContinuesAfterFailure() {
-        when(refundRepository.findIdsByStatus(
+        when(refundRepository.findProcessableIds(
                 eq(RefundStatus.PENDING),
                 any(LocalDateTime.class),
                 any(Pageable.class)
