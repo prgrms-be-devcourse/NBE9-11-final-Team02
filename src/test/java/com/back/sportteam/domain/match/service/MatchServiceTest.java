@@ -17,6 +17,7 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +52,9 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private ReservationSlotService reservationSlotService;
 
     @InjectMocks
     private MatchService matchService;
@@ -413,6 +418,7 @@ class MatchServiceTest {
         assertThat(response.confirmedAt()).isNotNull();
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isNotNull();
+        verify(reservationSlotService).confirmReservation(match.getReservationId());
     }
 
     @Test
@@ -476,6 +482,7 @@ class MatchServiceTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isNotNull();
+        verify(reservationSlotService).cancelReservation(eq(match.getReservationId()), any(LocalDateTime.class));
         assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
     }

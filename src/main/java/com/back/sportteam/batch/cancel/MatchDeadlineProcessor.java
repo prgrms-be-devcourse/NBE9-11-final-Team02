@@ -12,6 +12,7 @@ import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class MatchDeadlineProcessor {
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationSlotService reservationSlotService;
 
     @Transactional
     public void process(String matchId, LocalDateTime processedAt) {
@@ -39,10 +41,12 @@ public class MatchDeadlineProcessor {
 
         if (match.hasEnoughParticipants()) {
             match.confirm(processedAt);
+            reservationSlotService.confirmReservation(match.getReservationId());
             return;
         }
 
         match.cancel(processedAt);
+        reservationSlotService.cancelReservation(match.getReservationId(), processedAt);
         cancelActiveParticipants(matchId);
         enqueueRefunds(match, processedAt);
     }
@@ -68,9 +72,9 @@ public class MatchDeadlineProcessor {
 
         List<Refund> refunds = paidPayments.stream()
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
-                .filter(payment -> !refundRepository.existsByPaymentIdAndStatus(
+                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
                         payment.getId(),
-                        RefundStatus.PENDING
+                        List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
                 ))
                 .map(payment -> Refund.pending(
                         payment,

@@ -13,6 +13,7 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final ReservationSlotService reservationSlotService;
 
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
@@ -137,6 +139,7 @@ public class MatchService {
         validateConfirmable(match, hostId);
 
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
+        reservationSlotService.confirmReservation(match.getReservationId());
 
         return MatchDetailResponse.from(match);
     }
@@ -148,7 +151,9 @@ public class MatchService {
 
         validateCancellable(match, hostId);
 
-        match.cancel(LocalDateTime.now(SERVICE_ZONE));
+        LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
+        match.cancel(cancelledAt);
+        reservationSlotService.cancelReservation(match.getReservationId(), cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
     }

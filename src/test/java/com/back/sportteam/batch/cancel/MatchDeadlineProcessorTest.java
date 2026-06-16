@@ -26,6 +26,7 @@ import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
@@ -55,6 +56,9 @@ class MatchDeadlineProcessorTest {
     @Mock
     private ReservationRepository reservationRepository;
 
+    @Mock
+    private ReservationSlotService reservationSlotService;
+
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
 
@@ -68,6 +72,7 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
+        verify(reservationSlotService).confirmReservation(match.getReservationId());
         verify(paymentRepository, never()).findAllByMatchIdAndStatus(any(), any());
     }
 
@@ -92,6 +97,7 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isEqualTo(processedAt);
+        verify(reservationSlotService).cancelReservation(match.getReservationId(), processedAt);
         verify(participant).cancel();
 
         @SuppressWarnings("unchecked")
@@ -119,9 +125,9 @@ class MatchDeadlineProcessorTest {
                 PaymentStatus.PAID
         )).thenReturn(List.of(payment));
         when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.empty());
-        when(refundRepository.existsByPaymentIdAndStatus(
+        when(refundRepository.existsByPaymentIdAndStatusIn(
                 payment.getId(),
-                RefundStatus.PENDING
+                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
         )).thenReturn(true);
 
         matchDeadlineProcessor.process(match.getId(), processedAt);

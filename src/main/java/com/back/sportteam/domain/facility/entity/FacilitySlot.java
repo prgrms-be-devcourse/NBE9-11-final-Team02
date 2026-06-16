@@ -79,6 +79,39 @@ public class FacilitySlot {
         this.status = status;
     }
 
+    public void holdUntil(LocalDateTime pendingUntil) {
+        if (status != SlotStatus.AVAILABLE) {
+            throw new IllegalStateException("Only AVAILABLE slots can be held.");
+        }
+
+        this.status = SlotStatus.PENDING;
+        this.pendingUntil = pendingUntil;
+    }
+
+    public void reserve() {
+        if (status == SlotStatus.RESERVED) {
+            return;
+        }
+        if (status != SlotStatus.PENDING && status != SlotStatus.AVAILABLE) {
+            throw new IllegalStateException("Only AVAILABLE or PENDING slots can be reserved.");
+        }
+
+        this.status = SlotStatus.RESERVED;
+        this.pendingUntil = null;
+    }
+
+    public void release() {
+        if (status == SlotStatus.AVAILABLE) {
+            return;
+        }
+        if (status == SlotStatus.CLOSED) {
+            throw new IllegalStateException("CLOSED slots cannot be released.");
+        }
+
+        this.status = SlotStatus.AVAILABLE;
+        this.pendingUntil = null;
+    }
+
     public boolean isReservable() {
         return this.status == SlotStatus.AVAILABLE;
     }

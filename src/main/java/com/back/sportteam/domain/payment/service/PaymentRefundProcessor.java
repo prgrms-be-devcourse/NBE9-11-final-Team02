@@ -4,7 +4,9 @@ import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -14,13 +16,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PaymentRefundProcessor {
 
     private static final String MISSING_PAYMENT_KEY_MESSAGE = "Missing TossPayments payment key.";
+    private static final int MAX_RETRY_COUNT = 3;
+    private static final List<Duration> RETRY_DELAYS = List.of(
+            Duration.ofMinutes(1),
+            Duration.ofMinutes(5),
+            Duration.ofMinutes(15)
+    );
 
     private final RefundRepository refundRepository;
     private final TossPaymentsClient tossPaymentsClient;
     private final TransactionTemplate transactionTemplate;
 
     public void process(String refundId, LocalDateTime processedAt) {
-        RefundCommand command = claimRefund(refundId);
+        RefundCommand command = claimRefund(refundId, processedAt);
         if (command == null) {
             return;
         }
@@ -32,24 +40,24 @@ public class PaymentRefundProcessor {
                     command.reason()
             );
         } catch (RuntimeException e) {
-            failRefund(command.refundId(), e.getMessage());
+            recordRefundFailure(command.refundId(), e.getMessage(), processedAt);
             return;
         }
 
         completeRefund(command.refundId(), command.amount(), processedAt);
     }
 
-    private RefundCommand claimRefund(String refundId) {
+    private RefundCommand claimRefund(String refundId, LocalDateTime processedAt) {
         return transactionTemplate.execute(status -> refundRepository.findByIdForUpdate(refundId)
                 .filter(Refund::isPending)
                 .map(refund -> {
                     Payment payment = refund.getPayment();
                     if (payment.getPgTransactionId() == null || payment.getPgTransactionId().isBlank()) {
-                        refund.fail(MISSING_PAYMENT_KEY_MESSAGE);
+                        refund.failPermanently(MISSING_PAYMENT_KEY_MESSAGE, processedAt);
                         return null;
                     }
 
-                    refund.markProcessing();
+                    refund.markProcessing(processedAt);
                     return new RefundCommand(
                             refund.getId(),
                             payment.getPgTransactionId(),
@@ -69,10 +77,23 @@ public class PaymentRefundProcessor {
                 }));
     }
 
-    private void failRefund(String refundId, String failureReason) {
+    private void recordRefundFailure(String refundId, String failureReason, LocalDateTime processedAt) {
         transactionTemplate.executeWithoutResult(status -> refundRepository.findByIdForUpdate(refundId)
                 .filter(Refund::isProcessing)
-                .ifPresent(refund -> refund.fail(normalizeFailureReason(failureReason))));
+                .ifPresent(refund -> refund.recordFailure(
+                        normalizeFailureReason(failureReason),
+                        processedAt,
+                        MAX_RETRY_COUNT,
+                        retryDelay(refund.getRetryCount() + 1)
+                )));
+    }
+
+    private Duration retryDelay(int nextRetryCount) {
+        int index = Math.max(nextRetryCount - 1, 0);
+        if (index >= RETRY_DELAYS.size()) {
+            return RETRY_DELAYS.getLast();
+        }
+        return RETRY_DELAYS.get(index);
     }
 
     private String normalizeFailureReason(String failureReason) {
