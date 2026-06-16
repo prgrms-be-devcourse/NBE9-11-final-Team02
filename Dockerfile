@@ -5,7 +5,7 @@ WORKDIR /app
 
 # 의존성 파일만 먼저 복사하여 Docker 레이어 캐시 활용
 # → 소스 변경 시에도 의존성 레이어는 재사용되어 빌드 속도 향상
-COPY build.gradle.kts settings.gradle.kts ./
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN gradle dependencies --no-daemon
 
 # 소스 복사
