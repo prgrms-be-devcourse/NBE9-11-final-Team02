@@ -1,7 +1,7 @@
-package com.back.sportteam.user.repository;
+package com.back.sportteam.domain.user.repository;
 
 import com.back.sportteam.domain.auth.provider.AuthProvider;
-import com.back.sportteam.user.domain.User;
+import com.back.sportteam.domain.user.entity.User;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

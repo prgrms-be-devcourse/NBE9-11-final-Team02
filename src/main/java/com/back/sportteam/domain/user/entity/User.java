@@ -1,15 +1,22 @@
-package com.back.sportteam.user.domain;
+package com.back.sportteam.domain.user.entity;
 
 import com.back.sportteam.domain.auth.provider.AuthProvider;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -60,6 +67,15 @@ public class User {
     @Column(name = "skill_score", nullable = false)
     private Double skillScore = 0.0;
 
+    @Column(name = "manner_rating_sum", nullable = false, precision = 5, scale = 1)
+    private BigDecimal mannerRatingSum = BigDecimal.ZERO;
+
+    @Column(name = "manner_review_count", nullable = false)
+    private int mannerReviewCount = 0;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserSportStat> sportStats = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -91,6 +107,14 @@ public class User {
         return user;
     }
 
+    public void addMannerRating(BigDecimal newRating) {
+        this.mannerRatingSum = this.mannerRatingSum.add(newRating);
+        this.mannerReviewCount++;
+        this.mannerScore = this.mannerRatingSum
+                .divide(BigDecimal.valueOf(this.mannerReviewCount), 2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
     public UUID getId() { return id; }
     public String getEmail() { return email; }
     public String getNickname() { return nickname; }
@@ -104,6 +128,7 @@ public class User {
     public String getPreferredSport() { return preferredSport; }
     public Double getMannerScore() { return mannerScore; }
     public Double getSkillScore() { return skillScore; }
+    public List<UserSportStat> getSportStats() { return sportStats; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
