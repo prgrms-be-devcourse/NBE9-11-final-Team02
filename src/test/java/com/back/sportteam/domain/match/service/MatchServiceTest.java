@@ -75,7 +75,8 @@ class MatchServiceTest {
         MatchParticipant participant = participantCaptor.getValue();
         assertThat(participant.getUserId()).isEqualTo("host-id");
         assertThat(participant.getRole()).isEqualTo(MatchParticipantRole.HOST);
-        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(participant.getPaymentDeadline()).isEqualTo(participant.getJoinedAt().plusMinutes(10));
     }
 
     @Test
@@ -223,6 +224,7 @@ class MatchServiceTest {
     void 매칭방_참가자_목록을_조회한다() {
         Match match = createMatch();
         MatchParticipant participant = MatchParticipant.host(match, "host-id");
+        participant.activate();
         when(matchRepository.existsById(match.getId())).thenReturn(true);
         when(matchParticipantRepository.findByMatchIdAndStatus(match.getId(), MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));

@@ -7,6 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.back.sportteam.domain.match.entity.Match;
+import com.back.sportteam.domain.match.entity.MatchCreateCommand;
+import com.back.sportteam.domain.match.entity.MatchParticipant;
+import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
+import com.back.sportteam.domain.match.entity.RequiredGender;
+import com.back.sportteam.domain.match.entity.SkillLevel;
+import com.back.sportteam.domain.match.entity.SportType;
+import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
@@ -17,6 +25,8 @@ import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,12 +44,16 @@ class PaymentWebhookProcessorTest {
     @Mock
     private PaymentWebhookEventRepository paymentWebhookEventRepository;
 
+    @Mock
+    private MatchParticipantRepository matchParticipantRepository;
+
     @InjectMocks
     private PaymentWebhookProcessor paymentWebhookProcessor;
 
     @Test
     void 결제_성공_웹훅이면_결제를_PAID로_변경하고_이벤트를_저장한다() {
         Payment payment = createPendingPayment();
+        MatchParticipant participant = createPendingParticipant();
         PaymentWebhookRequest request = createRequest(
                 "event-1",
                 PaymentWebhookEventType.PAYMENT_SUCCEEDED,
@@ -47,12 +61,15 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+        when(matchParticipantRepository.findById("participant-id")).thenReturn(Optional.of(participant));
 
         paymentWebhookProcessor.process(request);
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getPgTransactionId()).isEqualTo("pg-transaction-1");
         assertThat(payment.getPaidAt()).isNotNull();
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(participant.getPaymentDeadline()).isNull();
 
         ArgumentCaptor<PaymentWebhookEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentWebhookEvent.class);
@@ -78,6 +95,7 @@ class PaymentWebhookProcessorTest {
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getPgTransactionId()).isNull();
+        verify(matchParticipantRepository, never()).findById(any());
         verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
     }
 
@@ -127,6 +145,24 @@ class PaymentWebhookProcessorTest {
                 "mid_12345",
                 10_000
         );
+    }
+
+    private MatchParticipant createPendingParticipant() {
+        Match match = Match.create(MatchCreateCommand.builder()
+                .reservationId("reservation-id")
+                .hostId("host-id")
+                .title("풋살 매칭")
+                .sportType(SportType.FUTSAL)
+                .minParticipants(2)
+                .maxParticipants(10)
+                .feePerPerson(10_000)
+                .minSkillLevel(SkillLevel.LEVEL_1)
+                .maxSkillLevel(SkillLevel.LEVEL_5)
+                .requiredGender(RequiredGender.ANY)
+                .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
+                .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
+                .build());
+        return MatchParticipant.participant(match, "user-id");
     }
 
     private PaymentWebhookRequest createRequest(

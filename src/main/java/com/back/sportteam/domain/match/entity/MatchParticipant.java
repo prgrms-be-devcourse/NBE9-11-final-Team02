@@ -70,13 +70,14 @@ public class MatchParticipant {
     }
 
     public static MatchParticipant host(Match match, String userId) {
+        LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
         return new MatchParticipant(
                 match,
                 userId,
                 MatchParticipantRole.HOST,
-                MatchParticipantStatus.ACTIVE,
-                LocalDateTime.now(SERVICE_ZONE),
-                null
+                MatchParticipantStatus.PAYMENT_PENDING,
+                joinedAt,
+                joinedAt.plus(PAYMENT_HOLD_DURATION)
         );
     }
 
@@ -98,6 +99,11 @@ public class MatchParticipant {
 
     public void cancel() {
         this.status = MatchParticipantStatus.CANCELLED;
+        this.paymentDeadline = null;
+    }
+
+    public void activate() {
+        this.status = MatchParticipantStatus.ACTIVE;
         this.paymentDeadline = null;
     }
 }

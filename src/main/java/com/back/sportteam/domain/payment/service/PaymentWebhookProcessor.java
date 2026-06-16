@@ -1,8 +1,11 @@
 package com.back.sportteam.domain.payment.service;
 
+import com.back.sportteam.domain.match.entity.MatchParticipant;
+import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
@@ -22,6 +25,7 @@ public class PaymentWebhookProcessor {
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookEventRepository paymentWebhookEventRepository;
+    private final MatchParticipantRepository matchParticipantRepository;
 
     @Transactional
     public void process(PaymentWebhookRequest request) {
@@ -58,12 +62,23 @@ public class PaymentWebhookProcessor {
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
+                activateParticipantIfParticipationPayment(payment);
                 return;
             }
             payment.fail(normalize(request.pgTransactionId()));
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
+    }
+
+    private void activateParticipantIfParticipationPayment(Payment payment) {
+        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
+            return;
+        }
+
+        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
+        participant.activate();
     }
 
     private String normalize(String value) {
