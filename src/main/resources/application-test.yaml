@@ -18,3 +18,8 @@ spring:
   batch:
     jdbc:
       initialize-schema: embedded
+
+match:
+  payment-hold:
+    duration-minutes: 1
+    expiration-check-delay-millis: 10000

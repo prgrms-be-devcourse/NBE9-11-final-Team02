@@ -21,7 +21,8 @@ public enum MatchErrorCode implements ErrorCode {
     INVALID_DEADLINE_RANGE("MATCH_011", "모집 마감 시간은 취소 마감 시간보다 늦을 수 없습니다.", HttpStatus.BAD_REQUEST),
     RECRUIT_DEADLINE_PASSED("MATCH_012", "모집 마감 시간이 지난 매칭방입니다.", HttpStatus.CONFLICT),
     NOT_ENOUGH_PARTICIPANTS("MATCH_013", "매칭방 확정에 필요한 최소 인원이 모이지 않았습니다.", HttpStatus.CONFLICT),
-    MATCH_NOT_CANCELLABLE("MATCH_014", "취소할 수 없는 매칭방 상태입니다.", HttpStatus.CONFLICT);
+    MATCH_NOT_CANCELLABLE("MATCH_014", "취소할 수 없는 매칭방 상태입니다.", HttpStatus.CONFLICT),
+    CANCEL_DEADLINE_PASSED("MATCH_015", "매칭방 취소 가능 시간이 지났습니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

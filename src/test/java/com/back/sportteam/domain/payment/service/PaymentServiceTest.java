@@ -56,7 +56,7 @@ class PaymentServiceTest {
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 "match-id",
                 "user-id",
-                MatchParticipantStatus.ACTIVE
+                MatchParticipantStatus.PAYMENT_PENDING
         )).thenReturn(Optional.of(participant));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -129,7 +129,7 @@ class PaymentServiceTest {
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 "match-id",
                 "user-id",
-                MatchParticipantStatus.ACTIVE
+                MatchParticipantStatus.PAYMENT_PENDING
         )).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentService.prepare("user-id", request))

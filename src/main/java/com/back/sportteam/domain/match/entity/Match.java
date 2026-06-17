@@ -136,6 +136,10 @@ public class Match {
         return !now.isBefore(recruitDeadline);
     }
 
+    public boolean isCancelDeadlinePassed(LocalDateTime now) {
+        return !now.isBefore(cancelDeadline);
+    }
+
     public boolean isHostedBy(String userId) {
         return hostId.equals(userId);
     }

@@ -27,6 +27,11 @@ app:
       fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
       batch-size: ${REFUND_BATCH_SIZE:50}
 
+match:
+  payment-hold:
+    duration-minutes: 10
+    expiration-check-delay-millis: 60000
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
