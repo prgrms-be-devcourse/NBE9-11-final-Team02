@@ -44,8 +44,8 @@ public class Match {
     @Column(name = "sport_type", nullable = false, length = 20)
     private SportType sportType;
 
-    @Column(name = "max_participants", nullable = false)
-    private int maxParticipants;
+    @Column(name = "capacity", nullable = false)
+    private int capacity;
 
     @Column(name = "current_count", nullable = false)
     private int currentCount;
@@ -94,7 +94,7 @@ public class Match {
         this.hostId = command.getHostId();
         this.title = command.getTitle();
         this.sportType = command.getSportType();
-        this.maxParticipants = command.getMaxParticipants();
+        this.capacity = command.getCapacity();
         this.currentCount = 1;
         this.feePerPerson = command.getFeePerPerson();
         this.minSkillLevel = defaultSkillLevel(command.getMinSkillLevel());
@@ -120,7 +120,7 @@ public class Match {
     }
 
     public boolean isFull() {
-        return currentCount >= maxParticipants;
+        return currentCount >= capacity;
     }
 
     public boolean isRecruitClosed(LocalDateTime now) {

@@ -53,7 +53,7 @@ public class MatchService {
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
-                .maxParticipants(request.maxParticipants())
+                .capacity(request.capacity())
                 .feePerPerson(request.feePerPerson())
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())

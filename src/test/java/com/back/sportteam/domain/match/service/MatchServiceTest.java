@@ -564,12 +564,12 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.CANCEL_DEADLINE_PASSED);
     }
 
-    private MatchCreateRequest createRequest(int maxParticipants) {
-        return createRequest(maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+    private MatchCreateRequest createRequest(int capacity) {
+        return createRequest(capacity, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
 
     private MatchCreateRequest createRequest(
-            int maxParticipants,
+            int capacity,
             SkillLevel minSkillLevel,
             SkillLevel maxSkillLevel
     ) {
@@ -577,7 +577,7 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                maxParticipants,
+                capacity,
                 10000,
                 minSkillLevel,
                 maxSkillLevel,
@@ -591,21 +591,21 @@ class MatchServiceTest {
         return createMatch(10);
     }
 
-    private Match createMatch(int maxParticipants) {
-        return createMatch(maxParticipants, RECRUIT_DEADLINE);
+    private Match createMatch(int capacity) {
+        return createMatch(capacity, RECRUIT_DEADLINE);
     }
 
-    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
-        return createMatch(maxParticipants, recruitDeadline, CANCEL_DEADLINE);
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
+        return createMatch(capacity, recruitDeadline, CANCEL_DEADLINE);
     }
 
-    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .maxParticipants(maxParticipants)
+                .capacity(capacity)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.LEVEL_2)
                 .maxSkillLevel(SkillLevel.LEVEL_4)

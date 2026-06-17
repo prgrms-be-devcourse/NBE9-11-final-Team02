@@ -13,7 +13,7 @@ public class MatchCreateCommand {
     private String hostId;
     private String title;
     private SportType sportType;
-    private int maxParticipants;
+    private int capacity;
     private int feePerPerson;
     private SkillLevel minSkillLevel;
     private SkillLevel maxSkillLevel;

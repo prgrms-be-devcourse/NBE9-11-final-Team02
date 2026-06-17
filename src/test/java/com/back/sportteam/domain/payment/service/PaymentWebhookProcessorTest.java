@@ -190,7 +190,7 @@ class PaymentWebhookProcessorTest {
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .maxParticipants(10)
+                .capacity(10)
                 .feePerPerson(10_000)
                 .minSkillLevel(SkillLevel.LEVEL_1)
                 .maxSkillLevel(SkillLevel.LEVEL_5)

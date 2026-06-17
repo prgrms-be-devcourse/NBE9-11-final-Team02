@@ -93,13 +93,13 @@ class MatchDeadlineProcessorTest {
         verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
-    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
         return Match.create(MatchCreateCommand.builder()
-                .reservationId("reservation-" + maxParticipants)
+                .reservationId("reservation-" + capacity)
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .maxParticipants(maxParticipants)
+                .capacity(capacity)
                 .feePerPerson(10_000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.ANY)

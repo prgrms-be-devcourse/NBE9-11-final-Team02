@@ -22,8 +22,8 @@ public record MatchCreateRequest(
         @NotNull(message = "종목은 필수입니다.")
         SportType sportType,
 
-        @Min(value = 1, message = "최대 인원은 1명 이상이어야 합니다.")
-        int maxParticipants,
+        @Min(value = 1, message = "정원은 1명 이상이어야 합니다.")
+        int capacity,
 
         @Min(value = 0, message = "1인 분담금은 0원 이상이어야 합니다.")
         int feePerPerson,
