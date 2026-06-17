@@ -1,5 +1,8 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -13,17 +16,7 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
-import com.back.sportteam.domain.payment.entity.Payment;
-import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
-import com.back.sportteam.domain.payment.entity.Refund;
-import com.back.sportteam.domain.payment.entity.RefundStatus;
-import com.back.sportteam.domain.payment.repository.PaymentRepository;
-import com.back.sportteam.domain.payment.repository.RefundRepository;
-import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
-import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
-import com.back.sportteam.domain.reservation.repository.ReservationRepository;
-import com.back.sportteam.domain.reservation.service.ReservationSlotService;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,9 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -42,35 +33,29 @@ import java.util.List;
 public class MatchService {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-    private static final long FULL_REFUND_BEFORE_HOURS = 24L;
-    private static final String PARTICIPANT_CANCELLED_BEFORE_24_HOURS = "PARTICIPANT_CANCELLED_BEFORE_24_HOURS";
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
-    private final PaymentRepository paymentRepository;
-    private final RefundRepository refundRepository;
-    private final ReservationRepository reservationRepository;
     private final FacilitySlotRepository facilitySlotRepository;
-    private final NotificationEventPublisher notificationEventPublisher;
-    private final ReservationSlotService reservationSlotService;
+    private final PaymentRefundRequestService paymentRefundRequestService;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
 
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
-        validateParticipantRange(request.minParticipants(), request.maxParticipants());
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
         validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
+        FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
         validateReservationAvailable(request.reservationId());
+        facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
 
         Match match = Match.create(MatchCreateCommand.builder()
                 .reservationId(request.reservationId())
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
-                .minParticipants(request.minParticipants())
-                .maxParticipants(request.maxParticipants())
+                .capacity(request.capacity())
                 .feePerPerson(request.feePerPerson())
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())
@@ -151,12 +136,16 @@ public class MatchService {
                 )
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 
-        validateLeaveable(participant);
+        LocalDateTime leftAt = LocalDateTime.now(SERVICE_ZONE);
+        validateLeaveable(match, participant, leftAt);
 
-        LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
         participant.cancel();
         match.decreaseCurrentCount();
-        enqueueFullRefundIfBeforeDeadline(match, userId, cancelledAt);
+        paymentRefundRequestService.requestParticipantRefunds(
+                participant.getId(),
+                PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
+                leftAt
+        );
     }
 
     @Transactional
@@ -167,8 +156,6 @@ public class MatchService {
         validateConfirmable(match, hostId);
 
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
-        reservationSlotService.confirmReservation(match.getReservationId());
-        notificationEventPublisher.publishMatchConfirmed(match.getId(), match.getConfirmedAt());
 
         return MatchDetailResponse.from(match);
     }
@@ -182,16 +169,15 @@ public class MatchService {
 
         LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
         match.cancel(cancelledAt);
-        reservationSlotService.cancelReservation(match.getReservationId(), cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
-        notificationEventPublisher.publishMatchCancelled(matchId, cancelledAt);
-    }
-
-    private void validateParticipantRange(int minParticipants, int maxParticipants) {
-        if (minParticipants > maxParticipants) {
-            throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
-        }
+        releaseFacilitySlot(match.getReservationId());
+        paymentRefundRequestService.requestMatchRefunds(
+                matchId,
+                match.getReservationId(),
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                cancelledAt
+        );
     }
 
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
@@ -205,6 +191,21 @@ public class MatchService {
         if (matchRepository.existsByReservationId(reservationId)) {
             throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
         }
+    }
+
+    private FacilitySlot getFacilitySlotForUpdate(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        if (!facilitySlot.isReservable()) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
+        }
+        return facilitySlot;
+    }
+
+    private void releaseFacilitySlot(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        facilitySlot.release();
     }
 
     private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
@@ -242,10 +243,20 @@ public class MatchService {
         }
     }
 
-    private void validateLeaveable(MatchParticipant participant) {
+    private void validateLeaveable(Match match, MatchParticipant participant, LocalDateTime now) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
+        LocalDateTime leaveDeadline = getMatchStartAt(match).minusHours(24);
+        if (!now.isBefore(leaveDeadline)) {
+            throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
+        }
+    }
+
+    private LocalDateTime getMatchStartAt(Match match) {
+        FacilitySlot slot = facilitySlotRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
     }
 
     private void validateConfirmable(Match match, String hostId) {
@@ -255,8 +266,8 @@ public class MatchService {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
         }
-        if (!match.hasEnoughParticipants()) {
-            throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+        if (!match.isFull()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_FULL);
         }
     }
 
@@ -274,46 +285,5 @@ public class MatchService {
 
     private Duration paymentHoldDuration() {
         return Duration.ofMinutes(paymentHoldMinutes);
-    }
-
-    private void enqueueFullRefundIfBeforeDeadline(Match match, String userId, LocalDateTime cancelledAt) {
-        if (!isFullRefundable(match, cancelledAt)) {
-            return;
-        }
-
-        paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
-                        userId,
-                        match.getId(),
-                        PaymentType.PARTICIPATION,
-                        PaymentStatus.PAID
-                )
-                .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
-                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
-                        payment.getId(),
-                        List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
-                ))
-                .map(payment -> createParticipantCancelRefund(payment, cancelledAt))
-                .ifPresent(refundRepository::save);
-    }
-
-    private boolean isFullRefundable(Match match, LocalDateTime cancelledAt) {
-        return reservationRepository.findById(match.getReservationId())
-                .flatMap(reservation -> facilitySlotRepository.findById(reservation.getFacilitySlotId()))
-                .map(slot -> toMatchStartAt(slot.getSlotDate(), slot.getStartTime()))
-                .map(matchStartAt -> !cancelledAt.isAfter(matchStartAt.minusHours(FULL_REFUND_BEFORE_HOURS)))
-                .orElse(false);
-    }
-
-    private LocalDateTime toMatchStartAt(LocalDate slotDate, LocalTime startTime) {
-        return LocalDateTime.of(slotDate, startTime);
-    }
-
-    private Refund createParticipantCancelRefund(Payment payment, LocalDateTime requestedAt) {
-        return Refund.pending(
-                payment,
-                payment.getAmount() - payment.getRefundedAmount(),
-                PARTICIPANT_CANCELLED_BEFORE_24_HOURS,
-                requestedAt
-        );
     }
 }

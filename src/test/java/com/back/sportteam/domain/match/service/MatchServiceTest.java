@@ -1,5 +1,9 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.entity.SlotStatus;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -17,19 +21,7 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
-import com.back.sportteam.domain.facility.entity.FacilitySlot;
-import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
-import com.back.sportteam.domain.payment.entity.Payment;
-import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
-import com.back.sportteam.domain.payment.entity.Refund;
-import com.back.sportteam.domain.payment.entity.RefundStatus;
-import com.back.sportteam.domain.payment.repository.PaymentRepository;
-import com.back.sportteam.domain.payment.repository.RefundRepository;
-import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
-import com.back.sportteam.domain.reservation.entity.Reservation;
-import com.back.sportteam.domain.reservation.repository.ReservationRepository;
-import com.back.sportteam.domain.reservation.service.ReservationSlotService;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +34,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -69,29 +60,19 @@ class MatchServiceTest {
     private MatchParticipantRepository matchParticipantRepository;
 
     @Mock
-    private PaymentRepository paymentRepository;
-
-    @Mock
-    private RefundRepository refundRepository;
-
-    @Mock
-    private ReservationRepository reservationRepository;
-
-    @Mock
     private FacilitySlotRepository facilitySlotRepository;
 
     @Mock
-    private NotificationEventPublisher notificationEventPublisher;
-
-    @Mock
-    private ReservationSlotService reservationSlotService;
+    private PaymentRefundRequestService paymentRefundRequestService;
 
     @InjectMocks
     private MatchService matchService;
 
     @Test
     void 매칭방을_생성하면_방장_참가자도_함께_생성한다() {
-        MatchCreateRequest request = createRequest(2, 10);
+        MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -103,6 +84,8 @@ class MatchServiceTest {
         assertThat(response.hostId()).isEqualTo("host-id");
         assertThat(response.currentCount()).isEqualTo(1);
         assertThat(response.status()).isEqualTo(MatchStatus.RECRUITING);
+        assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.PENDING);
+        assertThat(facilitySlot.getPendingUntil()).isNotNull();
 
         ArgumentCaptor<MatchParticipant> participantCaptor = ArgumentCaptor.forClass(MatchParticipant.class);
         verify(matchParticipantRepository).save(participantCaptor.capture());
@@ -116,7 +99,9 @@ class MatchServiceTest {
 
     @Test
     void 이미_선점된_예약이면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(2, 10);
+        MatchCreateRequest request = createRequest(10);
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
@@ -129,16 +114,20 @@ class MatchServiceTest {
     }
 
     @Test
-    void 최소_인원이_최대_인원보다_크면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(10, 2);
+    void 예약_가능한_시설_슬롯이_아니면_매칭방을_생성하지_않는다() {
+        MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        facilitySlot.holdUntil(CREATED_AT.plusMinutes(1));
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
 
         verify(matchRepository, never()).existsByReservationId(any());
         verify(matchRepository, never()).save(any(Match.class));
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
     }
 
     @Test
@@ -147,7 +136,6 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 10000,
                 SkillLevel.ANY,
@@ -156,6 +144,8 @@ class MatchServiceTest {
                 RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -169,7 +159,7 @@ class MatchServiceTest {
 
     @Test
     void 최소_실력_레벨이_최대_실력_레벨보다_크면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(2, 10, SkillLevel.LEVEL_4, SkillLevel.LEVEL_2);
+        MatchCreateRequest request = createRequest(10, SkillLevel.LEVEL_4, SkillLevel.LEVEL_2);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)
@@ -182,7 +172,7 @@ class MatchServiceTest {
 
     @Test
     void 실력_레벨_무관은_최소와_최대를_함께_선택해야_한다() {
-        MatchCreateRequest request = createRequest(2, 10, SkillLevel.ANY, SkillLevel.LEVEL_3);
+        MatchCreateRequest request = createRequest(10, SkillLevel.ANY, SkillLevel.LEVEL_3);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)
@@ -199,7 +189,6 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 10000,
                 SkillLevel.LEVEL_2,
@@ -388,89 +377,18 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
+        when(facilitySlotRepository.findById(match.getReservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
 
         matchService.leaveMatch(match.getId(), "participant-id");
 
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(match.getCurrentCount()).isEqualTo(1);
-    }
-
-    @Test
-    void 경기_시작_24시간_전까지_참가를_취소하면_전액_환불을_대기열에_등록한다() {
-        Match match = createMatch();
-        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
-        Payment payment = paidParticipationPayment(match.getId(), "participant-id", 10_000);
-        Reservation reservation = Reservation.pending("slot-id", CREATED_AT);
-        FacilitySlot slot = FacilitySlot.create(
-                "facility-id",
-                LocalDate.of(2099, Month.JUNE, 20),
-                LocalTime.of(12, 0),
-                LocalTime.of(14, 0),
-                100_000
+        verify(paymentRefundRequestService).requestParticipantRefunds(
+                eq(participant.getId()),
+                eq(PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT),
+                any(LocalDateTime.class)
         );
-        match.increaseCurrentCount();
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
-                "participant-id",
-                MatchParticipantStatus.ACTIVE
-        )).thenReturn(Optional.of(participant));
-        when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.of(reservation));
-        when(facilitySlotRepository.findById(reservation.getFacilitySlotId())).thenReturn(Optional.of(slot));
-        when(paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
-                "participant-id",
-                match.getId(),
-                PaymentType.PARTICIPATION,
-                PaymentStatus.PAID
-        )).thenReturn(Optional.of(payment));
-        when(refundRepository.existsByPaymentIdAndStatusIn(
-                payment.getId(),
-                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
-        )).thenReturn(false);
-
-        matchService.leaveMatch(match.getId(), "participant-id");
-
-        ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
-        verify(refundRepository).save(refundCaptor.capture());
-        Refund refund = refundCaptor.getValue();
-        assertThat(refund.getPayment()).isEqualTo(payment);
-        assertThat(refund.getAmount()).isEqualTo(10_000);
-        assertThat(refund.getReason()).isEqualTo("PARTICIPANT_CANCELLED_BEFORE_24_HOURS");
-        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
-    }
-
-    @Test
-    void 경기_시작_24시간_이내에_참가를_취소하면_환불을_대기열에_등록하지_않는다() {
-        Match match = createMatch();
-        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
-        Reservation reservation = Reservation.pending("slot-id", CREATED_AT);
-        LocalDateTime matchStartAt = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusHours(23);
-        FacilitySlot slot = FacilitySlot.create(
-                "facility-id",
-                matchStartAt.toLocalDate(),
-                matchStartAt.toLocalTime(),
-                matchStartAt.plusHours(2).toLocalTime(),
-                100_000
-        );
-        match.increaseCurrentCount();
-        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
-                "participant-id",
-                MatchParticipantStatus.ACTIVE
-        )).thenReturn(Optional.of(participant));
-        when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.of(reservation));
-        when(facilitySlotRepository.findById(reservation.getFacilitySlotId())).thenReturn(Optional.of(slot));
-
-        matchService.leaveMatch(match.getId(), "participant-id");
-
-        verify(paymentRepository, never()).findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
-                any(),
-                any(),
-                any(),
-                any()
-        );
-        verify(refundRepository, never()).save(any(Refund.class));
     }
 
     @Test
@@ -519,6 +437,29 @@ class MatchServiceTest {
     }
 
     @Test
+    void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        participant.activate();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                matchId,
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+        when(facilitySlotRepository.findById(match.getReservationId()))
+                .thenReturn(Optional.of(createPastSlot()));
+
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.LEAVE_DEADLINE_PASSED);
+
+        verify(paymentRefundRequestService, never()).requestParticipantRefunds(any(), any(), any());
+    }
+
+    @Test
     void 방장이_매칭방을_확정한다() {
         Match match = createMatch(1);
         String matchId = match.getId();
@@ -530,7 +471,6 @@ class MatchServiceTest {
         assertThat(response.confirmedAt()).isNotNull();
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isNotNull();
-        verify(reservationSlotService).confirmReservation(match.getReservationId());
     }
 
     @Test
@@ -569,7 +509,7 @@ class MatchServiceTest {
     }
 
     @Test
-    void 매칭방_확정시_최소_인원이_모이지_않으면_예외를_던진다() {
+    void 매칭방_확정시_정원이_모이지_않으면_예외를_던진다() {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
@@ -577,7 +517,7 @@ class MatchServiceTest {
         assertThatThrownBy(() -> matchService.confirmMatch(matchId, "host-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FULL);
     }
 
     @Test
@@ -586,17 +526,27 @@ class MatchServiceTest {
         String matchId = match.getId();
         MatchParticipant host = MatchParticipant.host(match, "host-id");
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        FacilitySlot facilitySlot = createFutureSlot();
+        facilitySlot.reserve();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(host, participant));
+        when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 
         matchService.cancelMatch(matchId, "host-id");
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isNotNull();
-        verify(reservationSlotService).cancelReservation(eq(match.getReservationId()), any(LocalDateTime.class));
         assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(facilitySlot.getPendingUntil()).isNull();
+        verify(paymentRefundRequestService).requestMatchRefunds(
+                matchId,
+                match.getReservationId(),
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                match.getCancelledAt()
+        );
     }
 
     @Test
@@ -646,13 +596,12 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.CANCEL_DEADLINE_PASSED);
     }
 
-    private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
-        return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+    private MatchCreateRequest createRequest(int capacity) {
+        return createRequest(capacity, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
 
     private MatchCreateRequest createRequest(
-            int minParticipants,
-            int maxParticipants,
+            int capacity,
             SkillLevel minSkillLevel,
             SkillLevel maxSkillLevel
     ) {
@@ -660,8 +609,7 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                minParticipants,
-                maxParticipants,
+                capacity,
                 10000,
                 minSkillLevel,
                 maxSkillLevel,
@@ -675,22 +623,21 @@ class MatchServiceTest {
         return createMatch(10);
     }
 
-    private Match createMatch(int maxParticipants) {
-        return createMatch(maxParticipants, RECRUIT_DEADLINE);
+    private Match createMatch(int capacity) {
+        return createMatch(capacity, RECRUIT_DEADLINE);
     }
 
-    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
-        return createMatch(maxParticipants, recruitDeadline, CANCEL_DEADLINE);
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
+        return createMatch(capacity, recruitDeadline, CANCEL_DEADLINE);
     }
 
-    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(Math.min(2, maxParticipants))
-                .maxParticipants(maxParticipants)
+                .capacity(capacity)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.LEVEL_2)
                 .maxSkillLevel(SkillLevel.LEVEL_4)
@@ -700,17 +647,23 @@ class MatchServiceTest {
                 .build());
     }
 
-    private Payment paidParticipationPayment(String matchId, String userId, int amount) {
-        Payment payment = Payment.create(
-                "participant-id",
-                userId,
-                matchId,
-                null,
-                PaymentType.PARTICIPATION,
-                "mid-" + userId,
-                amount
+    private FacilitySlot createFutureSlot() {
+        return FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2099, Month.JUNE, 12),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                10000
         );
-        payment.complete("pg-" + userId, CREATED_AT);
-        return payment;
+    }
+
+    private FacilitySlot createPastSlot() {
+        return FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2026, Month.JUNE, 1),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                10000
+        );
     }
 }
