@@ -17,20 +17,13 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
-import com.back.sportteam.domain.payment.entity.Payment;
-import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
-import com.back.sportteam.domain.payment.entity.Refund;
-import com.back.sportteam.domain.payment.entity.RefundStatus;
-import com.back.sportteam.domain.payment.repository.PaymentRepository;
-import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,16 +38,13 @@ class MatchDeadlineProcessorTest {
     private MatchParticipantRepository matchParticipantRepository;
 
     @Mock
-    private PaymentRepository paymentRepository;
-
-    @Mock
-    private RefundRepository refundRepository;
+    private PaymentRefundRequestService paymentRefundRequestService;
 
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
 
     @Test
-    void 최소_인원을_충족한_마감_경기는_자동_확정한다() {
+    void 정원을_충족한_마감_경기는_자동_확정한다() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
@@ -63,63 +53,31 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
-        verify(paymentRepository, never()).findAllByMatchIdAndStatus(any(), any());
+        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
     @Test
-    void 최소_인원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
+    void 정원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(2, processedAt.minusMinutes(1));
         MatchParticipant participant = mock(MatchParticipant.class);
-        Payment payment = createPaidPayment(match.getId(), processedAt.minusMinutes(10));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndStatus(
                 match.getId(),
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(List.of(participant));
-        when(paymentRepository.findAllByMatchIdAndStatus(
-                match.getId(),
-                PaymentStatus.PAID
-        )).thenReturn(List.of(payment));
 
         matchDeadlineProcessor.process(match.getId(), processedAt);
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isEqualTo(processedAt);
         verify(participant).cancel();
-
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<Refund>> captor = ArgumentCaptor.forClass(List.class);
-        verify(refundRepository).saveAll(captor.capture());
-        Refund refund = captor.getValue().getFirst();
-        assertThat(refund.getPayment()).isEqualTo(payment);
-        assertThat(refund.getAmount()).isEqualTo(10_000);
-        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
-        assertThat(refund.getRequestedAt()).isEqualTo(processedAt);
-    }
-
-    @Test
-    void 이미_대기_중인_환불이_있으면_중복_등록하지_않는다() {
-        LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
-        Match match = createMatch(2, processedAt.minusMinutes(1));
-        Payment payment = createPaidPayment(match.getId(), processedAt.minusMinutes(10));
-        when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.findByMatchIdAndStatus(
+        verify(paymentRefundRequestService).requestMatchRefunds(
                 match.getId(),
-                MatchParticipantStatus.ACTIVE
-        )).thenReturn(List.of());
-        when(paymentRepository.findAllByMatchIdAndStatus(
-                match.getId(),
-                PaymentStatus.PAID
-        )).thenReturn(List.of(payment));
-        when(refundRepository.existsByPaymentIdAndStatus(
-                payment.getId(),
-                RefundStatus.PENDING
-        )).thenReturn(true);
-
-        matchDeadlineProcessor.process(match.getId(), processedAt);
-
-        verify(refundRepository, never()).saveAll(any());
+                match.getReservationId(),
+                PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
+                processedAt
+        );
     }
 
     @Test
@@ -132,17 +90,16 @@ class MatchDeadlineProcessorTest {
         matchDeadlineProcessor.process(match.getId(), processedAt);
 
         verify(matchParticipantRepository, never()).findByMatchIdAndStatus(any(), any());
-        verify(paymentRepository, never()).findAllByMatchIdAndStatus(any(), any());
+        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
-    private Match createMatch(int minParticipants, LocalDateTime recruitDeadline) {
+    private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
         return Match.create(MatchCreateCommand.builder()
-                .reservationId("reservation-" + minParticipants)
+                .reservationId("reservation-" + capacity)
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(minParticipants)
-                .maxParticipants(10)
+                .capacity(capacity)
                 .feePerPerson(10_000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.ANY)
@@ -152,17 +109,4 @@ class MatchDeadlineProcessorTest {
                 .build());
     }
 
-    private Payment createPaidPayment(String matchId, LocalDateTime paidAt) {
-        Payment payment = Payment.create(
-                "participant-id",
-                "user-id",
-                matchId,
-                null,
-                PaymentType.PARTICIPATION,
-                "mid_12345",
-                10_000
-        );
-        payment.complete("payment-key", paidAt);
-        return payment;
-    }
 }

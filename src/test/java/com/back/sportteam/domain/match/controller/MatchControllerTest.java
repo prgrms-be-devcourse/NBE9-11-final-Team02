@@ -224,6 +224,18 @@ class MatchControllerTest {
     }
 
     @Test
+    void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_409_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED))
+                .when(matchService).leaveMatch("match-id", "user-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_016"));
+    }
+
+    @Test
     void 매칭방_확정_요청을_200_응답으로_반환한다() throws Exception {
         MatchDetailResponse response = createConfirmedDetailResponse();
         when(matchService.confirmMatch("match-id", "host-id")).thenReturn(response);
@@ -290,7 +302,6 @@ class MatchControllerTest {
                 "reservation-id",
                 title,
                 SportType.FUTSAL,
-                2,
                 10,
                 10000,
                 SkillLevel.LEVEL_2,
@@ -308,8 +319,7 @@ class MatchControllerTest {
                 "host-id",
                 request.title(),
                 request.sportType(),
-                request.minParticipants(),
-                request.maxParticipants(),
+                request.capacity(),
                 1,
                 request.feePerPerson(),
                 request.minSkillLevel(),
@@ -347,7 +357,6 @@ class MatchControllerTest {
                 "host-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 1,
                 10000,
@@ -371,7 +380,6 @@ class MatchControllerTest {
                 "host-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 1,
                 10000,
@@ -433,8 +441,7 @@ class MatchControllerTest {
                   "reservationId": "%s",
                   "title": "%s",
                   "sportType": "%s",
-                  "minParticipants": %d,
-                  "maxParticipants": %d,
+                  "capacity": %d,
                   "feePerPerson": %d,
                   "minSkillLevel": "%s",
                   "maxSkillLevel": "%s",
@@ -446,8 +453,7 @@ class MatchControllerTest {
                 request.reservationId(),
                 request.title(),
                 request.sportType(),
-                request.minParticipants(),
-                request.maxParticipants(),
+                request.capacity(),
                 request.feePerPerson(),
                 request.minSkillLevel(),
                 request.maxSkillLevel(),

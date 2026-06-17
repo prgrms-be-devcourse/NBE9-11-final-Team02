@@ -1,5 +1,8 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -13,6 +16,7 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,13 +36,14 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final FacilitySlotRepository facilitySlotRepository;
+    private final PaymentRefundRequestService paymentRefundRequestService;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
 
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
-        validateParticipantRange(request.minParticipants(), request.maxParticipants());
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
         validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
         validateReservationAvailable(request.reservationId());
@@ -48,8 +53,7 @@ public class MatchService {
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
-                .minParticipants(request.minParticipants())
-                .maxParticipants(request.maxParticipants())
+                .capacity(request.capacity())
                 .feePerPerson(request.feePerPerson())
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())
@@ -130,10 +134,16 @@ public class MatchService {
                 )
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 
-        validateLeaveable(participant);
+        LocalDateTime leftAt = LocalDateTime.now(SERVICE_ZONE);
+        validateLeaveable(match, participant, leftAt);
 
         participant.cancel();
         match.decreaseCurrentCount();
+        paymentRefundRequestService.requestParticipantRefunds(
+                participant.getId(),
+                PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
+                leftAt
+        );
     }
 
     @Transactional
@@ -155,15 +165,16 @@ public class MatchService {
 
         validateCancellable(match, hostId);
 
-        match.cancel(LocalDateTime.now(SERVICE_ZONE));
+        LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
+        match.cancel(cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
-    }
-
-    private void validateParticipantRange(int minParticipants, int maxParticipants) {
-        if (minParticipants > maxParticipants) {
-            throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
-        }
+        paymentRefundRequestService.requestMatchRefunds(
+                matchId,
+                match.getReservationId(),
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                cancelledAt
+        );
     }
 
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
@@ -214,10 +225,20 @@ public class MatchService {
         }
     }
 
-    private void validateLeaveable(MatchParticipant participant) {
+    private void validateLeaveable(Match match, MatchParticipant participant, LocalDateTime now) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
+        LocalDateTime leaveDeadline = getMatchStartAt(match).minusHours(24);
+        if (!now.isBefore(leaveDeadline)) {
+            throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
+        }
+    }
+
+    private LocalDateTime getMatchStartAt(Match match) {
+        FacilitySlot slot = facilitySlotRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
     }
 
     private void validateConfirmable(Match match, String hostId) {
@@ -227,8 +248,8 @@ public class MatchService {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
         }
-        if (!match.hasEnoughParticipants()) {
-            throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+        if (!match.isFull()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_FULL);
         }
     }
 
