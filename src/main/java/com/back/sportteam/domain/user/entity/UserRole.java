@@ -1,4 +1,4 @@
-package com.back.sportteam.user.domain;
+package com.back.sportteam.domain.user.entity;
 
 public enum UserRole {
     USER,

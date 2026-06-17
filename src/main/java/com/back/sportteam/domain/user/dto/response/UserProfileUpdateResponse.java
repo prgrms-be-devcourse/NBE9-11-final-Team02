@@ -1,6 +1,6 @@
 package com.back.sportteam.domain.user.dto.response;
 
-import com.back.sportteam.user.domain.User;
+import com.back.sportteam.domain.user.entity.User;
 import java.util.UUID;
 
 public record UserProfileUpdateResponse(

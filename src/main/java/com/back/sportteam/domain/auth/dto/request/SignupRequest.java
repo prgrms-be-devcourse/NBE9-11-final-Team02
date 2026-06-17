@@ -1,7 +1,7 @@
 package com.back.sportteam.domain.auth.dto.request;
 
 import com.back.sportteam.domain.auth.provider.AuthProvider;
-import com.back.sportteam.user.domain.UserRole;
+import com.back.sportteam.domain.user.entity.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
