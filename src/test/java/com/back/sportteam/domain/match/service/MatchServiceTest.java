@@ -17,6 +17,7 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,9 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private PaymentRefundRequestService paymentRefundRequestService;
 
     @InjectMocks
     private MatchService matchService;
@@ -482,6 +486,11 @@ class MatchServiceTest {
         assertThat(match.getCancelledAt()).isNotNull();
         assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        verify(paymentRefundRequestService).requestMatchRefunds(
+                matchId,
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                match.getCancelledAt()
+        );
     }
 
     @Test

@@ -13,6 +13,7 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final PaymentRefundRequestService paymentRefundRequestService;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
@@ -155,9 +157,15 @@ public class MatchService {
 
         validateCancellable(match, hostId);
 
-        match.cancel(LocalDateTime.now(SERVICE_ZONE));
+        LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
+        match.cancel(cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
+        paymentRefundRequestService.requestMatchRefunds(
+                matchId,
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                cancelledAt
+        );
     }
 
     private void validateParticipantRange(int minParticipants, int maxParticipants) {
