@@ -114,17 +114,17 @@ public class ReviewService {
             ));
 
             UUID revieweeId = UUID.fromString(pr.getRevieweeId());
-            User reviewee = userRepository.findById(revieweeId)
-                    .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
+            Optional<User> revieweeOpt = userRepository.findById(revieweeId);
+            User reviewee = revieweeOpt.orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 
             if (pr.getMannerRating() != null) {
                 reviewee.addMannerRating(pr.getMannerRating());
             }
             if (pr.getSkillRating() != null) {
                 // TODO: 매칭 참가 전 해당 종목에 대한 본인 실력 정보 등록 필수화 구현 후 에러코드 재검토
-                UserSportStat stat = userSportStatRepository
-                        .findByUser_IdAndSportType(revieweeId, match.getSportType())
-                        .orElseThrow(() -> new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT));
+                Optional<UserSportStat> statOpt = userSportStatRepository
+                        .findByUser_IdAndSportType(revieweeId, match.getSportType());
+                UserSportStat stat = statOpt.orElseThrow(() -> new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT));
                 stat.addSkillRating(pr.getSkillRating());
             }
         }

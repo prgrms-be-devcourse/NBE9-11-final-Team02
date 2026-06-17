@@ -112,8 +112,8 @@ class ReviewValidatorTest {
 
     @Test
     void 본인에게_리뷰를_남기면_예외가_발생한다() {
-        assertThatThrownBy(() -> reviewValidator.validateParticipantReview(
-                "match-1", "user-1", "user-1", Set.of("user-1", "user-2")))
+        Set<String> validIds = Set.of("user-1", "user-2");
+        assertThatThrownBy(() -> reviewValidator.validateParticipantReview("match-1", "user-1", "user-1", validIds))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReviewErrorCode.CANNOT_REVIEW_SELF);
@@ -121,8 +121,8 @@ class ReviewValidatorTest {
 
     @Test
     void 경기에_참가하지_않은_사람에게_리뷰를_남기면_예외가_발생한다() {
-        assertThatThrownBy(() -> reviewValidator.validateParticipantReview(
-                "match-1", "user-1", "user-99", Set.of("user-2", "user-3")))
+        Set<String> validIds = Set.of("user-2", "user-3");
+        assertThatThrownBy(() -> reviewValidator.validateParticipantReview("match-1", "user-1", "user-99", validIds))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReviewErrorCode.REVIEWEE_NOT_PARTICIPANT);
@@ -133,8 +133,8 @@ class ReviewValidatorTest {
         when(participantReviewRepository.existsByMatchIdAndReviewerIdAndRevieweeId(
                 "match-1", "user-1", "user-2")).thenReturn(true);
 
-        assertThatThrownBy(() -> reviewValidator.validateParticipantReview(
-                "match-1", "user-1", "user-2", Set.of("user-2")))
+        Set<String> validIds = Set.of("user-2");
+        assertThatThrownBy(() -> reviewValidator.validateParticipantReview("match-1", "user-1", "user-2", validIds))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReviewErrorCode.ALREADY_REVIEWED_PARTICIPANT);
@@ -157,7 +157,8 @@ class ReviewValidatorTest {
 
     @Test
     void 별점이_0_5단위가_아니면_예외가_발생한다() {
-        assertThatThrownBy(() -> reviewValidator.validateRating(new BigDecimal("4.3")))
+        BigDecimal invalidRating = new BigDecimal("4.3");
+        assertThatThrownBy(() -> reviewValidator.validateRating(invalidRating))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReviewErrorCode.INVALID_RATING);
