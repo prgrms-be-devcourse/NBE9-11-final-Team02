@@ -1,5 +1,8 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -33,6 +36,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final FacilitySlotRepository facilitySlotRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
 
     @Value("${match.payment-hold.duration-minutes:1}")
@@ -130,9 +134,9 @@ public class MatchService {
                 )
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 
-        validateLeaveable(match, participant);
-
         LocalDateTime leftAt = LocalDateTime.now(SERVICE_ZONE);
+        validateLeaveable(match, participant, leftAt);
+
         participant.cancel();
         match.decreaseCurrentCount();
         paymentRefundRequestService.requestParticipantRefunds(
@@ -221,13 +225,20 @@ public class MatchService {
         }
     }
 
-    private void validateLeaveable(Match match, MatchParticipant participant) {
+    private void validateLeaveable(Match match, MatchParticipant participant, LocalDateTime now) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
-        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+        LocalDateTime leaveDeadline = getMatchStartAt(match).minusHours(24);
+        if (!now.isBefore(leaveDeadline)) {
             throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
         }
+    }
+
+    private LocalDateTime getMatchStartAt(Match match) {
+        FacilitySlot slot = facilitySlotRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
     }
 
     private void validateConfirmable(Match match, String hostId) {

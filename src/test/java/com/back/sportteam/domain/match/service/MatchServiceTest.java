@@ -1,5 +1,7 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -26,7 +28,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +56,9 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private FacilitySlotRepository facilitySlotRepository;
 
     @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
@@ -343,6 +350,8 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
+        when(facilitySlotRepository.findById(match.getReservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
 
         matchService.leaveMatch(match.getId(), "participant-id");
 
@@ -402,7 +411,7 @@ class MatchServiceTest {
 
     @Test
     void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
-        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
+        Match match = createMatch();
         String matchId = match.getId();
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
         participant.activate();
@@ -412,6 +421,8 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
+        when(facilitySlotRepository.findById(match.getReservationId()))
+                .thenReturn(Optional.of(createPastSlot()));
 
         assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
@@ -602,5 +613,25 @@ class MatchServiceTest {
                 .recruitDeadline(recruitDeadline)
                 .cancelDeadline(cancelDeadline)
                 .build());
+    }
+
+    private FacilitySlot createFutureSlot() {
+        return FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2099, Month.JUNE, 12),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                10000
+        );
+    }
+
+    private FacilitySlot createPastSlot() {
+        return FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2026, Month.JUNE, 1),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                10000
+        );
     }
 }
