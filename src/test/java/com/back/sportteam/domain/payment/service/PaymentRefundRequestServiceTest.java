@@ -79,6 +79,30 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
+    void 참가자의_결제완료_참가비를_환불_대기열에_등록한다() {
+        Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
+        when(paymentRepository.findAllByParticipantIdAndStatus("participant-id", PaymentStatus.PAID))
+                .thenReturn(List.of(payment));
+
+        paymentRefundRequestService.requestParticipantRefunds(
+                "participant-id",
+                PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
+                REQUESTED_AT
+        );
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Refund>> captor = ArgumentCaptor.forClass(List.class);
+        verify(refundRepository).saveAll(captor.capture());
+
+        Refund refund = captor.getValue().getFirst();
+        assertThat(refund.getPayment()).isEqualTo(payment);
+        assertThat(refund.getAmount()).isEqualTo(10_000);
+        assertThat(refund.getReason()).isEqualTo(PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT);
+        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
+        assertThat(refund.getRequestedAt()).isEqualTo(REQUESTED_AT);
+    }
+
+    @Test
     void 참가비_결제가_아니면_환불_대기열에_등록하지_않는다() {
         Payment payment = createPaidPayment("participant-id", PaymentType.FACILITY);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))

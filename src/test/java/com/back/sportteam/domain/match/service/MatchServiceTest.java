@@ -34,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -362,6 +363,11 @@ class MatchServiceTest {
 
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(match.getCurrentCount()).isEqualTo(1);
+        verify(paymentRefundRequestService).requestParticipantRefunds(
+                eq(participant.getId()),
+                eq(PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT),
+                any(LocalDateTime.class)
+        );
     }
 
     @Test
@@ -407,6 +413,27 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.HOST_CANNOT_LEAVE);
+    }
+
+    @Test
+    void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
+        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
+        String matchId = match.getId();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        participant.activate();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                matchId,
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.LEAVE_DEADLINE_PASSED);
+
+        verify(paymentRefundRequestService, never()).requestParticipantRefunds(any(), any(), any());
     }
 
     @Test

@@ -224,6 +224,18 @@ class MatchControllerTest {
     }
 
     @Test
+    void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_409_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED))
+                .when(matchService).leaveMatch("match-id", "user-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
+                        .header("X-USER-ID", "user-id"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_016"));
+    }
+
+    @Test
     void 매칭방_확정_요청을_200_응답으로_반환한다() throws Exception {
         MatchDetailResponse response = createConfirmedDetailResponse();
         when(matchService.confirmMatch("match-id", "host-id")).thenReturn(response);

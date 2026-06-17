@@ -132,10 +132,16 @@ public class MatchService {
                 )
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 
-        validateLeaveable(participant);
+        validateLeaveable(match, participant);
 
+        LocalDateTime leftAt = LocalDateTime.now(SERVICE_ZONE);
         participant.cancel();
         match.decreaseCurrentCount();
+        paymentRefundRequestService.requestParticipantRefunds(
+                participant.getId(),
+                PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
+                leftAt
+        );
     }
 
     @Transactional
@@ -222,9 +228,12 @@ public class MatchService {
         }
     }
 
-    private void validateLeaveable(MatchParticipant participant) {
+    private void validateLeaveable(Match match, MatchParticipant participant) {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
+        }
+        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+            throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
         }
     }
 

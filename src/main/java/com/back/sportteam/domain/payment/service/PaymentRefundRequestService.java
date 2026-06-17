@@ -18,13 +18,22 @@ public class PaymentRefundRequestService {
 
     public static final String MATCH_CANCELLED_BY_HOST = "MATCH_CANCELLED_BY_HOST";
     public static final String MATCH_MINIMUM_PARTICIPANTS_NOT_MET = "MATCH_MINIMUM_PARTICIPANTS_NOT_MET";
+    public static final String MATCH_PARTICIPANT_LEFT = "MATCH_PARTICIPANT_LEFT";
 
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
 
     public void requestMatchRefunds(String matchId, String reason, LocalDateTime requestedAt) {
         List<Payment> paidPayments = paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID);
+        saveRefunds(paidPayments, reason, requestedAt);
+    }
 
+    public void requestParticipantRefunds(String participantId, String reason, LocalDateTime requestedAt) {
+        List<Payment> paidPayments = paymentRepository.findAllByParticipantIdAndStatus(participantId, PaymentStatus.PAID);
+        saveRefunds(paidPayments, reason, requestedAt);
+    }
+
+    private void saveRefunds(List<Payment> paidPayments, String reason, LocalDateTime requestedAt) {
         List<Refund> refunds = paidPayments.stream()
                 .filter(payment -> payment.getPaymentType() == PaymentType.PARTICIPATION)
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
