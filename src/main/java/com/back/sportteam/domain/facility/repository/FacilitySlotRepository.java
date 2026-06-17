@@ -2,7 +2,9 @@ package com.back.sportteam.domain.facility.repository;
 
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.entity.SlotStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,6 +17,10 @@ import java.util.Set;
 public interface FacilitySlotRepository extends JpaRepository<FacilitySlot, String> {
 
     boolean existsByFacilityIdAndStatusIn(String facilityId, List<SlotStatus> statuses);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select slot from FacilitySlot slot where slot.id = :slotId")
+    java.util.Optional<FacilitySlot> findByIdForUpdate(@Param("slotId") String slotId);
 
     @Query("SELECT s.slotDate FROM FacilitySlot s WHERE s.facilityId = :facilityId " +
            "AND s.slotDate BETWEEN :fromDate AND :toDate AND s.startTime = :startTime")
