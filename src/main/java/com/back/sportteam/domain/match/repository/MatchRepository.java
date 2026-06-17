@@ -16,6 +16,8 @@ public interface MatchRepository extends JpaRepository<Match, String> {
 
     boolean existsByReservationId(String reservationId);
 
+    List<Match> findByStatus(MatchStatus status);
+
     @Query("""
             select match.id
             from Match match

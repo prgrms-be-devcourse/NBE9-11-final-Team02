@@ -21,6 +21,7 @@ import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import com.back.sportteam.global.exception.BusinessException;
@@ -50,6 +51,7 @@ public class MatchService {
     private final RefundRepository refundRepository;
     private final ReservationRepository reservationRepository;
     private final FacilitySlotRepository facilitySlotRepository;
+    private final NotificationEventPublisher notificationEventPublisher;
     private final ReservationSlotService reservationSlotService;
 
     @Value("${match.payment-hold.duration-minutes:1}")
@@ -166,6 +168,7 @@ public class MatchService {
 
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
         reservationSlotService.confirmReservation(match.getReservationId());
+        notificationEventPublisher.publishMatchConfirmed(match.getId(), match.getConfirmedAt());
 
         return MatchDetailResponse.from(match);
     }
@@ -182,6 +185,7 @@ public class MatchService {
         reservationSlotService.cancelReservation(match.getReservationId(), cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
+        notificationEventPublisher.publishMatchCancelled(matchId, cancelledAt);
     }
 
     private void validateParticipantRange(int minParticipants, int maxParticipants) {

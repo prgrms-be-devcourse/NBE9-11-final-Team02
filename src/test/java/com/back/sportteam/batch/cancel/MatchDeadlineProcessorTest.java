@@ -24,6 +24,7 @@ import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
@@ -58,6 +59,9 @@ class MatchDeadlineProcessorTest {
 
     @Mock
     private ReservationSlotService reservationSlotService;
+
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
 
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
