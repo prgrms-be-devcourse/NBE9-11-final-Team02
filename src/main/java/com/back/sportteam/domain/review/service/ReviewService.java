@@ -9,6 +9,7 @@ import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.review.dto.request.FacilityReviewRequest;
 import com.back.sportteam.domain.review.dto.request.ParticipantReviewRequest;
 import com.back.sportteam.domain.review.dto.request.ReviewSubmitRequest;
 import com.back.sportteam.domain.review.dto.response.FacilityReviewResponse;
@@ -66,59 +67,64 @@ public class ReviewService {
         reviewValidator.validateParticipant(matchId, reviewerId);
 
         if (request.getFacilityReview() != null) {
-            reviewValidator.validateFacilityReview(matchId, reviewerId);
-            reviewValidator.validateRating(request.getFacilityReview().getRating());
-
-            String facilityId = matchRepository.findFacilityIdByMatchId(matchId)
-                    .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
-
-            facilityReviewRepository.save(FacilityReview.create(
-                    matchId, reviewerId, facilityId,
-                    request.getFacilityReview().getRating(),
-                    request.getFacilityReview().getComment()
-            ));
-
-            Facility facility = facilityRepository.findById(facilityId)
-                    .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
-            facility.addRating(request.getFacilityReview().getRating());
+            submitFacilityReview(matchId, reviewerId, request.getFacilityReview());
         }
 
         if (!request.getParticipantReviews().isEmpty()) {
-            Set<String> validRevieweeIds = matchParticipantRepository
-                    .findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
-                    .stream()
-                    .map(MatchParticipant::getUserId)
-                    .collect(Collectors.toSet());
+            submitParticipantReviews(matchId, reviewerId, match, request.getParticipantReviews());
+        }
+    }
 
-            for (ParticipantReviewRequest pr : request.getParticipantReviews()) {
-                reviewValidator.validateParticipantReview(matchId, reviewerId, pr.getRevieweeId(), validRevieweeIds);
-                if (pr.getMannerRating() != null) reviewValidator.validateRating(pr.getMannerRating());
-                if (pr.getSkillRating() != null) reviewValidator.validateRating(pr.getSkillRating());
+    private void submitFacilityReview(String matchId, String reviewerId, FacilityReviewRequest req) {
+        reviewValidator.validateFacilityReview(matchId, reviewerId);
+        reviewValidator.validateRating(req.getRating());
 
-                if (pr.getMannerRating() == null && pr.getSkillRating() == null) {
-                    continue;
-                }
+        String facilityId = matchRepository.findFacilityIdByMatchId(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
-                participantReviewRepository.save(ParticipantReview.create(
-                        matchId, reviewerId, pr.getRevieweeId(),
-                        pr.getMannerRating(), pr.getSkillRating(), null
-                ));
+        facilityReviewRepository.save(FacilityReview.create(matchId, reviewerId, facilityId,
+                req.getRating(), req.getComment()));
 
-                UUID revieweeId = UUID.fromString(pr.getRevieweeId());
-                User reviewee = userRepository.findById(revieweeId)
-                        .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
+        Facility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+        facility.addRating(req.getRating());
+    }
 
-                if (pr.getMannerRating() != null) {
-                    reviewee.addMannerRating(pr.getMannerRating());
-                }
+    private void submitParticipantReviews(String matchId, String reviewerId, Match match,
+                                           List<ParticipantReviewRequest> reviews) {
+        Set<String> validRevieweeIds = matchParticipantRepository
+                .findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
+                .stream()
+                .map(MatchParticipant::getUserId)
+                .collect(Collectors.toSet());
 
-                if (pr.getSkillRating() != null) {
-                    // TODO: 매칭 참가 전 해당 종목에 대한 본인 실력 정보 등록 필수화 구현 후 에러코드 재검토
-                    UserSportStat stat = userSportStatRepository
-                            .findByUser_IdAndSportType(revieweeId, match.getSportType())
-                            .orElseThrow(() -> new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT));
-                    stat.addSkillRating(pr.getSkillRating());
-                }
+        for (ParticipantReviewRequest pr : reviews) {
+            reviewValidator.validateParticipantReview(matchId, reviewerId, pr.getRevieweeId(), validRevieweeIds);
+            if (pr.getMannerRating() != null) reviewValidator.validateRating(pr.getMannerRating());
+            if (pr.getSkillRating() != null) reviewValidator.validateRating(pr.getSkillRating());
+
+            if (pr.getMannerRating() == null && pr.getSkillRating() == null) {
+                continue;
+            }
+
+            participantReviewRepository.save(ParticipantReview.create(
+                    matchId, reviewerId, pr.getRevieweeId(),
+                    pr.getMannerRating(), pr.getSkillRating(), null
+            ));
+
+            UUID revieweeId = UUID.fromString(pr.getRevieweeId());
+            User reviewee = userRepository.findById(revieweeId)
+                    .orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
+
+            if (pr.getMannerRating() != null) {
+                reviewee.addMannerRating(pr.getMannerRating());
+            }
+            if (pr.getSkillRating() != null) {
+                // TODO: 매칭 참가 전 해당 종목에 대한 본인 실력 정보 등록 필수화 구현 후 에러코드 재검토
+                UserSportStat stat = userSportStatRepository
+                        .findByUser_IdAndSportType(revieweeId, match.getSportType())
+                        .orElseThrow(() -> new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT));
+                stat.addSkillRating(pr.getSkillRating());
             }
         }
     }
