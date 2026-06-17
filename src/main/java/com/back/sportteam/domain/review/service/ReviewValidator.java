@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -37,8 +38,8 @@ public class ReviewValidator {
     }
 
     public void validateParticipant(String matchId, String userId) {
-        if (!matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
-                matchId, userId, MatchParticipantStatus.ACTIVE)) {
+        if (!matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, userId, List.of(MatchParticipantStatus.ACTIVE))) {
             throw new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT);
         }
     }

@@ -5,7 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,8 +28,9 @@ public class UserSportStat {
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
     private String id;
 
-    @Column(name = "user_id", columnDefinition = "CHAR(36)", nullable = false)
-    private String userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sport_type", nullable = false, length = 30)
@@ -48,10 +52,10 @@ public class UserSportStat {
     @Column(name = "self_reported_level", nullable = false, length = 15)
     private SelfReportedLevel selfReportedLevel;
 
-    private UserSportStat(String userId, SportType sportType, String position,
+    private UserSportStat(User user, SportType sportType, String position,
                            SelfReportedLevel selfReportedLevel) {
         this.id = UUID.randomUUID().toString();
-        this.userId = userId;
+        this.user = user;
         this.sportType = sportType;
         this.position = position;
         this.selfReportedLevel = selfReportedLevel;
@@ -60,9 +64,9 @@ public class UserSportStat {
         this.skillRating = selfReportedLevel.getInitialScore().setScale(2, RoundingMode.HALF_UP);
     }
 
-    public static UserSportStat create(String userId, SportType sportType, String position,
+    public static UserSportStat create(User user, SportType sportType, String position,
                                         SelfReportedLevel selfReportedLevel) {
-        return new UserSportStat(userId, sportType, position, selfReportedLevel);
+        return new UserSportStat(user, sportType, position, selfReportedLevel);
     }
 
     public void addSkillRating(BigDecimal newRating) {

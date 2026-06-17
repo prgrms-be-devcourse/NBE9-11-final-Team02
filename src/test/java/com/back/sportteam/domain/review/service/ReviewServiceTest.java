@@ -39,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,6 +60,9 @@ class ReviewServiceTest {
 
     @InjectMocks
     private ReviewService reviewService;
+
+    private static final UUID REVIEWEE_UUID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final String REVIEWEE_ID = REVIEWEE_UUID.toString();
 
     @Test
     void 내가_남긴_시설_리뷰_목록을_조회할_수_있다() {
@@ -174,19 +178,19 @@ class ReviewServiceTest {
     void 참가자_리뷰를_제출하면_매너_평점과_실력_평점이_갱신된다() {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
-        ReflectionTestUtils.setField(reviewee, "id", 2L);
-        UserSportStat stat = UserSportStat.create("2", SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_UUID);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
-        when(participant.getUserId()).thenReturn("2");
+        when(participant.getUserId()).thenReturn(REVIEWEE_ID);
 
-        ReviewSubmitRequest request = submitRequest(null, List.of(participantReq("2", "4.0", "3.5")));
+        ReviewSubmitRequest request = submitRequest(null, List.of(participantReq(REVIEWEE_ID, "4.0", "3.5")));
 
         when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
         when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(reviewee));
-        when(userSportStatRepository.findByUserIdAndSportType("2", SportType.FUTSAL))
+        when(userRepository.findById(REVIEWEE_UUID)).thenReturn(Optional.of(reviewee));
+        when(userSportStatRepository.findByUser_IdAndSportType(REVIEWEE_UUID, SportType.FUTSAL))
                 .thenReturn(Optional.of(stat));
         when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -216,19 +220,19 @@ class ReviewServiceTest {
     void 시설_리뷰_없이_참가자_리뷰만_제출할_수_있다() {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
-        ReflectionTestUtils.setField(reviewee, "id", 2L);
-        UserSportStat stat = UserSportStat.create("2", SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_UUID);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
-        when(participant.getUserId()).thenReturn("2");
+        when(participant.getUserId()).thenReturn(REVIEWEE_ID);
 
-        ReviewSubmitRequest request = submitRequest(null, List.of(participantReq("2", "4.0", "3.5")));
+        ReviewSubmitRequest request = submitRequest(null, List.of(participantReq(REVIEWEE_ID, "4.0", "3.5")));
 
         when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
         when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(reviewee));
-        when(userSportStatRepository.findByUserIdAndSportType("2", SportType.FUTSAL))
+        when(userRepository.findById(REVIEWEE_UUID)).thenReturn(Optional.of(reviewee));
+        when(userSportStatRepository.findByUser_IdAndSportType(REVIEWEE_UUID, SportType.FUTSAL))
                 .thenReturn(Optional.of(stat));
         when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -241,13 +245,13 @@ class ReviewServiceTest {
     void 매너_평점만_보내면_매너만_갱신되고_실력은_갱신되지_않는다() {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
-        ReflectionTestUtils.setField(reviewee, "id", 2L);
+        ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_UUID);
 
         MatchParticipant participant = mock(MatchParticipant.class);
-        when(participant.getUserId()).thenReturn("2");
+        when(participant.getUserId()).thenReturn(REVIEWEE_ID);
 
         ParticipantReviewRequest pr = new ParticipantReviewRequest();
-        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "revieweeId", REVIEWEE_ID);
         ReflectionTestUtils.setField(pr, "mannerRating", new BigDecimal("4.0"));
         ReflectionTestUtils.setField(pr, "skillRating", null);
         ReviewSubmitRequest request = submitRequest(null, List.of(pr));
@@ -255,25 +259,27 @@ class ReviewServiceTest {
         when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
         when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(reviewee));
+        when(userRepository.findById(REVIEWEE_UUID)).thenReturn(Optional.of(reviewee));
         when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         reviewService.submitReview("match-1", "user-1", request);
 
         verify(participantReviewRepository).save(any(ParticipantReview.class));
-        verify(userSportStatRepository, never()).findByUserIdAndSportType(any(), any());
+        verify(userSportStatRepository, never()).findByUser_IdAndSportType(any(), any());
     }
 
     @Test
     void 실력_평점만_보내면_실력만_갱신되고_매너는_갱신되지_않는다() {
         Match match = completedMatch();
-        UserSportStat stat = UserSportStat.create("2", SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
+        ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_UUID);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
-        when(participant.getUserId()).thenReturn("2");
+        when(participant.getUserId()).thenReturn(REVIEWEE_ID);
 
         ParticipantReviewRequest pr = new ParticipantReviewRequest();
-        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "revieweeId", REVIEWEE_ID);
         ReflectionTestUtils.setField(pr, "mannerRating", null);
         ReflectionTestUtils.setField(pr, "skillRating", new BigDecimal("3.5"));
         ReviewSubmitRequest request = submitRequest(null, List.of(pr));
@@ -281,14 +287,14 @@ class ReviewServiceTest {
         when(reviewValidator.validateAndGetMatch("match-1")).thenReturn(match);
         when(matchParticipantRepository.findByMatchIdAndStatus("match-1", MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));
-        when(userSportStatRepository.findByUserIdAndSportType("2", SportType.FUTSAL))
+        when(userRepository.findById(REVIEWEE_UUID)).thenReturn(Optional.of(reviewee));
+        when(userSportStatRepository.findByUser_IdAndSportType(REVIEWEE_UUID, SportType.FUTSAL))
                 .thenReturn(Optional.of(stat));
         when(participantReviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         reviewService.submitReview("match-1", "user-1", request);
 
         verify(participantReviewRepository).save(any(ParticipantReview.class));
-        verify(userRepository, never()).findById(any());
         assertThat(stat.getReviewCount()).isEqualTo(1);
     }
 
@@ -297,10 +303,10 @@ class ReviewServiceTest {
         Match match = completedMatch();
 
         MatchParticipant participant = mock(MatchParticipant.class);
-        when(participant.getUserId()).thenReturn("2");
+        when(participant.getUserId()).thenReturn(REVIEWEE_ID);
 
         ParticipantReviewRequest pr = new ParticipantReviewRequest();
-        ReflectionTestUtils.setField(pr, "revieweeId", "2");
+        ReflectionTestUtils.setField(pr, "revieweeId", REVIEWEE_ID);
         ReflectionTestUtils.setField(pr, "mannerRating", null);
         ReflectionTestUtils.setField(pr, "skillRating", null);
         ReviewSubmitRequest request = submitRequest(null, List.of(pr));
@@ -320,8 +326,7 @@ class ReviewServiceTest {
                 .hostId("user-1")
                 .title("테스트 경기")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(6)
-                .maxParticipants(12)
+                .capacity(12)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.LEVEL_5)

@@ -23,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -74,16 +75,16 @@ class ReviewValidatorTest {
 
     @Test
     void 경기_참가자면_검증을_통과한다() {
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
-                "match-1", "user-1", MatchParticipantStatus.ACTIVE)).thenReturn(true);
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                "match-1", "user-1", List.of(MatchParticipantStatus.ACTIVE))).thenReturn(true);
 
         reviewValidator.validateParticipant("match-1", "user-1");
     }
 
     @Test
     void 경기_참가자가_아니면_예외가_발생한다() {
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
-                "match-1", "user-1", MatchParticipantStatus.ACTIVE)).thenReturn(false);
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                "match-1", "user-1", List.of(MatchParticipantStatus.ACTIVE))).thenReturn(false);
 
         assertThatThrownBy(() -> reviewValidator.validateParticipant("match-1", "user-1"))
                 .isInstanceOf(BusinessException.class)
@@ -167,8 +168,7 @@ class ReviewValidatorTest {
                 .hostId("user-1")
                 .title("테스트 경기")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(6)
-                .maxParticipants(12)
+                .capacity(12)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.LEVEL_5)
@@ -187,8 +187,7 @@ class ReviewValidatorTest {
                 .hostId("user-1")
                 .title("테스트 경기")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(6)
-                .maxParticipants(12)
+                .capacity(12)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.LEVEL_5)
