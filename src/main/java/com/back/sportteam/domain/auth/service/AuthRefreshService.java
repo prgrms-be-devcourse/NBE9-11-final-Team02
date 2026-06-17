@@ -41,7 +41,7 @@ public class AuthRefreshService {
         }
 
         Claims claims = jwtProvider.parse(refreshToken);
-        UUID userId = claims.get("userId", UUID.class);
+        UUID userId = UUID.fromString(claims.get("userId", String.class));
         String role = claims.get("role", String.class);
 
         String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + userId);
