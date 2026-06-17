@@ -42,9 +42,12 @@ class PaymentRefundRequestServiceTest {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
+        when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
+                .thenReturn(List.of());
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
+                "slot-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
@@ -66,11 +69,14 @@ class PaymentRefundRequestServiceTest {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
+        when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
+                .thenReturn(List.of());
         when(refundRepository.existsByPaymentIdAndStatus(payment.getId(), RefundStatus.PENDING))
                 .thenReturn(true);
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
+                "slot-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
@@ -103,18 +109,30 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
-    void 참가비_결제가_아니면_환불_대기열에_등록하지_않는다() {
-        Payment payment = createPaidPayment("participant-id", PaymentType.FACILITY);
+    void 매칭의_결제완료_시설_선결제를_환불_대기열에_등록한다() {
+        Payment payment = createPaidFacilityPayment();
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
+                .thenReturn(List.of());
+        when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
+                "slot-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
 
-        verify(refundRepository, never()).saveAll(any());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Refund>> captor = ArgumentCaptor.forClass(List.class);
+        verify(refundRepository).saveAll(captor.capture());
+
+        Refund refund = captor.getValue().getFirst();
+        assertThat(refund.getPayment()).isEqualTo(payment);
+        assertThat(refund.getAmount()).isEqualTo(100_000);
+        assertThat(refund.getReason()).isEqualTo(PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST);
+        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
+        assertThat(refund.getRequestedAt()).isEqualTo(REQUESTED_AT);
     }
 
     private Payment createPaidPayment(String participantId, PaymentType paymentType) {
@@ -128,6 +146,20 @@ class PaymentRefundRequestServiceTest {
                 10_000
         );
         payment.complete("payment-key-" + participantId, REQUESTED_AT.minusMinutes(10));
+        return payment;
+    }
+
+    private Payment createPaidFacilityPayment() {
+        Payment payment = Payment.create(
+                null,
+                "host-id",
+                null,
+                "slot-id",
+                PaymentType.FACILITY,
+                "mid_facility",
+                100_000
+        );
+        payment.complete("payment-key-facility", REQUESTED_AT.minusMinutes(10));
         return payment;
     }
 }

@@ -61,7 +61,7 @@ class MatchServiceTest {
 
     @Test
     void 매칭방을_생성하면_방장_참가자도_함께_생성한다() {
-        MatchCreateRequest request = createRequest(2, 10);
+        MatchCreateRequest request = createRequest(10);
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -86,7 +86,7 @@ class MatchServiceTest {
 
     @Test
     void 이미_선점된_예약이면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(2, 10);
+        MatchCreateRequest request = createRequest(10);
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
@@ -99,25 +99,11 @@ class MatchServiceTest {
     }
 
     @Test
-    void 최소_인원이_최대_인원보다_크면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(10, 2);
-
-        assertThatThrownBy(() -> matchService.createMatch("host-id", request))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
-
-        verify(matchRepository, never()).existsByReservationId(any());
-        verify(matchRepository, never()).save(any(Match.class));
-    }
-
-    @Test
     void 실력_조건을_무관으로_선택하면_상관없음으로_생성한다() {
         MatchCreateRequest request = new MatchCreateRequest(
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 10000,
                 SkillLevel.ANY,
@@ -139,7 +125,7 @@ class MatchServiceTest {
 
     @Test
     void 최소_실력_레벨이_최대_실력_레벨보다_크면_매칭방을_생성하지_않는다() {
-        MatchCreateRequest request = createRequest(2, 10, SkillLevel.LEVEL_4, SkillLevel.LEVEL_2);
+        MatchCreateRequest request = createRequest(10, SkillLevel.LEVEL_4, SkillLevel.LEVEL_2);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)
@@ -152,7 +138,7 @@ class MatchServiceTest {
 
     @Test
     void 실력_레벨_무관은_최소와_최대를_함께_선택해야_한다() {
-        MatchCreateRequest request = createRequest(2, 10, SkillLevel.ANY, SkillLevel.LEVEL_3);
+        MatchCreateRequest request = createRequest(10, SkillLevel.ANY, SkillLevel.LEVEL_3);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)
@@ -169,7 +155,6 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                2,
                 10,
                 10000,
                 SkillLevel.LEVEL_2,
@@ -486,7 +471,7 @@ class MatchServiceTest {
     }
 
     @Test
-    void 매칭방_확정시_최소_인원이_모이지_않으면_예외를_던진다() {
+    void 매칭방_확정시_정원이_모이지_않으면_예외를_던진다() {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
@@ -494,7 +479,7 @@ class MatchServiceTest {
         assertThatThrownBy(() -> matchService.confirmMatch(matchId, "host-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FULL);
     }
 
     @Test
@@ -515,6 +500,7 @@ class MatchServiceTest {
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         verify(paymentRefundRequestService).requestMatchRefunds(
                 matchId,
+                match.getReservationId(),
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 match.getCancelledAt()
         );
@@ -567,12 +553,11 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.CANCEL_DEADLINE_PASSED);
     }
 
-    private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
-        return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+    private MatchCreateRequest createRequest(int maxParticipants) {
+        return createRequest(maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
 
     private MatchCreateRequest createRequest(
-            int minParticipants,
             int maxParticipants,
             SkillLevel minSkillLevel,
             SkillLevel maxSkillLevel
@@ -581,7 +566,6 @@ class MatchServiceTest {
                 "reservation-id",
                 "풋살 매칭",
                 SportType.FUTSAL,
-                minParticipants,
                 maxParticipants,
                 10000,
                 minSkillLevel,
@@ -610,7 +594,6 @@ class MatchServiceTest {
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(Math.min(2, maxParticipants))
                 .maxParticipants(maxParticipants)
                 .feePerPerson(10000)
                 .minSkillLevel(SkillLevel.LEVEL_2)

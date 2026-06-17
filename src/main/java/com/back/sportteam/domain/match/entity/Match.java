@@ -44,9 +44,6 @@ public class Match {
     @Column(name = "sport_type", nullable = false, length = 20)
     private SportType sportType;
 
-    @Column(name = "min_participants", nullable = false)
-    private int minParticipants;
-
     @Column(name = "max_participants", nullable = false)
     private int maxParticipants;
 
@@ -97,7 +94,6 @@ public class Match {
         this.hostId = command.getHostId();
         this.title = command.getTitle();
         this.sportType = command.getSportType();
-        this.minParticipants = command.getMinParticipants();
         this.maxParticipants = command.getMaxParticipants();
         this.currentCount = 1;
         this.feePerPerson = command.getFeePerPerson();
@@ -112,7 +108,6 @@ public class Match {
     }
 
     public static Match create(MatchCreateCommand command) {
-        validateParticipantRange(command.getMinParticipants(), command.getMaxParticipants());
         return new Match(command);
     }
 
@@ -126,10 +121,6 @@ public class Match {
 
     public boolean isFull() {
         return currentCount >= maxParticipants;
-    }
-
-    public boolean hasEnoughParticipants() {
-        return currentCount >= minParticipants;
     }
 
     public boolean isRecruitClosed(LocalDateTime now) {
@@ -161,12 +152,6 @@ public class Match {
     public void decreaseCurrentCount() {
         if (currentCount > 0) {
             this.currentCount--;
-        }
-    }
-
-    private static void validateParticipantRange(int minParticipants, int maxParticipants) {
-        if (minParticipants > maxParticipants) {
-            throw new IllegalArgumentException("최소 인원은 최대 인원보다 클 수 없습니다.");
         }
     }
 

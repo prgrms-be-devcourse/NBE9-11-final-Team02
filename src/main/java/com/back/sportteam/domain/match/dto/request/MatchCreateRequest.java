@@ -22,9 +22,6 @@ public record MatchCreateRequest(
         @NotNull(message = "종목은 필수입니다.")
         SportType sportType,
 
-        @Min(value = 1, message = "최소 인원은 1명 이상이어야 합니다.")
-        int minParticipants,
-
         @Min(value = 1, message = "최대 인원은 1명 이상이어야 합니다.")
         int maxParticipants,
 

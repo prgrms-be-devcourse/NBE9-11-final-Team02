@@ -40,7 +40,6 @@ public class MatchService {
 
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
-        validateParticipantRange(request.minParticipants(), request.maxParticipants());
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
         validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
         validateReservationAvailable(request.reservationId());
@@ -50,7 +49,6 @@ public class MatchService {
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
-                .minParticipants(request.minParticipants())
                 .maxParticipants(request.maxParticipants())
                 .feePerPerson(request.feePerPerson())
                 .minSkillLevel(request.minSkillLevel())
@@ -169,15 +167,10 @@ public class MatchService {
                 .forEach(MatchParticipant::cancel);
         paymentRefundRequestService.requestMatchRefunds(
                 matchId,
+                match.getReservationId(),
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 cancelledAt
         );
-    }
-
-    private void validateParticipantRange(int minParticipants, int maxParticipants) {
-        if (minParticipants > maxParticipants) {
-            throw new BusinessException(MatchErrorCode.INVALID_PARTICIPANT_RANGE);
-        }
     }
 
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
@@ -244,8 +237,8 @@ public class MatchService {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
         }
-        if (!match.hasEnoughParticipants()) {
-            throw new BusinessException(MatchErrorCode.NOT_ENOUGH_PARTICIPANTS);
+        if (!match.isFull()) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_FULL);
         }
     }
 

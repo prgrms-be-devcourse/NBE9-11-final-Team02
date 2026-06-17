@@ -26,7 +26,7 @@ public class MatchDeadlineProcessor {
             return;
         }
 
-        if (match.hasEnoughParticipants()) {
+        if (match.isFull()) {
             match.confirm(processedAt);
             return;
         }
@@ -35,6 +35,7 @@ public class MatchDeadlineProcessor {
         cancelActiveParticipants(matchId);
         paymentRefundRequestService.requestMatchRefunds(
                 matchId,
+                match.getReservationId(),
                 PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
                 processedAt
         );

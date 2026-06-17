@@ -16,6 +16,8 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     List<Payment> findAllByMatchIdAndStatus(String matchId, PaymentStatus status);
 
+    List<Payment> findAllByFacilitySlotIdAndStatus(String facilitySlotId, PaymentStatus status);
+
     List<Payment> findAllByParticipantIdAndStatus(String participantId, PaymentStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

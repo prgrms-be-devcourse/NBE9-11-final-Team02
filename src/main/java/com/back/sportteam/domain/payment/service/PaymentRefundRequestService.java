@@ -8,6 +8,7 @@ import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,8 +24,15 @@ public class PaymentRefundRequestService {
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
 
-    public void requestMatchRefunds(String matchId, String reason, LocalDateTime requestedAt) {
-        List<Payment> paidPayments = paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID);
+    public void requestMatchRefunds(
+            String matchId,
+            String facilitySlotId,
+            String reason,
+            LocalDateTime requestedAt
+    ) {
+        List<Payment> paidPayments = new ArrayList<>();
+        paidPayments.addAll(paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID));
+        paidPayments.addAll(paymentRepository.findAllByFacilitySlotIdAndStatus(facilitySlotId, PaymentStatus.PAID));
         saveRefunds(paidPayments, reason, requestedAt);
     }
 
@@ -35,7 +43,8 @@ public class PaymentRefundRequestService {
 
     private void saveRefunds(List<Payment> paidPayments, String reason, LocalDateTime requestedAt) {
         List<Refund> refunds = paidPayments.stream()
-                .filter(payment -> payment.getPaymentType() == PaymentType.PARTICIPATION)
+                .filter(payment -> payment.getPaymentType() == PaymentType.PARTICIPATION
+                        || payment.getPaymentType() == PaymentType.FACILITY)
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
                 .filter(payment -> !refundRepository.existsByPaymentIdAndStatus(
                         payment.getId(),

@@ -44,7 +44,7 @@ class MatchDeadlineProcessorTest {
     private MatchDeadlineProcessor matchDeadlineProcessor;
 
     @Test
-    void 최소_인원을_충족한_마감_경기는_자동_확정한다() {
+    void 정원을_충족한_마감_경기는_자동_확정한다() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
@@ -53,11 +53,11 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
-        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any());
+        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
     @Test
-    void 최소_인원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
+    void 정원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(2, processedAt.minusMinutes(1));
         MatchParticipant participant = mock(MatchParticipant.class);
@@ -74,6 +74,7 @@ class MatchDeadlineProcessorTest {
         verify(participant).cancel();
         verify(paymentRefundRequestService).requestMatchRefunds(
                 match.getId(),
+                match.getReservationId(),
                 PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
                 processedAt
         );
@@ -89,17 +90,16 @@ class MatchDeadlineProcessorTest {
         matchDeadlineProcessor.process(match.getId(), processedAt);
 
         verify(matchParticipantRepository, never()).findByMatchIdAndStatus(any(), any());
-        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any());
+        verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
-    private Match createMatch(int minParticipants, LocalDateTime recruitDeadline) {
+    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
         return Match.create(MatchCreateCommand.builder()
-                .reservationId("reservation-" + minParticipants)
+                .reservationId("reservation-" + maxParticipants)
                 .hostId("host-id")
                 .title("풋살 매칭")
                 .sportType(SportType.FUTSAL)
-                .minParticipants(minParticipants)
-                .maxParticipants(10)
+                .maxParticipants(maxParticipants)
                 .feePerPerson(10_000)
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.ANY)
