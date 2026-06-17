@@ -1,8 +1,12 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +24,7 @@ public class MatchPaymentHoldExpirationService {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private final MatchParticipantRepository matchParticipantRepository;
+    private final FacilitySlotRepository facilitySlotRepository;
 
     @Scheduled(fixedDelayString = "${match.payment-hold.expiration-check-delay-millis}")
     @Transactional
@@ -40,6 +45,13 @@ public class MatchPaymentHoldExpirationService {
         }
         if (participant.isHost()) {
             participant.getMatch().cancel(expiredAt);
+            releaseFacilitySlot(participant.getMatch().getReservationId());
         }
+    }
+
+    private void releaseFacilitySlot(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        facilitySlot.release();
     }
 }

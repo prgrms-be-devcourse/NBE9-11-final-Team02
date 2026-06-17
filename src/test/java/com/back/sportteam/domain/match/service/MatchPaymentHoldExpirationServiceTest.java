@@ -1,5 +1,8 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.entity.SlotStatus;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
@@ -12,8 +15,11 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,8 +30,9 @@ import static org.mockito.Mockito.when;
 class MatchPaymentHoldExpirationServiceTest {
 
     private final MatchParticipantRepository matchParticipantRepository = mock(MatchParticipantRepository.class);
+    private final FacilitySlotRepository facilitySlotRepository = mock(FacilitySlotRepository.class);
     private final MatchPaymentHoldExpirationService service =
-            new MatchPaymentHoldExpirationService(matchParticipantRepository);
+            new MatchPaymentHoldExpirationService(matchParticipantRepository, facilitySlotRepository);
 
     @Test
     void 결제_대기_시간이_만료된_참가자를_취소하고_선점_인원을_감소시킨다() {
@@ -52,10 +59,12 @@ class MatchPaymentHoldExpirationServiceTest {
     void 방장_결제_대기_시간이_만료되면_매칭방도_취소한다() {
         Match match = createMatch();
         MatchParticipant host = MatchParticipant.host(match, "host-id");
+        FacilitySlot facilitySlot = createPendingSlot();
         when(matchParticipantRepository.findByStatusAndPaymentDeadlineBefore(
                 any(MatchParticipantStatus.class),
                 any(LocalDateTime.class)
         )).thenReturn(List.of(host));
+        when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 
         service.cancelExpiredPaymentHolds();
 
@@ -63,6 +72,8 @@ class MatchPaymentHoldExpirationServiceTest {
         assertThat(match.getCurrentCount()).isZero();
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isNotNull();
+        assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(facilitySlot.getPendingUntil()).isNull();
     }
 
     private Match createMatch() {
@@ -79,5 +90,17 @@ class MatchPaymentHoldExpirationServiceTest {
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
                 .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
+    }
+
+    private FacilitySlot createPendingSlot() {
+        FacilitySlot facilitySlot = FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2099, Month.JUNE, 12),
+                LocalTime.of(10, 0),
+                LocalTime.of(12, 0),
+                10_000
+        );
+        facilitySlot.holdUntil(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0));
+        return facilitySlot;
     }
 }
