@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -79,14 +80,14 @@ public class ReviewService {
         reviewValidator.validateFacilityReview(matchId, reviewerId);
         reviewValidator.validateRating(req.getRating());
 
-        String facilityId = matchRepository.findFacilityIdByMatchId(matchId)
-                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+        Optional<String> facilityIdOpt = matchRepository.findFacilityIdByMatchId(matchId);
+        String facilityId = facilityIdOpt.orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
         facilityReviewRepository.save(FacilityReview.create(matchId, reviewerId, facilityId,
                 req.getRating(), req.getComment()));
 
-        Facility facility = facilityRepository.findById(facilityId)
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+        Optional<Facility> facilityOpt = facilityRepository.findById(facilityId);
+        Facility facility = facilityOpt.orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
         facility.addRating(req.getRating());
     }
 

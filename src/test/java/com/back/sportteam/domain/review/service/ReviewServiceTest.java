@@ -36,6 +36,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -331,8 +332,8 @@ class ReviewServiceTest {
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
-                .recruitDeadline(LocalDateTime.of(2099, 12, 31, 0, 0))
-                .cancelDeadline(LocalDateTime.of(2099, 12, 31, 0, 0))
+                .recruitDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
+                .cancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
                 .build());
         ReflectionTestUtils.setField(match, "id", "match-1");
         ReflectionTestUtils.setField(match, "status", MatchStatus.COMPLETED);
