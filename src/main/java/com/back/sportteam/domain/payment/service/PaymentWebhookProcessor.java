@@ -74,13 +74,19 @@ public class PaymentWebhookProcessor {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
                 activateParticipantIfParticipationPayment(payment);
-                return;
+                return WebhookProcessingResult.applied();
             }
             payment.fail(normalize(request.pgTransactionId()));
             cancelParticipantIfParticipationPayment(payment, processedAt);
+            return WebhookProcessingResult.applied();
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
+    }
+
+    private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
+        return request.eventType().getPaymentStatus() == PaymentStatus.FAILED
+                && (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.REFUNDED);
     }
 
     private void activateParticipantIfParticipationPayment(Payment payment) {
