@@ -17,4 +17,6 @@ public record UserProfileUpdateRequest(
 
         @Size(max = 500, message = "프로필 이미지 URL은 500자 이하입니다.")
         String profileImg
-) {}
+) {
+
+}
