@@ -32,4 +32,14 @@ public interface MatchRepository extends JpaRepository<Match, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select match from Match match where match.id = :matchId")
     Optional<Match> findByIdForUpdate(@Param("matchId") String matchId);
+
+    // TODO: Reservation 엔티티 구현 후 JPA 연관관계로 대체
+    @Query(value = """
+            SELECT fs.facility_id
+            FROM matches m
+            JOIN reservations r ON m.reservation_id = r.id
+            JOIN facility_slots fs ON r.facility_slot_id = fs.id
+            WHERE m.id = :matchId
+            """, nativeQuery = true)
+    Optional<String> findFacilityIdByMatchId(@Param("matchId") String matchId);
 }
