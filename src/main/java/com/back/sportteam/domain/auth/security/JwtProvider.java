@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,11 +32,11 @@ public class JwtProvider {
         this.refreshTokenExpiry = refreshTokenExpiry * 1000;
     }
 
-    public String generateAccessToken(Long userId, String role) {
+    public String generateAccessToken(UUID userId, String role) {
         return buildToken(userId, role, accessTokenExpiry);
     }
 
-    public String generateRefreshToken(Long userId, String role) {
+    public String generateRefreshToken(UUID userId, String role) {
         return buildToken(userId, role, refreshTokenExpiry);
     }
 
@@ -60,7 +61,7 @@ public class JwtProvider {
         }
     }
 
-    private String buildToken(Long userId, String role, long expiry) {
+    private String buildToken(UUID userId, String role, long expiry) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .claim(CLAIM_USER_ID, userId)
