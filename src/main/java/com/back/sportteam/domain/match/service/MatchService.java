@@ -239,6 +239,9 @@ public class MatchService {
         if (!match.isCancellable()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
+        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+            throw new BusinessException(MatchErrorCode.CANCEL_DEADLINE_PASSED);
+        }
     }
 
     private Duration paymentHoldDuration() {

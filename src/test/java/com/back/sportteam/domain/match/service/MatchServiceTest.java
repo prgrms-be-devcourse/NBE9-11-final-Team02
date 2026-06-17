@@ -519,6 +519,18 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.MATCH_NOT_CANCELLABLE);
     }
 
+    @Test
+    void 매칭방_취소시_취소_가능_시간이_지났으면_예외를_던진다() {
+        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.cancelMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.CANCEL_DEADLINE_PASSED);
+    }
+
     private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
         return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
@@ -553,6 +565,10 @@ class MatchServiceTest {
     }
 
     private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
+        return createMatch(maxParticipants, recruitDeadline, CANCEL_DEADLINE);
+    }
+
+    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
@@ -565,7 +581,7 @@ class MatchServiceTest {
                 .maxSkillLevel(SkillLevel.LEVEL_4)
                 .requiredGender(RequiredGender.MIXED)
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(CANCEL_DEADLINE)
+                .cancelDeadline(cancelDeadline)
                 .build());
     }
 }
