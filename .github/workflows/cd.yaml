@@ -4,7 +4,7 @@ env:
   IMAGE_REPOSITORY: nbe9-11-team02
   CONTAINER_1_NAME: app1_1
   CONTAINER_2_NAME: app1_2
-  CONTAINER_PORT: 8080
+  CONTAINER_PORT: 8090
   EC2_INSTANCE_TAG_NAME: team02-web  # terraform/variables.tf의 prefix + "-web"과 일치해야 함
   DOCKER_NETWORK: common
 
@@ -159,6 +159,7 @@ jobs:
               --restart unless-stopped \
               --network "${NET}" \
               --memory 600m \
+              -p 8090:8090 \
               -e TZ=Asia/Seoul \
               -e SPRING_CONFIG_IMPORT=optional:file:/app/application-secret.yaml \
               -v /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro \
