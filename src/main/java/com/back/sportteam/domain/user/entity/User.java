@@ -106,4 +106,18 @@ public class User {
     public Double getSkillScore() { return skillScore; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public void updateProfile(
+            String nickname,
+            String position,
+            String activeRegion,
+            String preferredSport,
+            String profileImg
+    ) {
+        if (nickname != null) this.nickname = nickname;
+        if (position != null) this.position = position;
+        if (activeRegion != null) this.activeRegion = activeRegion;
+        if (preferredSport != null) this.preferredSport = preferredSport;
+        if (profileImg != null) this.profileImg = profileImg;
+    }
 }
