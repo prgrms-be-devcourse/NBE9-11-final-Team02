@@ -273,6 +273,18 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.error.code").value("MATCH_004"));
     }
 
+    @Test
+    void 매칭방_취소시_취소_가능_시간이_지났으면_409_응답으로_반환한다() throws Exception {
+        doThrow(new BusinessException(MatchErrorCode.CANCEL_DEADLINE_PASSED))
+                .when(matchService).cancelMatch("match-id", "host-id");
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
+                        .header("X-USER-ID", "host-id"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_015"));
+    }
+
     private MatchCreateRequest createRequest(String title) {
         return new MatchCreateRequest(
                 "reservation-id",
