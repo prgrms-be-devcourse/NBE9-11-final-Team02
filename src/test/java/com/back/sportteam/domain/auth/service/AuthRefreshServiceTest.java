@@ -15,6 +15,7 @@ import com.back.sportteam.domain.auth.security.JwtProvider;
 import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,15 +50,16 @@ class AuthRefreshServiceTest {
     @DisplayName("리프레시 토큰으로 새 액세스 토큰 반환")
     @Test
     void 리프레시_토큰으로_새_액세스_토큰_반환() {
+        UUID userId = UUID.randomUUID();
         Claims claims = mock(Claims.class);
-        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");
 
         when(jwtProvider.isValid("valid-refresh-token")).thenReturn(true);
         when(jwtProvider.parse("valid-refresh-token")).thenReturn(claims);
-        when(valueOperations.get("refresh:1")).thenReturn("valid-refresh-token");
-        when(jwtProvider.generateAccessToken(1L, "USER")).thenReturn("new-access-token");
-        when(jwtProvider.generateRefreshToken(1L, "USER")).thenReturn("new-refresh-token");
+        when(valueOperations.get("refresh:" + userId)).thenReturn("valid-refresh-token");
+        when(jwtProvider.generateAccessToken(userId, "USER")).thenReturn("new-access-token");
+        when(jwtProvider.generateRefreshToken(userId, "USER")).thenReturn("new-refresh-token");
 
         TokenRefreshResponse response = authRefreshService.refresh("valid-refresh-token", httpResponse);
 
@@ -80,13 +82,14 @@ class AuthRefreshServiceTest {
     @DisplayName("Redis에 토큰이 없을 시 예외 발생")
     @Test
     void Redis에_토큰이_없을_시_예외_발생() {
+        UUID userId = UUID.randomUUID();
         Claims claims = mock(Claims.class);
-        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");
 
         when(jwtProvider.isValid("valid-refresh-token")).thenReturn(true);
         when(jwtProvider.parse("valid-refresh-token")).thenReturn(claims);
-        when(valueOperations.get("refresh:1")).thenReturn(null);
+        when(valueOperations.get("refresh:" + userId)).thenReturn(null);
 
         assertThatThrownBy(() -> authRefreshService.refresh("valid-refresh-token", httpResponse))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
@@ -97,18 +100,19 @@ class AuthRefreshServiceTest {
     @DisplayName("저장된 토큰과 일치하지 않을 시 예외 발생 및 토큰 삭제")
     @Test
     void 저장된_토큰과_일치하지_않을_시_예외_발생_및_토큰_삭제() {
+        UUID userId = UUID.randomUUID();
         Claims claims = mock(Claims.class);
-        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");
 
         when(jwtProvider.isValid("stolen-token")).thenReturn(true);
         when(jwtProvider.parse("stolen-token")).thenReturn(claims);
-        when(valueOperations.get("refresh:1")).thenReturn("original-refresh-token");
+        when(valueOperations.get("refresh:" + userId)).thenReturn("original-refresh-token");
 
         assertThatThrownBy(() -> authRefreshService.refresh("stolen-token", httpResponse))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.REFRESH_TOKEN_MISMATCH)
                 );
-        verify(redisTemplate).delete("refresh:1");
+        verify(redisTemplate).delete("refresh:" + userId);
     }
 }

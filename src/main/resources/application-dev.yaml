@@ -19,3 +19,8 @@ spring:
 toss:
   payment:
     secret-key: "${custom.dev.toss.secretKey}"
+
+match:
+  payment-hold:
+    duration-minutes: 1
+    expiration-check-delay-millis: 10000

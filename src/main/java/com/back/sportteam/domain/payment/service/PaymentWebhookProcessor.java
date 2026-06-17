@@ -1,8 +1,11 @@
 package com.back.sportteam.domain.payment.service;
 
+import com.back.sportteam.domain.match.entity.MatchParticipant;
+import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookProcessingResult;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
@@ -23,6 +26,7 @@ public class PaymentWebhookProcessor {
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookEventRepository paymentWebhookEventRepository;
+    private final MatchParticipantRepository matchParticipantRepository;
 
     @Transactional
     public void process(PaymentWebhookRequest request) {
@@ -69,20 +73,39 @@ public class PaymentWebhookProcessor {
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
-                return WebhookProcessingResult.applied();
+                activateParticipantIfParticipationPayment(payment);
+                return;
             }
             payment.fail(normalize(request.pgTransactionId()));
-            return WebhookProcessingResult.applied();
+            cancelParticipantIfParticipationPayment(payment, processedAt);
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
     }
 
-    private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
-        PaymentStatus requestedStatus = request.eventType().getPaymentStatus();
-        return requestedStatus == PaymentStatus.FAILED
-                && (payment.getStatus() == PaymentStatus.PAID
-                || payment.getStatus() == PaymentStatus.REFUNDED);
+    private void activateParticipantIfParticipationPayment(Payment payment) {
+        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
+            return;
+        }
+
+        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
+        participant.activate();
+    }
+
+    private void cancelParticipantIfParticipationPayment(Payment payment, LocalDateTime processedAt) {
+        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
+            return;
+        }
+
+        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
+        if (participant.cancel()) {
+            participant.getMatch().decreaseCurrentCount();
+        }
+        if (participant.isHost()) {
+            participant.getMatch().cancel(processedAt);
+        }
     }
 
     private String normalize(String value) {

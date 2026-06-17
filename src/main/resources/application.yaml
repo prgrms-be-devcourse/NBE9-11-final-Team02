@@ -31,6 +31,11 @@ app:
       token-ttl-seconds: ${RESERVATION_QUEUE_TOKEN_TTL_SECONDS:300}
       entry-limit: ${RESERVATION_QUEUE_ENTRY_LIMIT:1}
 
+match:
+  payment-hold:
+    duration-minutes: 10
+    expiration-check-delay-millis: 60000
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:

@@ -106,7 +106,8 @@ class MatchServiceTest {
         MatchParticipant participant = participantCaptor.getValue();
         assertThat(participant.getUserId()).isEqualTo("host-id");
         assertThat(participant.getRole()).isEqualTo(MatchParticipantRole.HOST);
-        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(participant.getPaymentDeadline()).isEqualTo(participant.getJoinedAt().plusMinutes(1));
     }
 
     @Test
@@ -254,6 +255,7 @@ class MatchServiceTest {
     void 매칭방_참가자_목록을_조회한다() {
         Match match = createMatch();
         MatchParticipant participant = MatchParticipant.host(match, "host-id");
+        participant.activate();
         when(matchRepository.existsById(match.getId())).thenReturn(true);
         when(matchParticipantRepository.findByMatchIdAndStatus(match.getId(), MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(participant));
@@ -281,10 +283,10 @@ class MatchServiceTest {
     void 매칭방에_참가한다() {
         Match match = createMatch();
         when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 match.getId(),
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -293,7 +295,8 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -302,10 +305,10 @@ class MatchServiceTest {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findByIdForUpdate(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -314,7 +317,8 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
+        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -357,10 +361,10 @@ class MatchServiceTest {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         )).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
@@ -626,6 +630,18 @@ class MatchServiceTest {
                 .isEqualTo(MatchErrorCode.MATCH_NOT_CANCELLABLE);
     }
 
+    @Test
+    void 매칭방_취소시_취소_가능_시간이_지났으면_예외를_던진다() {
+        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.cancelMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.CANCEL_DEADLINE_PASSED);
+    }
+
     private MatchCreateRequest createRequest(int minParticipants, int maxParticipants) {
         return createRequest(minParticipants, maxParticipants, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
     }
@@ -660,6 +676,10 @@ class MatchServiceTest {
     }
 
     private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline) {
+        return createMatch(maxParticipants, recruitDeadline, CANCEL_DEADLINE);
+    }
+
+    private Match createMatch(int maxParticipants, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
@@ -672,7 +692,7 @@ class MatchServiceTest {
                 .maxSkillLevel(SkillLevel.LEVEL_4)
                 .requiredGender(RequiredGender.MIXED)
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(CANCEL_DEADLINE)
+                .cancelDeadline(cancelDeadline)
                 .build());
     }
 

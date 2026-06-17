@@ -27,8 +27,9 @@ import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
-import java.time.LocalDate;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -49,6 +50,9 @@ public class MatchService {
     private final ReservationRepository reservationRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final ReservationSlotService reservationSlotService;
+
+    @Value("${match.payment-hold.duration-minutes:1}")
+    private long paymentHoldMinutes = 1L;
 
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
@@ -73,7 +77,7 @@ public class MatchService {
                 .build());
 
         Match savedMatch = matchRepository.save(match);
-        matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));
+        matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId, paymentHoldDuration()));
 
         return MatchCreateResponse.from(savedMatch);
     }
@@ -126,7 +130,9 @@ public class MatchService {
         validateNotParticipated(matchId, userId);
 
         match.increaseCurrentCount();
-        MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
+        MatchParticipant participant = matchParticipantRepository.save(
+                MatchParticipant.participant(match, userId, paymentHoldDuration())
+        );
 
         return MatchParticipantResponse.from(participant);
     }
@@ -221,10 +227,10 @@ public class MatchService {
     }
 
     private void validateNotParticipated(String matchId, String userId) {
-        boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatus(
+        boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 userId,
-                MatchParticipantStatus.ACTIVE
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
         );
         if (alreadyParticipated) {
             throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);
@@ -256,6 +262,13 @@ public class MatchService {
         if (!match.isCancellable()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
+        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+            throw new BusinessException(MatchErrorCode.CANCEL_DEADLINE_PASSED);
+        }
+    }
+
+    private Duration paymentHoldDuration() {
+        return Duration.ofMinutes(paymentHoldMinutes);
     }
 
     private void enqueueFullRefundIfBeforeDeadline(Match match, String userId, LocalDateTime cancelledAt) {

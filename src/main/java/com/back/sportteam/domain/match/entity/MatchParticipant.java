@@ -13,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class MatchParticipant {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final Duration DEFAULT_PAYMENT_HOLD_DURATION = Duration.ofMinutes(1);
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -41,34 +43,79 @@ public class MatchParticipant {
     private MatchParticipantRole role;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
+    @Column(name = "status", nullable = false, length = 20)
     private MatchParticipantStatus status;
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
-    private MatchParticipant(Match match, String userId, MatchParticipantRole role) {
+    @Column(name = "payment_deadline")
+    private LocalDateTime paymentDeadline;
+
+    private MatchParticipant(
+            Match match,
+            String userId,
+            MatchParticipantRole role,
+            MatchParticipantStatus status,
+            LocalDateTime joinedAt,
+            LocalDateTime paymentDeadline
+    ) {
         this.id = UUID.randomUUID().toString();
         this.match = match;
         this.userId = userId;
         this.role = role;
-        this.status = MatchParticipantStatus.ACTIVE;
-        this.joinedAt = LocalDateTime.now(SERVICE_ZONE);
+        this.status = status;
+        this.joinedAt = joinedAt;
+        this.paymentDeadline = paymentDeadline;
     }
 
     public static MatchParticipant host(Match match, String userId) {
-        return new MatchParticipant(match, userId, MatchParticipantRole.HOST);
+        return host(match, userId, DEFAULT_PAYMENT_HOLD_DURATION);
+    }
+
+    public static MatchParticipant host(Match match, String userId, Duration paymentHoldDuration) {
+        LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
+        return new MatchParticipant(
+                match,
+                userId,
+                MatchParticipantRole.HOST,
+                MatchParticipantStatus.PAYMENT_PENDING,
+                joinedAt,
+                joinedAt.plus(paymentHoldDuration)
+        );
     }
 
     public static MatchParticipant participant(Match match, String userId) {
-        return new MatchParticipant(match, userId, MatchParticipantRole.PARTICIPANT);
+        return participant(match, userId, DEFAULT_PAYMENT_HOLD_DURATION);
+    }
+
+    public static MatchParticipant participant(Match match, String userId, Duration paymentHoldDuration) {
+        LocalDateTime joinedAt = LocalDateTime.now(SERVICE_ZONE);
+        return new MatchParticipant(
+                match,
+                userId,
+                MatchParticipantRole.PARTICIPANT,
+                MatchParticipantStatus.PAYMENT_PENDING,
+                joinedAt,
+                joinedAt.plus(paymentHoldDuration)
+        );
     }
 
     public boolean isHost() {
         return role == MatchParticipantRole.HOST;
     }
 
-    public void cancel() {
+    public boolean cancel() {
+        if (status == MatchParticipantStatus.CANCELLED) {
+            return false;
+        }
         this.status = MatchParticipantStatus.CANCELLED;
+        this.paymentDeadline = null;
+        return true;
+    }
+
+    public void activate() {
+        this.status = MatchParticipantStatus.ACTIVE;
+        this.paymentDeadline = null;
     }
 }
