@@ -17,6 +17,17 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.payment.entity.Payment;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
+import com.back.sportteam.domain.payment.entity.Refund;
+import com.back.sportteam.domain.payment.entity.RefundStatus;
+import com.back.sportteam.domain.payment.repository.PaymentRepository;
+import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -26,8 +37,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +66,18 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private RefundRepository refundRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
+    private FacilitySlotRepository facilitySlotRepository;
 
     @Mock
     private ReservationSlotService reservationSlotService;
@@ -362,6 +388,84 @@ class MatchServiceTest {
     }
 
     @Test
+    void 경기_시작_24시간_전까지_참가를_취소하면_전액_환불을_대기열에_등록한다() {
+        Match match = createMatch();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        Payment payment = paidParticipationPayment(match.getId(), "participant-id", 10_000);
+        Reservation reservation = Reservation.pending("slot-id", CREATED_AT);
+        FacilitySlot slot = FacilitySlot.create(
+                "facility-id",
+                LocalDate.of(2099, Month.JUNE, 20),
+                LocalTime.of(12, 0),
+                LocalTime.of(14, 0),
+                100_000
+        );
+        match.increaseCurrentCount();
+        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                match.getId(),
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+        when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.of(reservation));
+        when(facilitySlotRepository.findById(reservation.getFacilitySlotId())).thenReturn(Optional.of(slot));
+        when(paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                "participant-id",
+                match.getId(),
+                PaymentType.PARTICIPATION,
+                PaymentStatus.PAID
+        )).thenReturn(Optional.of(payment));
+        when(refundRepository.existsByPaymentIdAndStatusIn(
+                payment.getId(),
+                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+        )).thenReturn(false);
+
+        matchService.leaveMatch(match.getId(), "participant-id");
+
+        ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
+        verify(refundRepository).save(refundCaptor.capture());
+        Refund refund = refundCaptor.getValue();
+        assertThat(refund.getPayment()).isEqualTo(payment);
+        assertThat(refund.getAmount()).isEqualTo(10_000);
+        assertThat(refund.getReason()).isEqualTo("PARTICIPANT_CANCELLED_BEFORE_24_HOURS");
+        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
+    }
+
+    @Test
+    void 경기_시작_24시간_이내에_참가를_취소하면_환불을_대기열에_등록하지_않는다() {
+        Match match = createMatch();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        Reservation reservation = Reservation.pending("slot-id", CREATED_AT);
+        LocalDateTime matchStartAt = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusHours(23);
+        FacilitySlot slot = FacilitySlot.create(
+                "facility-id",
+                matchStartAt.toLocalDate(),
+                matchStartAt.toLocalTime(),
+                matchStartAt.plusHours(2).toLocalTime(),
+                100_000
+        );
+        match.increaseCurrentCount();
+        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                match.getId(),
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+        when(reservationRepository.findById(match.getReservationId())).thenReturn(Optional.of(reservation));
+        when(facilitySlotRepository.findById(reservation.getFacilitySlotId())).thenReturn(Optional.of(slot));
+
+        matchService.leaveMatch(match.getId(), "participant-id");
+
+        verify(paymentRepository, never()).findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                any(),
+                any(),
+                any(),
+                any()
+        );
+        verify(refundRepository, never()).save(any(Refund.class));
+    }
+
+    @Test
     void 매칭방_참가_취소시_매칭방이_없으면_예외를_던진다() {
         when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
 
@@ -570,5 +674,19 @@ class MatchServiceTest {
                 .recruitDeadline(recruitDeadline)
                 .cancelDeadline(CANCEL_DEADLINE)
                 .build());
+    }
+
+    private Payment paidParticipationPayment(String matchId, String userId, int amount) {
+        Payment payment = Payment.create(
+                "participant-id",
+                userId,
+                matchId,
+                null,
+                PaymentType.PARTICIPATION,
+                "mid-" + userId,
+                amount
+        );
+        payment.complete("pg-" + userId, CREATED_AT);
+        return payment;
     }
 }

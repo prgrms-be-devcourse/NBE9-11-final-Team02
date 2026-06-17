@@ -13,13 +13,24 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.payment.entity.Payment;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
+import com.back.sportteam.domain.payment.entity.Refund;
+import com.back.sportteam.domain.payment.entity.RefundStatus;
+import com.back.sportteam.domain.payment.repository.PaymentRepository;
+import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -28,9 +39,15 @@ import java.util.List;
 public class MatchService {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final long FULL_REFUND_BEFORE_HOURS = 24L;
+    private static final String PARTICIPANT_CANCELLED_BEFORE_24_HOURS = "PARTICIPANT_CANCELLED_BEFORE_24_HOURS";
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final PaymentRepository paymentRepository;
+    private final RefundRepository refundRepository;
+    private final ReservationRepository reservationRepository;
+    private final FacilitySlotRepository facilitySlotRepository;
     private final ReservationSlotService reservationSlotService;
 
     @Transactional
@@ -127,8 +144,10 @@ public class MatchService {
 
         validateLeaveable(participant);
 
+        LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
         participant.cancel();
         match.decreaseCurrentCount();
+        enqueueFullRefundIfBeforeDeadline(match, userId, cancelledAt);
     }
 
     @Transactional
@@ -237,5 +256,46 @@ public class MatchService {
         if (!match.isCancellable()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
+    }
+
+    private void enqueueFullRefundIfBeforeDeadline(Match match, String userId, LocalDateTime cancelledAt) {
+        if (!isFullRefundable(match, cancelledAt)) {
+            return;
+        }
+
+        paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                        userId,
+                        match.getId(),
+                        PaymentType.PARTICIPATION,
+                        PaymentStatus.PAID
+                )
+                .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
+                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
+                        payment.getId(),
+                        List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+                ))
+                .map(payment -> createParticipantCancelRefund(payment, cancelledAt))
+                .ifPresent(refundRepository::save);
+    }
+
+    private boolean isFullRefundable(Match match, LocalDateTime cancelledAt) {
+        return reservationRepository.findById(match.getReservationId())
+                .flatMap(reservation -> facilitySlotRepository.findById(reservation.getFacilitySlotId()))
+                .map(slot -> toMatchStartAt(slot.getSlotDate(), slot.getStartTime()))
+                .map(matchStartAt -> !cancelledAt.isAfter(matchStartAt.minusHours(FULL_REFUND_BEFORE_HOURS)))
+                .orElse(false);
+    }
+
+    private LocalDateTime toMatchStartAt(LocalDate slotDate, LocalTime startTime) {
+        return LocalDateTime.of(slotDate, startTime);
+    }
+
+    private Refund createParticipantCancelRefund(Payment payment, LocalDateTime requestedAt) {
+        return Refund.pending(
+                payment,
+                payment.getAmount() - payment.getRefundedAmount(),
+                PARTICIPANT_CANCELLED_BEFORE_24_HOURS,
+                requestedAt
+        );
     }
 }
