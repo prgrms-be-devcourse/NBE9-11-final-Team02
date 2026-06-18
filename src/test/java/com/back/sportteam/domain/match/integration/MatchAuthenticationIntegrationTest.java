@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,7 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,6 +151,36 @@ class MatchAuthenticationIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("MATCH_010"));
     }
 
+    @Test
+    void 매칭방_목록을_조건과_페이징으로_조회한다() throws Exception {
+        AuthSession host = signupAndLogin("search-auth-flow@example.com", "검색방장");
+        FacilitySlot futsalSlot = facilitySlotRepository.save(createSlot());
+        FacilitySlot tennisSlot = facilitySlotRepository.save(createSlot());
+        createMatch(host, matchCreateBody(futsalSlot.getId(), "검색 제외 풋살 매칭", "FUTSAL"));
+        String tennisTitle = "검색 대상 테니스 매칭";
+        createMatch(host, matchCreateBody(tennisSlot.getId(), tennisTitle, "TENNIS"));
+
+        MvcResult result = mockMvc.perform(get("/api/v1/matches")
+                        .header("Authorization", bearer(host.accessToken()))
+                        .param("sportType", "TENNIS")
+                        .param("status", "RECRUITING")
+                        .param("sort", "DEADLINE_ASC")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andReturn();
+
+        JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString())
+                .at("/data/content");
+        List<JsonNode> matches = StreamSupport.stream(content.spliterator(), false).toList();
+        assertThat(matches)
+                .isNotEmpty()
+                .allSatisfy(match -> assertThat(match.get("sportType").asText()).isEqualTo("TENNIS"));
+        assertThat(matches)
+                .anySatisfy(match -> assertThat(match.get("title").asText()).isEqualTo(tennisTitle));
+    }
+
     private AuthSession signupAndLogin(String email, String nickname) throws Exception {
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -176,10 +209,14 @@ class MatchAuthenticationIntegrationTest {
     }
 
     private String createMatch(AuthSession host, String reservationId) throws Exception {
+        return createMatch(host, matchCreateBody(reservationId));
+    }
+
+    private String createMatch(AuthSession host, Map<String, Object> body) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/matches")
                         .header("Authorization", bearer(host.accessToken()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(matchCreateBody(reservationId))))
+                        .content(json(body)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -208,10 +245,14 @@ class MatchAuthenticationIntegrationTest {
     }
 
     private Map<String, Object> matchCreateBody(String reservationId) {
+        return matchCreateBody(reservationId, "인증 연동 테스트 매칭", "FUTSAL");
+    }
+
+    private Map<String, Object> matchCreateBody(String reservationId, String title, String sportType) {
         return Map.of(
                 "reservationId", reservationId,
-                "title", "인증 연동 테스트 매칭",
-                "sportType", "FUTSAL",
+                "title", title,
+                "sportType", sportType,
                 "capacity", 10,
                 "feePerPerson", 10_000,
                 "minSkillLevel", "ANY",

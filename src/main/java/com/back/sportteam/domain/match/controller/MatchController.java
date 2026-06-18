@@ -1,15 +1,24 @@
 package com.back.sportteam.domain.match.controller;
 
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
+import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
+import com.back.sportteam.domain.match.entity.MatchStatus;
+import com.back.sportteam.domain.match.entity.RequiredGender;
+import com.back.sportteam.domain.match.entity.SkillLevel;
+import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.service.MatchJoinFacade;
 import com.back.sportteam.domain.match.service.MatchService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -46,8 +56,27 @@ public class MatchController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MatchSummaryResponse>>> getMatches() {
-        List<MatchSummaryResponse> response = matchService.getMatches();
+    public ResponseEntity<ApiResponse<Page<MatchSummaryResponse>>> getMatches(
+            @RequestParam(required = false) SportType sportType,
+            @RequestParam(required = false) MatchStatus status,
+            @RequestParam(required = false) SkillLevel minSkillLevel,
+            @RequestParam(required = false) SkillLevel maxSkillLevel,
+            @RequestParam(required = false) RequiredGender requiredGender,
+            @RequestParam(defaultValue = "LATEST") MatchSortType sort,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        MatchSearchCondition condition = new MatchSearchCondition(
+                sportType,
+                status,
+                minSkillLevel,
+                maxSkillLevel,
+                requiredGender,
+                sort,
+                page,
+                size
+        );
+        Page<MatchSummaryResponse> response = matchService.getMatches(condition);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
