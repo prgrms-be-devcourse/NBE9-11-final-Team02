@@ -3,6 +3,7 @@ package com.back.sportteam.domain.match.service;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
@@ -22,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -71,11 +74,9 @@ public class MatchService {
     }
 
     @Transactional(readOnly = true)
-    public List<MatchSummaryResponse> getMatches() {
-        return matchRepository.findAll()
-                .stream()
-                .map(MatchSummaryResponse::from)
-                .toList();
+    public Page<MatchSummaryResponse> getMatches(MatchSearchCondition condition) {
+        return matchRepository.findAll(toSpecification(condition), condition.toPageable())
+                .map(MatchSummaryResponse::from);
     }
 
     @Transactional(readOnly = true)
@@ -241,6 +242,45 @@ public class MatchService {
         if (alreadyParticipated) {
             throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);
         }
+    }
+
+    private Specification<Match> toSpecification(MatchSearchCondition condition) {
+        return Specification
+                .where(equalSportType(condition))
+                .and(equalStatus(condition))
+                .and(equalMinSkillLevel(condition))
+                .and(equalMaxSkillLevel(condition))
+                .and(equalRequiredGender(condition));
+    }
+
+    private Specification<Match> equalSportType(MatchSearchCondition condition) {
+        return (root, query, criteriaBuilder) -> condition.sportType() == null
+                ? null
+                : criteriaBuilder.equal(root.get("sportType"), condition.sportType());
+    }
+
+    private Specification<Match> equalStatus(MatchSearchCondition condition) {
+        return (root, query, criteriaBuilder) -> condition.status() == null
+                ? null
+                : criteriaBuilder.equal(root.get("status"), condition.status());
+    }
+
+    private Specification<Match> equalMinSkillLevel(MatchSearchCondition condition) {
+        return (root, query, criteriaBuilder) -> condition.minSkillLevel() == null
+                ? null
+                : criteriaBuilder.equal(root.get("minSkillLevel"), condition.minSkillLevel());
+    }
+
+    private Specification<Match> equalMaxSkillLevel(MatchSearchCondition condition) {
+        return (root, query, criteriaBuilder) -> condition.maxSkillLevel() == null
+                ? null
+                : criteriaBuilder.equal(root.get("maxSkillLevel"), condition.maxSkillLevel());
+    }
+
+    private Specification<Match> equalRequiredGender(MatchSearchCondition condition) {
+        return (root, query, criteriaBuilder) -> condition.requiredGender() == null
+                ? null
+                : criteriaBuilder.equal(root.get("requiredGender"), condition.requiredGender());
     }
 
     private void validateLeaveable(Match match, MatchParticipant participant, LocalDateTime now) {
