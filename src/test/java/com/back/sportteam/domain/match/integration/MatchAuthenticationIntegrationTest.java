@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,6 +120,34 @@ class MatchAuthenticationIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("MATCH_004"));
     }
 
+    @Test
+    void 다른_회원_토큰으로_매칭방_확정_API를_호출하면_403_응답을_반환한다() throws Exception {
+        AuthSession host = signupAndLogin("confirm-owner-auth-flow@example.com", "확정방장");
+        AuthSession other = signupAndLogin("confirm-other-auth-flow@example.com", "확정참가자");
+        FacilitySlot slot = facilitySlotRepository.save(createSlot());
+        String matchId = createMatch(host, slot.getId());
+
+        mockMvc.perform(patch("/api/v1/matches/{matchId}/confirm", matchId)
+                        .header("Authorization", bearer(other.accessToken())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_004"));
+    }
+
+    @Test
+    void 방장_토큰으로_참가_이탈_API를_호출하면_400_응답을_반환한다() throws Exception {
+        AuthSession host = signupAndLogin("leave-owner-auth-flow@example.com", "이탈방장");
+        FacilitySlot slot = facilitySlotRepository.save(createSlot());
+        String matchId = createMatch(host, slot.getId());
+        activateHostParticipant(matchId, host.userId());
+
+        mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", matchId)
+                        .header("Authorization", bearer(host.accessToken())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("MATCH_010"));
+    }
+
     private AuthSession signupAndLogin(String email, String nickname) throws Exception {
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -155,6 +184,17 @@ class MatchAuthenticationIntegrationTest {
                 .andReturn();
 
         return read(result, "$.data.matchId");
+    }
+
+    private void activateHostParticipant(String matchId, String hostId) {
+        var hostParticipant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                        matchId,
+                        hostId,
+                        MatchParticipantStatus.PAYMENT_PENDING
+                )
+                .orElseThrow();
+        hostParticipant.activate();
+        matchParticipantRepository.saveAndFlush(hostParticipant);
     }
 
     private FacilitySlot createSlot() {
