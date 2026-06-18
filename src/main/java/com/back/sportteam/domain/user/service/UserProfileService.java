@@ -5,7 +5,6 @@ import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.repository.UserRepository;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +16,7 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
 
-    public UserProfileResponse getMyProfile(UUID userId) {
+    public UserProfileResponse getMyProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         return UserProfileResponse.from(user);

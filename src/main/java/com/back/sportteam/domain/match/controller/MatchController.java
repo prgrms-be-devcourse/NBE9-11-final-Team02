@@ -9,10 +9,10 @@ import com.back.sportteam.domain.match.service.MatchJoinFacade;
 import com.back.sportteam.domain.match.service.MatchService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,7 +36,7 @@ public class MatchController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<MatchCreateResponse>> createMatch(
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId,
+            @AuthenticationPrincipal String hostId,
             @Valid @RequestBody MatchCreateRequest request
     ) {
         MatchCreateResponse response = matchService.createMatch(hostId, request);
@@ -67,7 +66,7 @@ public class MatchController {
     @PostMapping("/{matchId}/participants")
     public ResponseEntity<ApiResponse<MatchParticipantResponse>> joinMatch(
             @PathVariable String matchId,
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
+            @AuthenticationPrincipal String userId
     ) {
         MatchParticipantResponse response = matchJoinFacade.joinMatchWithDistributedLock(matchId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
@@ -76,7 +75,7 @@ public class MatchController {
     @DeleteMapping("/{matchId}/participants/me")
     public ResponseEntity<ApiResponse<Void>> leaveMatch(
             @PathVariable String matchId,
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
+            @AuthenticationPrincipal String userId
     ) {
         matchService.leaveMatch(matchId, userId);
         return ResponseEntity.ok(ApiResponse.ok());
@@ -85,7 +84,7 @@ public class MatchController {
     @PatchMapping("/{matchId}/confirm")
     public ResponseEntity<ApiResponse<MatchDetailResponse>> confirmMatch(
             @PathVariable String matchId,
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId
+            @AuthenticationPrincipal String hostId
     ) {
         MatchDetailResponse response = matchService.confirmMatch(matchId, hostId);
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -94,7 +93,7 @@ public class MatchController {
     @DeleteMapping("/{matchId}")
     public ResponseEntity<ApiResponse<Void>> cancelMatch(
             @PathVariable String matchId,
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String hostId
+            @AuthenticationPrincipal String hostId
     ) {
         matchService.cancelMatch(matchId, hostId);
         return ResponseEntity.ok(ApiResponse.ok());

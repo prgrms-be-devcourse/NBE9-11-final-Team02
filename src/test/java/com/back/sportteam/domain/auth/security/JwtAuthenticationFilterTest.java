@@ -46,7 +46,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void 유효한_토큰일_시_SecurityContext에_인증_정보를_등록() throws Exception {
         Claims claims = mock(Claims.class);
-        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.get("userId", String.class)).thenReturn("user-id");
         when(claims.get("role", String.class)).thenReturn("USER");
 
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -61,7 +61,7 @@ class JwtAuthenticationFilterTest {
         filter.doFilterInternal(request, response, filterChain);
 
         assertThat(getContext().getAuthentication()).isNotNull();
-        assertThat(getContext().getAuthentication().getPrincipal()).isEqualTo(1L);
+        assertThat(getContext().getAuthentication().getPrincipal()).isEqualTo("user-id");
         verify(filterChain).doFilter(request, response);
     }
 

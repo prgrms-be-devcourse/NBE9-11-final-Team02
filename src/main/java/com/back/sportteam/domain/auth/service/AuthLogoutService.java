@@ -35,7 +35,7 @@ public class AuthLogoutService {
         }
 
         Claims claims = jwtProvider.parse(accessToken);
-        Long userId = claims.get("userId", Long.class);
+        String userId = claims.get("userId", String.class);
 
         redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);
 

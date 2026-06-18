@@ -25,7 +25,7 @@ class JwtProviderTest {
     @DisplayName("액세스 토큰 생성")
     @Test
     void 액세스_토큰_생성() {
-        String token = jwtProvider.generateAccessToken(UUID.randomUUID(), "USER");
+        String token = jwtProvider.generateAccessToken(UUID.randomUUID().toString(), "USER");
 
         assertThat(token).isNotBlank();
     }
@@ -33,7 +33,7 @@ class JwtProviderTest {
     @DisplayName("리프레시 토큰 생성")
     @Test
     void 리프레시_토큰_생성() {
-        String token = jwtProvider.generateRefreshToken(UUID.randomUUID(), "USER");
+        String token = jwtProvider.generateRefreshToken(UUID.randomUUID().toString(), "USER");
 
         assertThat(token).isNotBlank();
     }
@@ -41,7 +41,7 @@ class JwtProviderTest {
     @DisplayName("유효한 토큰 파싱 시 클레임 반환")
     @Test
     void 유효한_토큰_파싱_시_클레임_반환() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         String token = jwtProvider.generateAccessToken(userId, "USER");
 
         Claims claims = jwtProvider.parse(token);
@@ -53,7 +53,7 @@ class JwtProviderTest {
     @DisplayName("유효한 토큰일 시 true를 반환")
     @Test
     void 유효한_토큰일_시_true를_반환() {
-        String token = jwtProvider.generateAccessToken(UUID.randomUUID(), "USER");
+        String token = jwtProvider.generateAccessToken(UUID.randomUUID().toString(), "USER");
 
         assertThat(jwtProvider.isValid(token)).isTrue();
     }

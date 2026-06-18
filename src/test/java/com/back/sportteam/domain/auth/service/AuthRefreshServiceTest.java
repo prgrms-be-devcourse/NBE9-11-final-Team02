@@ -50,7 +50,7 @@ class AuthRefreshServiceTest {
     @DisplayName("리프레시 토큰으로 새 액세스 토큰 반환")
     @Test
     void 리프레시_토큰으로_새_액세스_토큰_반환() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         Claims claims = mock(Claims.class);
         when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");
@@ -82,7 +82,7 @@ class AuthRefreshServiceTest {
     @DisplayName("Redis에 토큰이 없을 시 예외 발생")
     @Test
     void Redis에_토큰이_없을_시_예외_발생() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         Claims claims = mock(Claims.class);
         when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");
@@ -100,7 +100,7 @@ class AuthRefreshServiceTest {
     @DisplayName("저장된 토큰과 일치하지 않을 시 예외 발생 및 토큰 삭제")
     @Test
     void 저장된_토큰과_일치하지_않을_시_예외_발생_및_토큰_삭제() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         Claims claims = mock(Claims.class);
         when(claims.get("userId", String.class)).thenReturn(userId.toString());
         when(claims.get("role", String.class)).thenReturn("USER");

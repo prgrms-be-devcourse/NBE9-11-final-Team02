@@ -32,7 +32,7 @@ class UserProfileServiceTest {
     @DisplayName("내 프로필 조회 성공")
     @Test
     void 내_프로필_조회_성공() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         User user = User.local("dnclsehd122@gmail.com", "오상민", "hashed", UserRole.USER);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -50,7 +50,7 @@ class UserProfileServiceTest {
     @DisplayName("존재하지 않는 유저일 시 예외 발생")
     @Test
     void 존재하지_않는_유저일_시_예외_발생() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userProfileService.getMyProfile(userId))
