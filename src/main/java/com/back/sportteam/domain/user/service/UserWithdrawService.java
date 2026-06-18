@@ -36,6 +36,9 @@ public class UserWithdrawService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
+        userRepository.delete(user);
+        userRepository.flush();
+
         redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);
 
         redisTemplate.opsForValue().set(
@@ -44,7 +47,5 @@ public class UserWithdrawService {
                 accessTokenExpiry,
                 TimeUnit.MILLISECONDS
         );
-
-        userRepository.delete(user);
     }
 }
