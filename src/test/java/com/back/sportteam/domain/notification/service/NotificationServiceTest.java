@@ -42,6 +42,9 @@ class NotificationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private NotificationSseService notificationSseService;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -58,6 +61,8 @@ class NotificationServiceTest {
                 NotificationType.MATCH_CONFIRMED,
                 match.getId()
         )).thenReturn(false);
+        when(notificationRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         notificationService.handle(new MatchNotificationEvent(
                 match.getId(),
@@ -74,6 +79,7 @@ class NotificationServiceTest {
         assertThat(notification.getType()).isEqualTo(NotificationType.MATCH_CONFIRMED);
         assertThat(notification.getReferenceId()).isEqualTo(match.getId());
         assertThat(notification.getCreatedAt()).isEqualTo(OCCURRED_AT);
+        verify(notificationSseService).sendToUser(notification);
     }
 
     private Match createMatch() {

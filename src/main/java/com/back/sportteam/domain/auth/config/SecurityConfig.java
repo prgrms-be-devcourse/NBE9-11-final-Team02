@@ -32,6 +32,7 @@ public class SecurityConfig {
                                 "/api/v1/facilities/**",
                                 "/api/v1/users/**",
                                 "/api/v1/payments/**",
+                                "/api/v1/notifications/**",
                                 "/api/v1/health",
                                 "/ws/**"
                         )

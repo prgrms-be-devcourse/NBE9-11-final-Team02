@@ -5,16 +5,20 @@ import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.notification.dto.response.NotificationResponse;
 import com.back.sportteam.domain.notification.entity.Notification;
 import com.back.sportteam.domain.notification.entity.NotificationType;
 import com.back.sportteam.domain.notification.event.MatchNotificationEvent;
+import com.back.sportteam.domain.notification.exception.NotificationErrorCode;
 import com.back.sportteam.domain.notification.repository.NotificationRepository;
+import com.back.sportteam.global.exception.BusinessException;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -23,9 +27,9 @@ public class NotificationService {
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationSseService notificationSseService;
 
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional
     public void handle(MatchNotificationEvent event) {
         Match match = matchRepository.findById(event.matchId()).orElse(null);
         if (match == null) {
@@ -45,8 +49,29 @@ public class NotificationService {
                 .toList();
 
         if (!notifications.isEmpty()) {
-            notificationRepository.saveAll(notifications);
+            List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
+            sendNotificationsAfterCommit(savedNotifications);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getNotifications(String userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(NotificationResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public NotificationResponse markRead(String userId, String notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new BusinessException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));
+        if (!notification.isOwnedBy(userId)) {
+            throw new BusinessException(NotificationErrorCode.NOTIFICATION_ACCESS_DENIED);
+        }
+
+        notification.markRead(LocalDateTime.now());
+        return NotificationResponse.from(notification);
     }
 
     private Notification createNotification(String userId, Match match, MatchNotificationEvent event) {
@@ -60,6 +85,20 @@ public class NotificationService {
         );
     }
 
+    private void sendNotificationsAfterCommit(List<Notification> notifications) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            notifications.forEach(notificationSseService::sendToUser);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notifications.forEach(notificationSseService::sendToUser);
+            }
+        });
+    }
+
     private String title(NotificationType type) {
         return switch (type) {
             case MATCH_CONFIRMED -> "경기가 확정되었습니다.";
@@ -71,7 +110,7 @@ public class NotificationService {
     private String message(Match match, NotificationType type) {
         return switch (type) {
             case MATCH_CONFIRMED -> "'%s' 경기가 모집 완료되어 확정되었습니다.".formatted(match.getTitle());
-            case MATCH_CANCELLED -> "'%s' 경기가 취소되었습니다. 환불이 필요한 결제는 순차 처리됩니다.".formatted(match.getTitle());
+            case MATCH_CANCELLED -> "'%s' 경기가 취소되었습니다. 필요한 결제는 환불 절차가 진행됩니다.".formatted(match.getTitle());
             case MATCH_REMINDER -> "'%s' 경기가 1시간 후 시작됩니다.".formatted(match.getTitle());
         };
     }

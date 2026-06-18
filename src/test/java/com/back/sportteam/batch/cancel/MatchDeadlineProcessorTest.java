@@ -18,6 +18,7 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
@@ -40,6 +41,9 @@ class MatchDeadlineProcessorTest {
     @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
 
+    @Mock
+    private ReservationSlotService reservationSlotService;
+
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
 
@@ -53,6 +57,7 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
+        verify(reservationSlotService).confirmReservation(match.getReservationId());
         verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
@@ -72,6 +77,7 @@ class MatchDeadlineProcessorTest {
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isEqualTo(processedAt);
         verify(participant).cancel();
+        verify(reservationSlotService).cancelReservation(match.getReservationId(), processedAt);
         verify(paymentRefundRequestService).requestMatchRefunds(
                 match.getId(),
                 match.getReservationId(),

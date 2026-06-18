@@ -6,6 +6,7 @@ import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class MatchDeadlineProcessor {
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
+    private final ReservationSlotService reservationSlotService;
 
     @Transactional
     public void process(String matchId, LocalDateTime processedAt) {
@@ -28,11 +30,13 @@ public class MatchDeadlineProcessor {
 
         if (match.isFull()) {
             match.confirm(processedAt);
+            reservationSlotService.confirmReservation(match.getReservationId());
             return;
         }
 
         match.cancel(processedAt);
         cancelActiveParticipants(matchId);
+        reservationSlotService.cancelReservation(match.getReservationId(), processedAt);
         paymentRefundRequestService.requestMatchRefunds(
                 matchId,
                 match.getReservationId(),

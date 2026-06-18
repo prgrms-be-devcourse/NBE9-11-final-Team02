@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -14,7 +15,13 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "notifications")
+@Table(
+        name = "notifications",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_notifications_user_type_reference",
+                columnNames = {"user_id", "type", "reference_id"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification {
 
@@ -81,5 +88,9 @@ public class Notification {
         if (this.readAt == null) {
             this.readAt = readAt;
         }
+    }
+
+    public boolean isOwnedBy(String userId) {
+        return this.userId.equals(userId);
     }
 }
