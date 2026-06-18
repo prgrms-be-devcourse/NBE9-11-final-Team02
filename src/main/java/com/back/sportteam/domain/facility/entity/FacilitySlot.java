@@ -116,21 +116,6 @@ public class FacilitySlot {
         return this.status == SlotStatus.AVAILABLE;
     }
 
-    public void holdUntil(LocalDateTime pendingUntil) {
-        this.status = SlotStatus.PENDING;
-        this.pendingUntil = pendingUntil;
-    }
-
-    public void reserve() {
-        this.status = SlotStatus.RESERVED;
-        this.pendingUntil = null;
-    }
-
-    public void release() {
-        this.status = SlotStatus.AVAILABLE;
-        this.pendingUntil = null;
-    }
-
     public boolean isManagerEditable() {
         return this.status == SlotStatus.AVAILABLE || this.status == SlotStatus.CLOSED;
     }

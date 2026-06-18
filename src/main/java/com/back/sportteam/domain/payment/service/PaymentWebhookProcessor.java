@@ -14,9 +14,12 @@ import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
+import com.back.sportteam.domain.payment.entity.PaymentWebhookProcessingResult;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -35,6 +38,7 @@ public class PaymentWebhookProcessor {
     private final MatchParticipantRepository matchParticipantRepository;
     private final MatchRepository matchRepository;
     private final FacilitySlotRepository facilitySlotRepository;
+    private final ReservationRepository reservationRepository;
 
     @Transactional
     public void process(PaymentWebhookRequest request) {
@@ -47,12 +51,18 @@ public class PaymentWebhookProcessor {
         validateAmount(payment, request.amount());
 
         LocalDateTime processedAt = LocalDateTime.now(SERVICE_ZONE);
-        changePaymentStatus(payment, request, processedAt);
+        PaymentStatus previousStatus = payment.getStatus();
+        WebhookProcessingResult result = changePaymentStatus(payment, request, processedAt);
         paymentWebhookEventRepository.saveAndFlush(PaymentWebhookEvent.create(
                 payment,
                 request.eventId(),
                 request.eventType(),
+                previousStatus,
+                payment.getStatus(),
+                result.processingResult(),
+                normalize(request.pgTransactionId()),
                 request.amount(),
+                result.reason(),
                 processedAt
         ));
     }
@@ -63,24 +73,34 @@ public class PaymentWebhookProcessor {
         }
     }
 
-    private void changePaymentStatus(
+    private WebhookProcessingResult changePaymentStatus(
             Payment payment,
             PaymentWebhookRequest request,
             LocalDateTime processedAt
     ) {
+        if (shouldIgnoreFailureWebhook(payment, request)) {
+            return WebhookProcessingResult.ignored("Already terminal payment status.");
+        }
+
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
                 activateParticipantIfParticipationPayment(payment);
                 confirmFacilitySlotIfFacilityPayment(payment);
-                return;
+                return WebhookProcessingResult.applied();
             }
             payment.fail(normalize(request.pgTransactionId()));
             cancelParticipantIfParticipationPayment(payment, processedAt);
             cancelMatchIfFacilityPayment(payment, processedAt);
+            return WebhookProcessingResult.applied();
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
+    }
+
+    private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
+        return request.eventType().getPaymentStatus() == PaymentStatus.FAILED
+                && (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.REFUNDED);
     }
 
     private void activateParticipantIfParticipationPayment(Payment payment) {
@@ -156,7 +176,10 @@ public class PaymentWebhookProcessor {
     }
 
     private Match getMatchByFacilitySlotId(String facilitySlotId) {
-        return matchRepository.findByReservationId(facilitySlotId)
+        Reservation reservation = reservationRepository.findByFacilitySlotId(facilitySlotId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        return matchRepository.findByReservationId(reservation.getId())
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
     }
 
@@ -165,5 +188,19 @@ public class PaymentWebhookProcessor {
             return null;
         }
         return value;
+    }
+
+    private record WebhookProcessingResult(
+            PaymentWebhookProcessingResult processingResult,
+            String reason
+    ) {
+
+        private static WebhookProcessingResult applied() {
+            return new WebhookProcessingResult(PaymentWebhookProcessingResult.APPLIED, null);
+        }
+
+        private static WebhookProcessingResult ignored(String reason) {
+            return new WebhookProcessingResult(PaymentWebhookProcessingResult.IGNORED, reason);
+        }
     }
 }
