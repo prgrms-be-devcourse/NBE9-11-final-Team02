@@ -55,13 +55,10 @@ public class PaymentWebhookProcessor {
         WebhookProcessingResult result = changePaymentStatus(payment, request, processedAt);
         paymentWebhookEventRepository.saveAndFlush(PaymentWebhookEvent.create(
                 payment,
-                request.eventId(),
-                request.eventType(),
+                request,
                 previousStatus,
                 payment.getStatus(),
                 result.processingResult(),
-                normalize(request.pgTransactionId()),
-                request.amount(),
                 result.reason(),
                 processedAt
         ));

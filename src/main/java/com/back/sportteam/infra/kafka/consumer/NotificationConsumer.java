@@ -26,7 +26,7 @@ public class NotificationConsumer {
         MatchNotificationEvent event = parse(payload);
         try {
             notificationService.handle(event);
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException _) {
             log.info(
                     "Duplicated notification event ignored. matchId={}, type={}",
                     event.matchId(),

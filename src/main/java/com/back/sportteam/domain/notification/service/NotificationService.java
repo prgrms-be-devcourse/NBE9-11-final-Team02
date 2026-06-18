@@ -12,6 +12,7 @@ import com.back.sportteam.domain.notification.event.MatchNotificationEvent;
 import com.back.sportteam.domain.notification.exception.NotificationErrorCode;
 import com.back.sportteam.domain.notification.repository.NotificationRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.global.util.TimeUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +71,7 @@ public class NotificationService {
             throw new BusinessException(NotificationErrorCode.NOTIFICATION_ACCESS_DENIED);
         }
 
-        notification.markRead(LocalDateTime.now());
+        notification.markRead(LocalDateTime.now(TimeUtils.SERVICE_ZONE));
         return NotificationResponse.from(notification);
     }
 

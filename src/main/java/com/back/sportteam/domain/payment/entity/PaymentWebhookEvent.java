@@ -1,5 +1,6 @@
 package com.back.sportteam.domain.payment.entity;
 
+import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -69,26 +70,23 @@ public class PaymentWebhookEvent {
 
     private PaymentWebhookEvent(
             Payment payment,
-            String eventId,
-            PaymentWebhookEventType eventType,
+            PaymentWebhookRequest request,
             PaymentStatus previousPaymentStatus,
             PaymentStatus finalPaymentStatus,
             PaymentWebhookProcessingResult processingResult,
-            String pgTransactionId,
-            Integer amount,
             String resultReason,
             LocalDateTime processedAt
     ) {
         this.id = UUID.randomUUID().toString();
         this.payment = payment;
-        this.eventId = eventId;
-        this.eventType = eventType;
-        this.paymentStatus = eventType.getPaymentStatus();
+        this.eventId = request.eventId();
+        this.eventType = request.eventType();
+        this.paymentStatus = request.eventType().getPaymentStatus();
         this.previousPaymentStatus = previousPaymentStatus;
         this.finalPaymentStatus = finalPaymentStatus;
         this.processingResult = processingResult;
-        this.pgTransactionId = pgTransactionId;
-        this.amount = amount;
+        this.pgTransactionId = normalize(request.pgTransactionId());
+        this.amount = request.amount();
         this.resultReason = resultReason;
         this.processedAt = processedAt;
         this.createdAt = processedAt;
@@ -96,27 +94,28 @@ public class PaymentWebhookEvent {
 
     public static PaymentWebhookEvent create(
             Payment payment,
-            String eventId,
-            PaymentWebhookEventType eventType,
+            PaymentWebhookRequest request,
             PaymentStatus previousPaymentStatus,
             PaymentStatus finalPaymentStatus,
             PaymentWebhookProcessingResult processingResult,
-            String pgTransactionId,
-            Integer amount,
             String resultReason,
             LocalDateTime processedAt
     ) {
         return new PaymentWebhookEvent(
                 payment,
-                eventId,
-                eventType,
+                request,
                 previousPaymentStatus,
                 finalPaymentStatus,
                 processingResult,
-                pgTransactionId,
-                amount,
                 resultReason,
                 processedAt
         );
+    }
+
+    private static String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
     }
 }

@@ -30,11 +30,15 @@ public class PaymentService {
 
     @Transactional
     public PaymentPrepareResponse prepare(String userId, PaymentPrepareRequest request) {
-        return prepare(userId, null, request);
+        return prepareInternal(userId, null, request);
     }
 
     @Transactional
     public PaymentPrepareResponse prepare(String userId, String queueToken, PaymentPrepareRequest request) {
+        return prepareInternal(userId, queueToken, request);
+    }
+
+    private PaymentPrepareResponse prepareInternal(String userId, String queueToken, PaymentPrepareRequest request) {
         validatePaymentTarget(request);
 
         Integer expectedAmount = getExpectedAmount(request);

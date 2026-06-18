@@ -139,7 +139,9 @@ class RefundRepositoryTest {
         );
 
         assertThat(beforeRetryTime).doesNotContain(refund.getId());
-        assertThat(afterRetryTime).contains(refund.getId());
+        assertThat(afterRetryTime)
+                .isNotEmpty()
+                .contains(refund.getId());
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -28,44 +29,45 @@ public class PaymentRefundProcessor {
     private final TransactionTemplate transactionTemplate;
 
     public void process(String refundId, LocalDateTime processedAt) {
-        RefundCommand command = claimRefund(refundId, processedAt);
-        if (command == null) {
+        Optional<RefundCommand> command = claimRefund(refundId, processedAt);
+        if (command.isEmpty()) {
             return;
         }
 
+        RefundCommand refundCommand = command.get();
         try {
             tossPaymentsClient.cancelPayment(
-                    command.paymentKey(),
-                    command.amount(),
-                    command.reason()
+                    refundCommand.paymentKey(),
+                    refundCommand.amount(),
+                    refundCommand.reason()
             );
         } catch (RuntimeException e) {
-            recordRefundFailure(command.refundId(), e.getMessage(), processedAt);
+            recordRefundFailure(refundCommand.refundId(), e.getMessage(), processedAt);
             return;
         }
 
-        completeRefund(command.refundId(), command.amount(), processedAt);
+        completeRefund(refundCommand.refundId(), refundCommand.amount(), processedAt);
     }
 
-    private RefundCommand claimRefund(String refundId, LocalDateTime processedAt) {
+    private Optional<RefundCommand> claimRefund(String refundId, LocalDateTime processedAt) {
         return transactionTemplate.execute(status -> refundRepository.findByIdForUpdate(refundId)
                 .filter(Refund::isPending)
                 .map(refund -> {
                     Payment payment = refund.getPayment();
                     if (payment.getPgTransactionId() == null || payment.getPgTransactionId().isBlank()) {
                         refund.failPermanently(MISSING_PAYMENT_KEY_MESSAGE, processedAt);
-                        return null;
+                        return Optional.<RefundCommand>empty();
                     }
 
                     refund.markProcessing(processedAt);
-                    return new RefundCommand(
+                    return Optional.of(new RefundCommand(
                             refund.getId(),
                             payment.getPgTransactionId(),
                             refund.getAmount(),
                             refund.getReason()
-                    );
+                    ));
                 })
-                .orElse(null));
+                .orElseGet(Optional::empty));
     }
 
     private void completeRefund(String refundId, Integer amount, LocalDateTime processedAt) {

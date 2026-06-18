@@ -46,7 +46,7 @@ public class NotificationSseService {
             emitter.send(SseEmitter.event()
                     .name(CONNECT_EVENT_NAME)
                     .data("connected"));
-        } catch (IOException e) {
+        } catch (IOException _) {
             removeEmitter(userId, emitter);
         }
     }
@@ -57,7 +57,7 @@ public class NotificationSseService {
                     .name(NOTIFICATION_EVENT_NAME)
                     .id(response.notificationId())
                     .data(response));
-        } catch (IOException e) {
+        } catch (IOException _) {
             removeEmitter(userId, emitter);
         }
     }
