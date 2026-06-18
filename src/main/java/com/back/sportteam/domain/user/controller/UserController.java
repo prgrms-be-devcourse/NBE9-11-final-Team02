@@ -7,7 +7,6 @@ import com.back.sportteam.domain.user.service.UserProfileService;
 import com.back.sportteam.domain.user.service.UserProfileUpdateService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +26,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile(
-            @AuthenticationPrincipal UUID userId
+            @AuthenticationPrincipal String userId
     ) {
         return ResponseEntity
                 .ok(ApiResponse.ok(userProfileService.getMyProfile(userId)));
@@ -35,7 +34,7 @@ public class UserController {
 
     @PatchMapping("/me")
     public ResponseEntity<ApiResponse<UserProfileUpdateResponse>> updateMyProfile(
-            @AuthenticationPrincipal UUID userId,
+            @AuthenticationPrincipal String userId,
             @Valid @RequestBody UserProfileUpdateRequest request
     ) {
         return ResponseEntity

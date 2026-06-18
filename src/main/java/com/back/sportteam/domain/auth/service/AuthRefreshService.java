@@ -7,7 +7,6 @@ import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -41,7 +40,7 @@ public class AuthRefreshService {
         }
 
         Claims claims = jwtProvider.parse(refreshToken);
-        UUID userId = UUID.fromString(claims.get("userId", String.class));
+        String userId = claims.get("userId", String.class);
         String role = claims.get("role", String.class);
 
         String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + userId);
