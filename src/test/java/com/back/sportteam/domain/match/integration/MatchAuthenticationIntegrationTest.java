@@ -176,8 +176,7 @@ class MatchAuthenticationIntegrationTest {
         List<JsonNode> matches = StreamSupport.stream(content.spliterator(), false).toList();
         assertThat(matches)
                 .isNotEmpty()
-                .allSatisfy(match -> assertThat(match.get("sportType").asText()).isEqualTo("TENNIS"));
-        assertThat(matches)
+                .allSatisfy(match -> assertThat(match.get("sportType").asText()).isEqualTo("TENNIS"))
                 .anySatisfy(match -> assertThat(match.get("title").asText()).isEqualTo(tennisTitle));
     }
 
