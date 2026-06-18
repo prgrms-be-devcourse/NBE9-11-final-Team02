@@ -33,7 +33,6 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -113,7 +112,7 @@ public class ReviewService {
                     pr.getMannerRating(), pr.getSkillRating(), null
             ));
 
-            UUID revieweeId = UUID.fromString(pr.getRevieweeId());
+            String revieweeId = pr.getRevieweeId();
             Optional<User> revieweeOpt = userRepository.findById(revieweeId);
             User reviewee = revieweeOpt.orElseThrow(() -> new BusinessException(MatchErrorCode.PARTICIPANT_NOT_FOUND));
 

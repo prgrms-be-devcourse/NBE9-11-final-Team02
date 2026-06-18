@@ -25,7 +25,7 @@ public class User {
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
-    private UUID id;
+    private String id;
 
     @Column(nullable = false, unique = true, length = 255)
     private String email;
@@ -87,7 +87,7 @@ public class User {
 
     public static User local(String email, String nickname, String passwordHash, UserRole role) {
         User user = new User();
-        user.id = UUID.randomUUID();
+        user.id = UUID.randomUUID().toString();
         user.email = email;
         user.nickname = nickname;
         user.passwordHash = passwordHash;
@@ -98,7 +98,7 @@ public class User {
 
     public static User google(String email, String nickname, UserRole role, String providerId) {
         User user = new User();
-        user.id = UUID.randomUUID();
+        user.id = UUID.randomUUID().toString();
         user.email = email;
         user.nickname = nickname;
         user.role = role;
@@ -115,7 +115,7 @@ public class User {
                 .doubleValue();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getEmail() { return email; }
     public String getNickname() { return nickname; }
     public String getPasswordHash() { return passwordHash; }
