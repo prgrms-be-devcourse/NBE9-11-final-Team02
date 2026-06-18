@@ -6,8 +6,12 @@ import com.back.sportteam.domain.system.dto.response.WaitingQueueTokenResponse;
 import com.back.sportteam.domain.system.exception.SystemErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.util.TimeUtils;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +53,7 @@ public class WaitingQueueService {
 
         redisTemplate.opsForValue().set(
                 tokenKey,
-                facilitySlotId + DELIMITER + userId,
+                facilitySlotId + DELIMITER + hashUserId(userId),
                 Duration.ofSeconds(tokenTtlSeconds)
         );
         redisTemplate.opsForValue().set(
@@ -121,7 +125,7 @@ public class WaitingQueueService {
         }
 
         TokenPayload payload = parseTokenPayload(tokenValue);
-        if (!payload.facilitySlotId().equals(facilitySlotId) || !payload.userId().equals(userId)) {
+        if (!payload.facilitySlotId().equals(facilitySlotId) || !payload.userHash().equals(hashUserId(userId))) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
         }
 
@@ -157,11 +161,21 @@ public class WaitingQueueService {
         if (delimiterIndex <= 0) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
         }
-        String userId = tokenValue.substring(delimiterIndex + 1);
-        if (userId.isBlank()) {
+        String userHash = tokenValue.substring(delimiterIndex + 1);
+        if (userHash.isBlank()) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
         }
-        return new TokenPayload(tokenValue.substring(0, delimiterIndex), userId);
+        return new TokenPayload(tokenValue.substring(0, delimiterIndex), userHash);
+    }
+
+    private String hashUserId(String userId) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(userId.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable.", e);
+        }
     }
 
     private LocalDateTime calculateExpiresAt(String tokenKey) {
@@ -182,7 +196,7 @@ public class WaitingQueueService {
 
     private record TokenPayload(
             String facilitySlotId,
-            String userId
+            String userHash
     ) {
     }
 }

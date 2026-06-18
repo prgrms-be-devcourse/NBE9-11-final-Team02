@@ -7,6 +7,7 @@ import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class MatchReminderScheduler {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
+    private final Clock clock;
     private final MatchRepository matchRepository;
     private final ReservationRepository reservationRepository;
     private final FacilitySlotRepository facilitySlotRepository;
@@ -33,7 +35,7 @@ public class MatchReminderScheduler {
 
     @Scheduled(fixedDelayString = "${app.scheduler.notification.fixed-delay-ms:60000}")
     public void publishMatchStartReminders() {
-        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
+        LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime windowStart = now.plusMinutes(reminderBeforeMinutes);
         LocalDateTime windowEnd = windowStart.plusMinutes(reminderWindowMinutes);
 

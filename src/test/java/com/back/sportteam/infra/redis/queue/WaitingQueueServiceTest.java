@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -62,7 +63,7 @@ class WaitingQueueServiceTest {
             if (key.equals(WaitingQueueKeys.userToken("slot-id", "user-id"))) {
                 return null;
             }
-            return "slot-id:user-id";
+            return "slot-id:user-hash";
         });
         when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1)).thenReturn(Set.of());
         when(zSetOperations.add(eq(WaitingQueueKeys.queue("slot-id")), any(String.class), anyDouble()))
@@ -76,7 +77,11 @@ class WaitingQueueServiceTest {
         assertThat(response.position()).isEqualTo(1);
         assertThat(response.waitingCount()).isZero();
         assertThat(response.enterable()).isTrue();
-        verify(valueOperations).set(any(String.class), eq("slot-id:user-id"), eq(Duration.ofSeconds(300)));
+        verify(valueOperations).set(
+                any(String.class),
+                argThat(value -> value.startsWith("slot-id:") && !value.contains("user-id")),
+                eq(Duration.ofSeconds(300))
+        );
         verify(valueOperations).set(eq(WaitingQueueKeys.userToken("slot-id", "user-id")),
                 any(String.class), eq(Duration.ofSeconds(300)));
         verify(zSetOperations).add(eq(WaitingQueueKeys.queue("slot-id")), any(String.class), anyDouble());
@@ -86,7 +91,7 @@ class WaitingQueueServiceTest {
     void issueTokenReusesExistingTokenForSameUserAndSlot() {
         when(facilitySlotRepository.existsById("slot-id")).thenReturn(true);
         when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn("existing-token");
-        when(valueOperations.get(WaitingQueueKeys.token("existing-token"))).thenReturn("slot-id:user-id");
+        when(valueOperations.get(WaitingQueueKeys.token("existing-token"))).thenReturn("slot-id:user-hash");
         when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1)).thenReturn(Set.of("existing-token"));
         when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), "existing-token")).thenReturn(0L);
         when(zSetOperations.size(WaitingQueueKeys.queue("slot-id"))).thenReturn(1L);
@@ -110,7 +115,7 @@ class WaitingQueueServiceTest {
                     || key.equals(WaitingQueueKeys.token("expired-token"))) {
                 return null;
             }
-            return "slot-id:user-id";
+            return "slot-id:user-hash";
         });
         when(zSetOperations.rank(eq(WaitingQueueKeys.queue("slot-id")), any(String.class))).thenReturn(0L);
         when(zSetOperations.size(WaitingQueueKeys.queue("slot-id"))).thenReturn(1L);
@@ -133,7 +138,7 @@ class WaitingQueueServiceTest {
     @Test
     void getStatusReturnsQueuePosition() {
         String token = "token-id";
-        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id:user-id");
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id:user-hash");
         when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1)).thenReturn(Set.of(token));
         when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(2L);
         when(zSetOperations.size(WaitingQueueKeys.queue("slot-id"))).thenReturn(5L);
@@ -158,7 +163,7 @@ class WaitingQueueServiceTest {
     @Test
     void getStatusThrowsWhenTokenIsNotInQueue() {
         String token = "token-id";
-        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id:user-id");
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id:user-hash");
         when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(null);
 
         assertThatThrownBy(() -> waitingQueueService.getStatus(token))

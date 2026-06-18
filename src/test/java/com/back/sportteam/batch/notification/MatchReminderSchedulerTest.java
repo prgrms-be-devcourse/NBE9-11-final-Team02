@@ -16,6 +16,8 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.ZoneId;
@@ -23,7 +25,6 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -43,14 +44,12 @@ class MatchReminderSchedulerTest {
     @Mock
     private NotificationEventPublisher notificationEventPublisher;
 
-    @InjectMocks
-    private MatchReminderScheduler matchReminderScheduler;
-
     @Test
     void 경기_시작_1시간_전_매칭에_리마인드_이벤트를_발행한다() {
+        MatchReminderScheduler matchReminderScheduler = createScheduler();
         ReflectionTestUtils.setField(matchReminderScheduler, "reminderBeforeMinutes", 60L);
         ReflectionTestUtils.setField(matchReminderScheduler, "reminderWindowMinutes", 2L);
-        LocalDateTime startAt = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusHours(1).plusSeconds(10);
+        LocalDateTime startAt = fixedNow().plusHours(1).plusSeconds(10);
         Match match = confirmedMatch();
         Reservation reservation = Reservation.pending("slot-id", startAt.minusDays(1));
         FacilitySlot slot = FacilitySlot.create(
@@ -74,9 +73,10 @@ class MatchReminderSchedulerTest {
 
     @Test
     void 리마인드_시간창에_없는_매칭은_이벤트를_발행하지_않는다() {
+        MatchReminderScheduler matchReminderScheduler = createScheduler();
         ReflectionTestUtils.setField(matchReminderScheduler, "reminderBeforeMinutes", 60L);
         ReflectionTestUtils.setField(matchReminderScheduler, "reminderWindowMinutes", 1L);
-        LocalDateTime startAt = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusHours(2);
+        LocalDateTime startAt = fixedNow().plusHours(2);
         Match match = confirmedMatch();
         Reservation reservation = Reservation.pending("slot-id", startAt.minusDays(1));
         FacilitySlot slot = FacilitySlot.create(
@@ -114,5 +114,19 @@ class MatchReminderSchedulerTest {
                 .build());
         match.confirm(LocalDateTime.of(2026, Month.JUNE, 17, 12, 0));
         return match;
+    }
+
+    private MatchReminderScheduler createScheduler() {
+        return new MatchReminderScheduler(
+                Clock.fixed(Instant.parse("2026-06-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
+                matchRepository,
+                reservationRepository,
+                facilitySlotRepository,
+                notificationEventPublisher
+        );
+    }
+
+    private LocalDateTime fixedNow() {
+        return LocalDateTime.of(2026, Month.JUNE, 18, 12, 0);
     }
 }
