@@ -34,7 +34,7 @@ public class UserController {
             @AuthenticationPrincipal UUID userId
     ) {
         return ResponseEntity
-                .ok(ApiResponse.ok(userProfileService.getMyProfile(userId)));
+                .ok(ApiResponse.ok(userProfileService.getMyProfile(String.valueOf(userId))));
     }
 
     @PatchMapping("/me")
@@ -43,7 +43,7 @@ public class UserController {
             @Valid @RequestBody UserProfileUpdateRequest request
     ) {
         return ResponseEntity
-                .ok(ApiResponse.ok(userProfileUpdateService.updateMyProfile(userId, request)));
+                .ok(ApiResponse.ok(userProfileUpdateService.updateMyProfile(String.valueOf(userId), request)));
     }
 
     @DeleteMapping("/me")

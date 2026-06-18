@@ -3,10 +3,9 @@ package com.back.sportteam.domain.auth.dto.response;
 import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
-import java.util.UUID;
 
 public record SignupResponse(
-        UUID userId,
+        String userId,
         String email,
         String nickname,
         UserRole role,

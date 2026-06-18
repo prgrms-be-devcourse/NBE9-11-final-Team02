@@ -18,8 +18,16 @@ import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
@@ -55,8 +63,31 @@ class MatchControllerTest {
         matchJoinFacade = mock(MatchJoinFacade.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new MatchController(matchService, matchJoinFacade))
+                .setCustomArgumentResolvers(authenticationPrincipalResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    private HandlerMethodArgumentResolver authenticationPrincipalResolver() {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(
+                    MethodParameter parameter,
+                    ModelAndViewContainer mavContainer,
+                    NativeWebRequest webRequest,
+                    WebDataBinderFactory binderFactory
+            ) {
+                if (webRequest.getUserPrincipal() instanceof Authentication authentication) {
+                    return authentication.getPrincipal();
+                }
+                return null;
+            }
+        };
     }
 
     @Test
@@ -66,7 +97,7 @@ class MatchControllerTest {
         when(matchService.createMatch(eq("host-id"), any(MatchCreateRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/matches")
-                        .header("X-USER-ID", "host-id")
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(request)))
                 .andExpect(status().isCreated())
@@ -83,7 +114,7 @@ class MatchControllerTest {
         MatchCreateRequest request = createRequest("");
 
         mockMvc.perform(post("/api/v1/matches")
-                        .header("X-USER-ID", "host-id")
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(request)))
                 .andExpect(status().isBadRequest())
@@ -166,7 +197,7 @@ class MatchControllerTest {
                 .thenReturn(createPendingParticipantResponse("participant-id", "user-id"));
 
         mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.participantId").value("participant-id"))
@@ -183,7 +214,7 @@ class MatchControllerTest {
                 .thenThrow(new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED));
 
         mockMvc.perform(post("/api/v1/matches/{matchId}/participants", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_003"));
@@ -192,7 +223,7 @@ class MatchControllerTest {
     @Test
     void 매칭방_참가_취소를_200_응답으로_반환한다() throws Exception {
         mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
@@ -205,7 +236,7 @@ class MatchControllerTest {
                 .when(matchService).leaveMatch("match-id", "user-id");
 
         mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_009"));
@@ -217,7 +248,7 @@ class MatchControllerTest {
                 .when(matchService).leaveMatch("match-id", "host-id");
 
         mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
-                        .header("X-USER-ID", "host-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_010"));
@@ -229,7 +260,7 @@ class MatchControllerTest {
                 .when(matchService).leaveMatch("match-id", "user-id");
 
         mockMvc.perform(delete("/api/v1/matches/{matchId}/participants/me", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_016"));
@@ -241,7 +272,7 @@ class MatchControllerTest {
         when(matchService.confirmMatch("match-id", "host-id")).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/matches/{matchId}/confirm", "match-id")
-                        .header("X-USER-ID", "host-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.matchId").value("match-id"))
@@ -257,7 +288,7 @@ class MatchControllerTest {
                 .thenThrow(new BusinessException(MatchErrorCode.NOT_MATCH_OWNER));
 
         mockMvc.perform(patch("/api/v1/matches/{matchId}/confirm", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_004"));
@@ -266,7 +297,7 @@ class MatchControllerTest {
     @Test
     void 매칭방_취소_요청을_200_응답으로_반환한다() throws Exception {
         mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
-                        .header("X-USER-ID", "host-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
@@ -279,7 +310,7 @@ class MatchControllerTest {
                 .when(matchService).cancelMatch("match-id", "user-id");
 
         mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
-                        .header("X-USER-ID", "user-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_004"));
@@ -291,7 +322,7 @@ class MatchControllerTest {
                 .when(matchService).cancelMatch("match-id", "host-id");
 
         mockMvc.perform(delete("/api/v1/matches/{matchId}", "match-id")
-                        .header("X-USER-ID", "host-id"))
+                        .principal(new UsernamePasswordAuthenticationToken("host-id", null)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("MATCH_015"));

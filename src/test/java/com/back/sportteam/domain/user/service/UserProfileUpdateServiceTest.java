@@ -32,7 +32,7 @@ class UserProfileUpdateServiceTest {
     @DisplayName("내 프로필 수정 성공")
     @Test
     void 내_프로필_수정_성공() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         User user = User.local("dnclsehd122@gmail.com", "오상민", "hashed", UserRole.USER);
         UserProfileUpdateRequest request = new UserProfileUpdateRequest(
                 "상민아",
@@ -56,7 +56,7 @@ class UserProfileUpdateServiceTest {
     @DisplayName("null 필드는 기존 값을 유지")
     @Test
     void null_필드는_기존_값을_유지() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         User user = User.local("dnclsehd122@gmail.com", "오상민", "hashed", UserRole.USER);
         UserProfileUpdateRequest request = new UserProfileUpdateRequest(
                 "상민아",
@@ -78,7 +78,7 @@ class UserProfileUpdateServiceTest {
     @DisplayName("존재하지 않는 유저일 시 예외 발생")
     @Test
     void 존재하지_않는_유저일_시_예외_발생() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         UserProfileUpdateRequest request = new UserProfileUpdateRequest(
                 "상민아", null, null, null, null
         );

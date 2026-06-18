@@ -47,14 +47,14 @@ class AuthLogoutServiceTest {
     @Test
     void 로그아웃_성공_시_RefreshToken_삭제_및_AccessToken_블랙리스트_등록() {
         Claims claims = mock(Claims.class);
-        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.get("userId", String.class)).thenReturn("user-id");
 
         when(jwtProvider.isValid("valid-access-token")).thenReturn(true);
         when(jwtProvider.parse("valid-access-token")).thenReturn(claims);
 
         authLogoutService.logout("valid-access-token");
 
-        verify(redisTemplate).delete("refresh:1");
+        verify(redisTemplate).delete("refresh:user-id");
         verify(valueOperations).set(
                 eq("blacklist:valid-access-token"),
                 eq("logout"),

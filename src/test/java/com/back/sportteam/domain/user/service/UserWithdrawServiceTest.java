@@ -50,7 +50,7 @@ class UserWithdrawServiceTest {
         UUID userId = UUID.randomUUID();
         User user = User.local("dnclsehd122@gmail.com", "오상민", "hashed", UserRole.USER);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.findById(String.valueOf(userId))).thenReturn(Optional.of(user));
 
         userWithdrawService.withdraw(userId, "valid-access-token");
 
@@ -69,7 +69,7 @@ class UserWithdrawServiceTest {
     void 존재하지_않는_유저일_시_예외_발생() {
         UUID userId = UUID.randomUUID();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(String.valueOf(userId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userWithdrawService.withdraw(userId, "valid-access-token"))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->

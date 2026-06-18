@@ -33,7 +33,7 @@ public class UserWithdrawService {
 
     @Transactional
     public void withdraw(UUID userId, String accessToken) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(String.valueOf(userId))
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
         userRepository.delete(user);

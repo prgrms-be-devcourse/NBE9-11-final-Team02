@@ -46,7 +46,9 @@ public class MatchService {
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
         validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
+        FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
         validateReservationAvailable(request.reservationId());
+        facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
 
         Match match = Match.create(MatchCreateCommand.builder()
                 .reservationId(request.reservationId())
@@ -169,6 +171,7 @@ public class MatchService {
         match.cancel(cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .forEach(MatchParticipant::cancel);
+        releaseFacilitySlot(match.getReservationId());
         paymentRefundRequestService.requestMatchRefunds(
                 matchId,
                 match.getReservationId(),
@@ -188,6 +191,21 @@ public class MatchService {
         if (matchRepository.existsByReservationId(reservationId)) {
             throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
         }
+    }
+
+    private FacilitySlot getFacilitySlotForUpdate(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        if (!facilitySlot.isReservable()) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
+        }
+        return facilitySlot;
+    }
+
+    private void releaseFacilitySlot(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        facilitySlot.release();
     }
 
     private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {

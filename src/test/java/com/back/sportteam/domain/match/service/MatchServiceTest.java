@@ -1,6 +1,8 @@
 package com.back.sportteam.domain.match.service;
 
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.entity.SlotStatus;
+import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
@@ -69,6 +71,8 @@ class MatchServiceTest {
     @Test
     void 매칭방을_생성하면_방장_참가자도_함께_생성한다() {
         MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -80,6 +84,8 @@ class MatchServiceTest {
         assertThat(response.hostId()).isEqualTo("host-id");
         assertThat(response.currentCount()).isEqualTo(1);
         assertThat(response.status()).isEqualTo(MatchStatus.RECRUITING);
+        assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.PENDING);
+        assertThat(facilitySlot.getPendingUntil()).isNotNull();
 
         ArgumentCaptor<MatchParticipant> participantCaptor = ArgumentCaptor.forClass(MatchParticipant.class);
         verify(matchParticipantRepository).save(participantCaptor.capture());
@@ -94,6 +100,8 @@ class MatchServiceTest {
     @Test
     void 이미_선점된_예약이면_매칭방을_생성하지_않는다() {
         MatchCreateRequest request = createRequest(10);
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
@@ -101,6 +109,23 @@ class MatchServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.SLOT_ALREADY_RESERVED);
 
+        verify(matchRepository, never()).save(any(Match.class));
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
+    }
+
+    @Test
+    void 예약_가능한_시설_슬롯이_아니면_매칭방을_생성하지_않는다() {
+        MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        facilitySlot.holdUntil(CREATED_AT.plusMinutes(1));
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
+
+        assertThatThrownBy(() -> matchService.createMatch("host-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
+
+        verify(matchRepository, never()).existsByReservationId(any());
         verify(matchRepository, never()).save(any(Match.class));
         verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
     }
@@ -119,6 +144,8 @@ class MatchServiceTest {
                 RECRUIT_DEADLINE,
                 CANCEL_DEADLINE
         );
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
+                .thenReturn(Optional.of(createFutureSlot()));
         when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
         when(matchRepository.save(any(Match.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -499,9 +526,12 @@ class MatchServiceTest {
         String matchId = match.getId();
         MatchParticipant host = MatchParticipant.host(match, "host-id");
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        FacilitySlot facilitySlot = createFutureSlot();
+        facilitySlot.reserve();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
                 .thenReturn(List.of(host, participant));
+        when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 
         matchService.cancelMatch(matchId, "host-id");
 
@@ -509,6 +539,8 @@ class MatchServiceTest {
         assertThat(match.getCancelledAt()).isNotNull();
         assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(facilitySlot.getPendingUntil()).isNull();
         verify(paymentRefundRequestService).requestMatchRefunds(
                 matchId,
                 match.getReservationId(),
