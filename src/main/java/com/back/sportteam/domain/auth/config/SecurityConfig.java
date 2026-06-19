@@ -6,12 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -34,8 +36,7 @@ public class SecurityConfig {
                                     "/api/v1/users/**",
                                     "/api/v1/payments/**",
                                     "/api/v1/health",
-                                    "/ws/**",
-                                    "/v3/api-docs/**"
+                                    "/ws/**"
                             )
                     )
                     .sessionManagement(session ->
@@ -48,9 +49,13 @@ public class SecurityConfig {
                                     "/api/v1/auth/refresh",
                                     "/api/v1/health",
                                     "/actuator/health",
-                                    "/v3/api-docs/**",
-                                    "/ws/v1/matches/**"
+                                    "/actuator/prometheus"
                             ).permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/matches").permitAll()
+                            .requestMatchers(RegexRequestMatcher.regexMatcher(
+                                    HttpMethod.GET,
+                                    "^/api/v1/matches/[0-9a-fA-F-]{36}$"
+                            )).permitAll()
                             .anyRequest().authenticated()
                     )
                     .addFilterBefore(

@@ -13,6 +13,8 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
     List<MatchParticipant> findByMatchIdAndStatus(String matchId, MatchParticipantStatus status);
 
+    List<MatchParticipant> findByMatchIdAndStatusIn(String matchId, Collection<MatchParticipantStatus> statuses);
+
     List<MatchParticipant> findByStatusAndPaymentDeadlineBefore(
             MatchParticipantStatus status,
             LocalDateTime paymentDeadline
@@ -25,4 +27,6 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
     );
 
     Optional<MatchParticipant> findByMatchIdAndUserIdAndStatus(String matchId, String userId, MatchParticipantStatus status);
+
+    long countByMatchIdAndStatus(String matchId, MatchParticipantStatus status);
 }

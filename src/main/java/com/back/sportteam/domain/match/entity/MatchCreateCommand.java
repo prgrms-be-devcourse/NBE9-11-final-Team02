@@ -3,7 +3,9 @@ package com.back.sportteam.domain.match.entity;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Builder
@@ -18,6 +20,9 @@ public class MatchCreateCommand {
     private SkillLevel minSkillLevel;
     private SkillLevel maxSkillLevel;
     private RequiredGender requiredGender;
+    private LocalDate matchDate;
+    private LocalTime startTime;
+    private LocalTime endTime;
     private LocalDateTime recruitDeadline;
     private LocalDateTime cancelDeadline;
 }

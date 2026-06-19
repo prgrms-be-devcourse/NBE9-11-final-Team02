@@ -18,7 +18,10 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import java.time.LocalDate;
+import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +34,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MatchDeadlineProcessorTest {
 
+    private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
+    private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
+    private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
+
     @Mock
     private MatchRepository matchRepository;
 
@@ -39,6 +46,9 @@ class MatchDeadlineProcessorTest {
 
     @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
+
+    @Mock
+    private ReservationSlotService reservationSlotService;
 
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
@@ -53,6 +63,7 @@ class MatchDeadlineProcessorTest {
 
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
+        verify(reservationSlotService).confirmReservation(match.getReservationId());
         verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
@@ -72,6 +83,7 @@ class MatchDeadlineProcessorTest {
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CANCELLED);
         assertThat(match.getCancelledAt()).isEqualTo(processedAt);
         verify(participant).cancel();
+        verify(reservationSlotService).cancelReservation(match.getReservationId(), processedAt);
         verify(paymentRefundRequestService).requestMatchRefunds(
                 match.getId(),
                 match.getReservationId(),
@@ -104,6 +116,9 @@ class MatchDeadlineProcessorTest {
                 .minSkillLevel(SkillLevel.ANY)
                 .maxSkillLevel(SkillLevel.ANY)
                 .requiredGender(RequiredGender.ANY)
+                .matchDate(MATCH_DATE)
+                .startTime(MATCH_START_TIME)
+                .endTime(MATCH_END_TIME)
                 .recruitDeadline(recruitDeadline)
                 .cancelDeadline(recruitDeadline.plusHours(1))
                 .build());

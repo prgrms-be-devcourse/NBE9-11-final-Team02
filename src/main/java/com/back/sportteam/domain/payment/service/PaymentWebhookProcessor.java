@@ -1,19 +1,10 @@
 package com.back.sportteam.domain.payment.service;
 
-import com.back.sportteam.domain.facility.entity.FacilitySlot;
-import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
-import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
-import com.back.sportteam.domain.match.entity.Match;
-import com.back.sportteam.domain.match.entity.MatchParticipant;
-import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
-import com.back.sportteam.domain.match.exception.MatchErrorCode;
-import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
-import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
+import com.back.sportteam.domain.payment.entity.PaymentWebhookProcessingResult;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
@@ -32,9 +23,7 @@ public class PaymentWebhookProcessor {
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookEventRepository paymentWebhookEventRepository;
-    private final MatchParticipantRepository matchParticipantRepository;
-    private final MatchRepository matchRepository;
-    private final FacilitySlotRepository facilitySlotRepository;
+    private final PaymentPostProcessor paymentPostProcessor;
 
     @Transactional
     public void process(PaymentWebhookRequest request) {
@@ -47,12 +36,15 @@ public class PaymentWebhookProcessor {
         validateAmount(payment, request.amount());
 
         LocalDateTime processedAt = LocalDateTime.now(SERVICE_ZONE);
-        changePaymentStatus(payment, request, processedAt);
+        PaymentStatus previousStatus = payment.getStatus();
+        WebhookProcessingResult result = changePaymentStatus(payment, request, processedAt);
         paymentWebhookEventRepository.saveAndFlush(PaymentWebhookEvent.create(
                 payment,
-                request.eventId(),
-                request.eventType(),
-                request.amount(),
+                request,
+                previousStatus,
+                payment.getStatus(),
+                result.processingResult(),
+                result.reason(),
                 processedAt
         ));
     }
@@ -63,101 +55,32 @@ public class PaymentWebhookProcessor {
         }
     }
 
-    private void changePaymentStatus(
+    private WebhookProcessingResult changePaymentStatus(
             Payment payment,
             PaymentWebhookRequest request,
             LocalDateTime processedAt
     ) {
+        if (shouldIgnoreFailureWebhook(payment, request)) {
+            return WebhookProcessingResult.ignored("Already terminal payment status.");
+        }
+
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
-                activateParticipantIfParticipationPayment(payment);
-                confirmFacilitySlotIfFacilityPayment(payment);
-                return;
+                paymentPostProcessor.processPaidPayment(payment);
+                return WebhookProcessingResult.applied();
             }
             payment.fail(normalize(request.pgTransactionId()));
-            cancelParticipantIfParticipationPayment(payment, processedAt);
-            cancelMatchIfFacilityPayment(payment, processedAt);
+            paymentPostProcessor.processFailedPayment(payment, processedAt);
+            return WebhookProcessingResult.applied();
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
     }
 
-    private void activateParticipantIfParticipationPayment(Payment payment) {
-        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
-            return;
-        }
-
-        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        participant.activate();
-    }
-
-    private void confirmFacilitySlotIfFacilityPayment(Payment payment) {
-        if (payment.getPaymentType() != PaymentType.FACILITY) {
-            return;
-        }
-
-        FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
-        facilitySlot.reserve();
-        activateHostParticipant(payment);
-    }
-
-    private void cancelParticipantIfParticipationPayment(Payment payment, LocalDateTime processedAt) {
-        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
-            return;
-        }
-
-        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        if (participant.cancel()) {
-            participant.getMatch().decreaseCurrentCount();
-        }
-        if (participant.isHost()) {
-            participant.getMatch().cancel(processedAt);
-        }
-    }
-
-    private void cancelMatchIfFacilityPayment(Payment payment, LocalDateTime processedAt) {
-        if (payment.getPaymentType() != PaymentType.FACILITY) {
-            return;
-        }
-
-        FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
-        facilitySlot.release();
-
-        Match match = getMatchByFacilitySlotId(payment.getFacilitySlotId());
-        matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
-                payment.getUserId(),
-                MatchParticipantStatus.PAYMENT_PENDING
-        ).ifPresent(participant -> {
-            if (participant.cancel()) {
-                match.decreaseCurrentCount();
-            }
-        });
-        match.cancel(processedAt);
-    }
-
-    private void activateHostParticipant(Payment payment) {
-        Match match = getMatchByFacilitySlotId(payment.getFacilitySlotId());
-        MatchParticipant participant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                        match.getId(),
-                        payment.getUserId(),
-                        MatchParticipantStatus.PAYMENT_PENDING
-                )
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        participant.activate();
-    }
-
-    private FacilitySlot getFacilitySlot(String facilitySlotId) {
-        return facilitySlotRepository.findById(facilitySlotId)
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
-    }
-
-    private Match getMatchByFacilitySlotId(String facilitySlotId) {
-        return matchRepository.findByReservationId(facilitySlotId)
-                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+    private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
+        return request.eventType().getPaymentStatus() == PaymentStatus.FAILED
+                && (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.REFUNDED);
     }
 
     private String normalize(String value) {
@@ -165,5 +88,19 @@ public class PaymentWebhookProcessor {
             return null;
         }
         return value;
+    }
+
+    private record WebhookProcessingResult(
+            PaymentWebhookProcessingResult processingResult,
+            String reason
+    ) {
+
+        private static WebhookProcessingResult applied() {
+            return new WebhookProcessingResult(PaymentWebhookProcessingResult.APPLIED, null);
+        }
+
+        private static WebhookProcessingResult ignored(String reason) {
+            return new WebhookProcessingResult(PaymentWebhookProcessingResult.IGNORED, reason);
+        }
     }
 }

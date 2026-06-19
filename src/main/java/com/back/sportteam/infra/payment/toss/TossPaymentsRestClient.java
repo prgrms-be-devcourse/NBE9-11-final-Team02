@@ -7,6 +7,7 @@ import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -24,6 +25,25 @@ public class TossPaymentsRestClient implements TossPaymentsClient {
         this.restClient = restClientBuilder.baseUrl(baseUrl).build();
         this.authorization = "Basic " + Base64.getEncoder()
                 .encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public TossPaymentsPaymentResponse confirm(String paymentKey, String orderId, Integer amount) {
+        try {
+            return restClient.post()
+                    .uri("/v1/payments/confirm")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .body(new TossPaymentsConfirmRequest(paymentKey, orderId, amount))
+                    .retrieve()
+                    .body(TossPaymentsPaymentResponse.class);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().is5xxServerError()) {
+                throw new BusinessException(PaymentErrorCode.PAYMENT_CONFIRM_STATUS_UNKNOWN);
+            }
+            throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
+        } catch (ResourceAccessException _) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONFIRM_STATUS_UNKNOWN);
+        }
     }
 
     @Override
