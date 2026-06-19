@@ -19,6 +19,8 @@ public interface MatchRepository extends JpaRepository<Match, String>, JpaSpecif
 
     Optional<Match> findByReservationId(String reservationId);
 
+    List<Match> findByStatus(MatchStatus status);
+
     @Query("""
             select match.id
             from Match match

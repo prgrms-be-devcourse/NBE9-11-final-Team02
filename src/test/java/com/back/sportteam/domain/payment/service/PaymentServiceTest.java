@@ -7,11 +7,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
-import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
+import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentProvider;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
@@ -19,13 +19,14 @@ import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.infra.redis.queue.WaitingQueueService;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -39,11 +40,14 @@ class PaymentServiceTest {
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
 
+    @Mock
+    private WaitingQueueService waitingQueueService;
+
     @InjectMocks
     private PaymentService paymentService;
 
     @Test
-    void 결제_금액이_일치하면_결제_주문을_생성한다() {
+    void prepareCreatesParticipationPaymentWhenAmountMatches() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 "match-id",
                 null,
@@ -53,6 +57,12 @@ class PaymentServiceTest {
         MatchParticipant participant = org.mockito.Mockito.mock(MatchParticipant.class);
         when(participant.getId()).thenReturn("participant-id");
         when(paymentAmountReader.getParticipationAmount("match-id")).thenReturn(10_000);
+        when(paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                "user-id",
+                "match-id",
+                PaymentType.PARTICIPATION,
+                PaymentStatus.PENDING
+        )).thenReturn(Optional.empty());
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 "match-id",
                 "user-id",
@@ -82,7 +92,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void 요청_금액이_서버_금액과_다르면_결제_주문을_생성하지_않는다() {
+    void prepareThrowsWhenRequestedAmountDoesNotMatchServerAmount() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 "match-id",
                 null,
@@ -100,7 +110,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void 서버_결제_금액을_조회할_수_없으면_결제_주문을_생성하지_않는다() {
+    void prepareThrowsWhenServerAmountIsUnavailable() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 "match-id",
                 null,
@@ -118,7 +128,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void 참가자_정보가_없으면_참가_결제_주문을_생성하지_않는다() {
+    void prepareThrowsWhenParticipantDoesNotExist() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 "match-id",
                 null,
@@ -126,6 +136,12 @@ class PaymentServiceTest {
                 PaymentType.PARTICIPATION
         );
         when(paymentAmountReader.getParticipationAmount("match-id")).thenReturn(10_000);
+        when(paymentRepository.findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
+                "user-id",
+                "match-id",
+                PaymentType.PARTICIPATION,
+                PaymentStatus.PENDING
+        )).thenReturn(Optional.empty());
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 "match-id",
                 "user-id",
@@ -141,7 +157,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void 시설_결제는_시설_슬롯_ID와_가격으로_주문을_생성한다() {
+    void prepareCreatesFacilityPaymentWithQueueToken() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 null,
                 "slot-id",
@@ -149,12 +165,19 @@ class PaymentServiceTest {
                 PaymentType.FACILITY
         );
         when(paymentAmountReader.getFacilityAmount("slot-id")).thenReturn(100_000);
+        when(paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
+                "user-id",
+                "slot-id",
+                PaymentType.FACILITY,
+                PaymentStatus.PENDING
+        )).thenReturn(Optional.empty());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        paymentService.prepare("user-id", request);
+        paymentService.prepare("user-id", "queue-token", request);
 
         ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentRepository).save(paymentCaptor.capture());
+        verify(waitingQueueService).consumeEnterableToken("queue-token", "slot-id", "user-id");
         Payment payment = paymentCaptor.getValue();
         assertThat(payment.getParticipantId()).isNull();
         assertThat(payment.getMatchId()).isNull();
@@ -164,7 +187,40 @@ class PaymentServiceTest {
     }
 
     @Test
-    void 결제_유형과_대상_ID_조합이_다르면_주문을_생성하지_않는다() {
+    void prepareReusesExistingPendingPayment() {
+        PaymentPrepareRequest request = new PaymentPrepareRequest(
+                null,
+                "slot-id",
+                100_000,
+                PaymentType.FACILITY
+        );
+        Payment existingPayment = Payment.create(
+                null,
+                "user-id",
+                null,
+                "slot-id",
+                PaymentType.FACILITY,
+                "mid_existing",
+                100_000
+        );
+        when(paymentAmountReader.getFacilityAmount("slot-id")).thenReturn(100_000);
+        when(paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
+                "user-id",
+                "slot-id",
+                PaymentType.FACILITY,
+                PaymentStatus.PENDING
+        )).thenReturn(Optional.of(existingPayment));
+
+        PaymentPrepareResponse response = paymentService.prepare("user-id", "queue-token", request);
+
+        assertThat(response.merchantUid()).isEqualTo("mid_existing");
+        assertThat(response.amount()).isEqualTo(100_000);
+        verify(waitingQueueService, never()).consumeEnterableToken(any(), any(), any());
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void prepareThrowsWhenPaymentTargetIsInvalid() {
         PaymentPrepareRequest request = new PaymentPrepareRequest(
                 "match-id",
                 "slot-id",

@@ -29,6 +29,8 @@ import com.back.sportteam.domain.payment.entity.PaymentWebhookEventType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +43,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentWebhookProcessorTest {
@@ -59,6 +62,9 @@ class PaymentWebhookProcessorTest {
 
     @Mock
     private FacilitySlotRepository facilitySlotRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
 
     @InjectMocks
     private PaymentWebhookProcessor paymentWebhookProcessor;
@@ -143,6 +149,7 @@ class PaymentWebhookProcessorTest {
     @Test
     void 시설_결제_성공_웹훅이면_슬롯을_예약_확정하고_방장_참가자를_활성화한다() {
         Payment payment = createPendingFacilityPayment();
+        Reservation reservation = createReservation();
         Match match = createMatch();
         MatchParticipant host = MatchParticipant.host(match, "user-id");
         FacilitySlot facilitySlot = createPendingSlot();
@@ -153,7 +160,8 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
-        when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(facilitySlot));
+        when(facilitySlotRepository.findById("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
+        when(reservationRepository.findByFacilitySlotId("facility-slot-id")).thenReturn(Optional.of(reservation));
         when(matchRepository.findByReservationId("reservation-id")).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 match.getId(),
@@ -173,6 +181,7 @@ class PaymentWebhookProcessorTest {
     @Test
     void 시설_결제_실패_웹훅이면_슬롯을_해제하고_매칭방을_취소한다() {
         Payment payment = createPendingFacilityPayment();
+        Reservation reservation = createReservation();
         Match match = createMatch();
         MatchParticipant host = MatchParticipant.host(match, "user-id");
         FacilitySlot facilitySlot = createPendingSlot();
@@ -183,7 +192,8 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
-        when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(facilitySlot));
+        when(facilitySlotRepository.findById("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
+        when(reservationRepository.findByFacilitySlotId("facility-slot-id")).thenReturn(Optional.of(reservation));
         when(matchRepository.findByReservationId("reservation-id")).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 match.getId(),
@@ -255,7 +265,7 @@ class PaymentWebhookProcessorTest {
                 null,
                 "user-id",
                 null,
-                "reservation-id",
+                "facility-slot-id",
                 PaymentType.FACILITY,
                 "mid_12345",
                 10_000
@@ -296,6 +306,15 @@ class PaymentWebhookProcessorTest {
         );
         facilitySlot.holdUntil(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0));
         return facilitySlot;
+    }
+
+    private Reservation createReservation() {
+        Reservation reservation = Reservation.pending(
+                "facility-slot-id",
+                LocalDateTime.of(2099, Month.JUNE, 10, 10, 0)
+        );
+        ReflectionTestUtils.setField(reservation, "id", "reservation-id");
+        return reservation;
     }
 
     private PaymentWebhookRequest createRequest(

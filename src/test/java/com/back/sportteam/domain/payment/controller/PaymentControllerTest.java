@@ -1,6 +1,7 @@
 package com.back.sportteam.domain.payment.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,7 +38,8 @@ class PaymentControllerTest {
     @Test
     void 결제_준비_요청은_검증된_주문_정보를_반환한다() throws Exception {
         PaymentPrepareResponse response = new PaymentPrepareResponse("mid_12345", 10_000);
-        when(paymentService.prepare(any(String.class), any(PaymentPrepareRequest.class))).thenReturn(response);
+        when(paymentService.prepare(any(String.class), nullable(String.class), any(PaymentPrepareRequest.class)))
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/prepare")
                         .header("X-USER-ID", "user-id")
@@ -48,7 +50,7 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data.merchantUid").value("mid_12345"))
                 .andExpect(jsonPath("$.data.amount").value(10000));
 
-        verify(paymentService).prepare(any(String.class), any(PaymentPrepareRequest.class));
+        verify(paymentService).prepare(any(String.class), nullable(String.class), any(PaymentPrepareRequest.class));
     }
 
     @Test
@@ -72,7 +74,7 @@ class PaymentControllerTest {
 
     @Test
     void 결제_금액이_일치하지_않으면_400_응답을_반환한다() throws Exception {
-        when(paymentService.prepare(any(String.class), any(PaymentPrepareRequest.class)))
+        when(paymentService.prepare(any(String.class), nullable(String.class), any(PaymentPrepareRequest.class)))
                 .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH));
 
         mockMvc.perform(post("/api/v1/payments/prepare")
