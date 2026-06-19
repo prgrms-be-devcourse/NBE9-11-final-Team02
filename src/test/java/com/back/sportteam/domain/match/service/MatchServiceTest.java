@@ -5,6 +5,8 @@ import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
+import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
@@ -29,6 +31,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -209,15 +215,26 @@ class MatchServiceTest {
 
     @Test
     void 매칭방_목록을_조회한다() {
-        when(matchRepository.findAll()).thenReturn(List.of(createMatch()));
+        MatchSearchCondition condition = new MatchSearchCondition(
+                null,
+                null,
+                null,
+                null,
+                null,
+                MatchSortType.LATEST,
+                0,
+                20
+        );
+        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(createMatch())));
 
-        List<MatchSummaryResponse> response = matchService.getMatches();
+        Page<MatchSummaryResponse> response = matchService.getMatches(condition);
 
-        assertThat(response).hasSize(1);
-        assertThat(response.getFirst().matchId()).isNotBlank();
-        assertThat(response.getFirst().title()).isEqualTo("풋살 매칭");
-        assertThat(response.getFirst().feePerPerson()).isEqualTo(10000);
-        assertThat(response.getFirst().status()).isEqualTo(MatchStatus.RECRUITING);
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().getFirst().matchId()).isNotBlank();
+        assertThat(response.getContent().getFirst().title()).isEqualTo("풋살 매칭");
+        assertThat(response.getContent().getFirst().feePerPerson()).isEqualTo(10000);
+        assertThat(response.getContent().getFirst().status()).isEqualTo(MatchStatus.RECRUITING);
     }
 
     @Test

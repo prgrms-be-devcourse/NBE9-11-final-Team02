@@ -22,37 +22,41 @@ public class SecurityConfig {
     private final StringRedisTemplate redisTemplate;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers(
-                                "/api/v1/auth/**",
-                                "/api/v1/matches/**",
-                                "/api/v1/facilities/**",
-                                "/api/v1/users/**",
-                                "/api/v1/payments/**",
-                                "/api/v1/notifications/**",
-                                "/api/v1/health",
-                                "/ws/**"
-                        )
-                )
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/v1/auth/signup",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/health"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider, redisTemplate),
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .build();
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        try {
+            return http
+                    .csrf(csrf -> csrf
+                            .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                            .ignoringRequestMatchers(
+                                    "/api/v1/auth/**",
+                                    "/api/v1/matches/**",
+                                    "/api/v1/facilities/**",
+                                    "/api/v1/users/**",
+                                    "/api/v1/payments/**",
+                                    "/api/v1/health",
+                                    "/ws/**"
+                            )
+                    )
+                    .sessionManagement(session ->
+                            session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    )
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(
+                                    "/api/v1/auth/signup",
+                                    "/api/v1/auth/login",
+                                    "/api/v1/auth/refresh",
+                                    "/api/v1/health",
+                                    "/actuator/health"
+                            ).permitAll()
+                            .anyRequest().authenticated()
+                    )
+                    .addFilterBefore(
+                            new JwtAuthenticationFilter(jwtProvider, redisTemplate),
+                            UsernamePasswordAuthenticationFilter.class
+                    )
+                    .build();
+        } catch (Exception e) {
+            throw new IllegalStateException("Security 필터 체인 구성 중 오류 발생", e);
+        }
     }
 }

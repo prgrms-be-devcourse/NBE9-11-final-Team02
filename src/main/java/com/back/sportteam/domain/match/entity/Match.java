@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -20,7 +21,11 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "matches",
-        uniqueConstraints = @UniqueConstraint(name = "uk_matches_reservation_id", columnNames = "reservation_id")
+        uniqueConstraints = @UniqueConstraint(name = "uk_matches_reservation_id", columnNames = "reservation_id"),
+        indexes = @Index(
+                name = "idx_matches_status_sport_deadline",
+                columnList = "status, sport_type, recruit_deadline, id"
+        )
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Match {

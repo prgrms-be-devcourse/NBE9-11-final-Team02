@@ -1,6 +1,8 @@
 package com.back.sportteam.domain.match.controller;
 
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
+import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
@@ -18,7 +20,10 @@ import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.core.MethodParameter;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -34,12 +39,14 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -125,17 +132,49 @@ class MatchControllerTest {
 
     @Test
     void 매칭방_목록을_200_응답으로_반환한다() throws Exception {
-        when(matchService.getMatches()).thenReturn(List.of(createSummaryResponse()));
+        when(matchService.getMatches(any(MatchSearchCondition.class)))
+                .thenReturn(new PageImpl<>(List.of(createSummaryResponse()), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/matches"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].matchId").value("match-id"))
-                .andExpect(jsonPath("$.data[0].title").value("풋살 매칭"))
-                .andExpect(jsonPath("$.data[0].feePerPerson").value(10000))
-                .andExpect(jsonPath("$.data[0].status").value("RECRUITING"));
+                .andExpect(jsonPath("$.data.content[0].matchId").value("match-id"))
+                .andExpect(jsonPath("$.data.content[0].title").value("풋살 매칭"))
+                .andExpect(jsonPath("$.data.content[0].feePerPerson").value(10000))
+                .andExpect(jsonPath("$.data.content[0].status").value("RECRUITING"));
 
-        verify(matchService).getMatches();
+        verify(matchService).getMatches(any(MatchSearchCondition.class));
+    }
+
+    @Test
+    void 매칭방_목록_조회시_필터와_페이징_조건을_전달한다() throws Exception {
+        when(matchService.getMatches(any(MatchSearchCondition.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 5), 0));
+
+        mockMvc.perform(get("/api/v1/matches")
+                        .param("sportType", "FUTSAL")
+                        .param("status", "RECRUITING")
+                        .param("minSkillLevel", "LEVEL_2")
+                        .param("maxSkillLevel", "LEVEL_4")
+                        .param("requiredGender", "MIXED")
+                        .param("sort", "DEADLINE_ASC")
+                        .param("page", "1")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        ArgumentCaptor<MatchSearchCondition> conditionCaptor = forClass(MatchSearchCondition.class);
+        verify(matchService).getMatches(conditionCaptor.capture());
+
+        MatchSearchCondition condition = conditionCaptor.getValue();
+        assertThat(condition.sportType()).isEqualTo(SportType.FUTSAL);
+        assertThat(condition.status()).isEqualTo(MatchStatus.RECRUITING);
+        assertThat(condition.minSkillLevel()).isEqualTo(SkillLevel.LEVEL_2);
+        assertThat(condition.maxSkillLevel()).isEqualTo(SkillLevel.LEVEL_4);
+        assertThat(condition.requiredGender()).isEqualTo(RequiredGender.MIXED);
+        assertThat(condition.sort()).isEqualTo(MatchSortType.DEADLINE_ASC);
+        assertThat(condition.page()).isEqualTo(1);
+        assertThat(condition.size()).isEqualTo(5);
     }
 
     @Test
