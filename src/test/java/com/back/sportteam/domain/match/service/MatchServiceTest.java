@@ -5,11 +5,13 @@ import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
+import com.back.sportteam.domain.match.dto.response.MatchRecommendationResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
@@ -24,6 +26,7 @@ import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +73,9 @@ class MatchServiceTest {
 
     @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
+
+    @Mock
+    private UserSportStatRepository userSportStatRepository;
 
     @InjectMocks
     private MatchService matchService;
@@ -235,6 +241,30 @@ class MatchServiceTest {
         assertThat(response.getContent().getFirst().title()).isEqualTo("풋살 매칭");
         assertThat(response.getContent().getFirst().feePerPerson()).isEqualTo(10000);
         assertThat(response.getContent().getFirst().status()).isEqualTo(MatchStatus.RECRUITING);
+    }
+
+    @Test
+    void 사용자_조건에_맞는_매칭방을_점수순으로_추천한다() {
+        MatchRecommendationRequest request = new MatchRecommendationRequest(
+                SportType.FUTSAL,
+                RequiredGender.MIXED,
+                2
+        );
+        Match recommendedMatch = createMatch(10, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        Match lowerScoreMatch = createMatch(10, SkillLevel.LEVEL_5, SkillLevel.LEVEL_5);
+        lowerScoreMatch.increaseCurrentCount();
+        when(userSportStatRepository.findByUser_IdAndSportType("user-id", SportType.FUTSAL))
+                .thenReturn(Optional.empty());
+        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(lowerScoreMatch, recommendedMatch)));
+
+        List<MatchRecommendationResponse> response = matchService.recommendMatches("user-id", request);
+
+        assertThat(response).hasSize(2);
+        assertThat(response.getFirst().matchId()).isEqualTo(recommendedMatch.getId());
+        assertThat(response.getFirst().recommendationScore())
+                .isGreaterThan(response.get(1).recommendationScore());
+        assertThat(response.getFirst().reasons()).contains("실력 조건이 일치합니다.");
     }
 
     @Test
@@ -681,11 +711,25 @@ class MatchServiceTest {
         return createMatch(capacity, RECRUIT_DEADLINE);
     }
 
+    private Match createMatch(int capacity, SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
+        return createMatch(capacity, RECRUIT_DEADLINE, CANCEL_DEADLINE, minSkillLevel, maxSkillLevel);
+    }
+
     private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
         return createMatch(capacity, recruitDeadline, CANCEL_DEADLINE);
     }
 
     private Match createMatch(int capacity, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
+        return createMatch(capacity, recruitDeadline, cancelDeadline, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+    }
+
+    private Match createMatch(
+            int capacity,
+            LocalDateTime recruitDeadline,
+            LocalDateTime cancelDeadline,
+            SkillLevel minSkillLevel,
+            SkillLevel maxSkillLevel
+    ) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-id")
                 .hostId("host-id")
@@ -693,8 +737,8 @@ class MatchServiceTest {
                 .sportType(SportType.FUTSAL)
                 .capacity(capacity)
                 .feePerPerson(10000)
-                .minSkillLevel(SkillLevel.LEVEL_2)
-                .maxSkillLevel(SkillLevel.LEVEL_4)
+                .minSkillLevel(minSkillLevel)
+                .maxSkillLevel(maxSkillLevel)
                 .requiredGender(RequiredGender.MIXED)
                 .recruitDeadline(recruitDeadline)
                 .cancelDeadline(cancelDeadline)

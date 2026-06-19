@@ -1,11 +1,13 @@
 package com.back.sportteam.domain.match.controller;
 
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
+import com.back.sportteam.domain.match.dto.response.MatchRecommendationResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
@@ -175,6 +177,31 @@ class MatchControllerTest {
         assertThat(condition.sort()).isEqualTo(MatchSortType.DEADLINE_ASC);
         assertThat(condition.page()).isEqualTo(1);
         assertThat(condition.size()).isEqualTo(5);
+    }
+
+    @Test
+    void 매칭방_추천_목록을_200_응답으로_반환한다() throws Exception {
+        when(matchService.recommendMatches(eq("user-id"), any(MatchRecommendationRequest.class)))
+                .thenReturn(List.of(createRecommendationResponse()));
+
+        mockMvc.perform(get("/api/v1/matches/recommendations")
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null))
+                        .param("sportType", "FUTSAL")
+                        .param("gender", "MIXED")
+                        .param("size", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].matchId").value("match-id"))
+                .andExpect(jsonPath("$.data[0].recommendationScore").value(90))
+                .andExpect(jsonPath("$.data[0].reasons[0]").value("실력 조건이 일치합니다."));
+
+        ArgumentCaptor<MatchRecommendationRequest> requestCaptor = forClass(MatchRecommendationRequest.class);
+        verify(matchService).recommendMatches(eq("user-id"), requestCaptor.capture());
+
+        MatchRecommendationRequest request = requestCaptor.getValue();
+        assertThat(request.sportType()).isEqualTo(SportType.FUTSAL);
+        assertThat(request.gender()).isEqualTo(RequiredGender.MIXED);
+        assertThat(request.recommendationSize()).isEqualTo(3);
     }
 
     @Test
@@ -417,6 +444,24 @@ class MatchControllerTest {
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
                 MatchStatus.RECRUITING
+        );
+    }
+
+    private MatchRecommendationResponse createRecommendationResponse() {
+        return new MatchRecommendationResponse(
+                "match-id",
+                "풋살 매칭",
+                SportType.FUTSAL,
+                8,
+                10,
+                10000,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4,
+                RequiredGender.MIXED,
+                RECRUIT_DEADLINE,
+                MatchStatus.RECRUITING,
+                90,
+                List.of("실력 조건이 일치합니다.")
         );
     }
 

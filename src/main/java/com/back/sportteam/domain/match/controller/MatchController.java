@@ -1,11 +1,13 @@
 package com.back.sportteam.domain.match.controller;
 
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
+import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchSortType;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
+import com.back.sportteam.domain.match.dto.response.MatchRecommendationResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
@@ -77,6 +79,15 @@ public class MatchController {
                 size
         );
         Page<MatchSummaryResponse> response = matchService.getMatches(condition);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<ApiResponse<List<MatchRecommendationResponse>>> recommendMatches(
+            @AuthenticationPrincipal String userId,
+            @Valid MatchRecommendationRequest request
+    ) {
+        List<MatchRecommendationResponse> response = matchService.recommendMatches(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
