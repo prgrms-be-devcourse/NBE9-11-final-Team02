@@ -3,23 +3,30 @@ package com.back.sportteam.domain.match.service;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
+import com.back.sportteam.domain.match.dto.response.MatchRecommendationResponse;
 import com.back.sportteam.domain.match.dto.response.MatchSummaryResponse;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
 import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
+import com.back.sportteam.domain.match.entity.MatchStatus;
+import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +36,9 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -41,6 +51,7 @@ public class MatchService {
     private final MatchParticipantRepository matchParticipantRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
+    private final UserSportStatRepository userSportStatRepository;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
@@ -80,6 +91,37 @@ public class MatchService {
     public Page<MatchSummaryResponse> getMatches(MatchSearchCondition condition) {
         return matchRepository.findAll(toSpecification(condition), condition.toPageable())
                 .map(MatchSummaryResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MatchRecommendationResponse> recommendMatches(String userId, MatchRecommendationRequest request) {
+        BigDecimal userSkillScore = userSportStatRepository.findByUser_IdAndSportType(userId, request.sportType())
+                .map(UserSportStat::getSkillRating)
+                .orElse(BigDecimal.valueOf(SkillLevel.LEVEL_3.getScore()));
+
+        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
+        int size = request.recommendationSize();
+        MatchSearchCondition condition = new MatchSearchCondition(
+                request.sportType(),
+                MatchStatus.RECRUITING,
+                null,
+                null,
+                null,
+                null,
+                0,
+                size * 5
+        );
+
+        return matchRepository.findAll(toRecommendationSpecification(condition, now), PageRequest.of(0, size * 5))
+                .stream()
+                .map(match -> recommend(match, userSkillScore, request.gender(), now))
+                .sorted(Comparator
+                        .comparingInt(MatchRecommendationResponse::recommendationScore)
+                        .reversed()
+                        .thenComparing(MatchRecommendationResponse::recruitDeadline)
+                        .thenComparing(MatchRecommendationResponse::matchId))
+                .limit(size)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -266,6 +308,14 @@ public class MatchService {
                 .and(equalRequiredGender(condition));
     }
 
+    private Specification<Match> toRecommendationSpecification(MatchSearchCondition condition, LocalDateTime now) {
+        return Specification
+                .where(equalSportType(condition))
+                .and(equalStatus(condition))
+                .and(notFull())
+                .and(recruitDeadlineAfter(now));
+    }
+
     private Specification<Match> equalSportType(MatchSearchCondition condition) {
         return (root, query, criteriaBuilder) -> condition.sportType() == null
                 ? null
@@ -294,6 +344,93 @@ public class MatchService {
         return (root, query, criteriaBuilder) -> condition.requiredGender() == null
                 ? null
                 : criteriaBuilder.equal(root.get("requiredGender"), condition.requiredGender());
+    }
+
+    private Specification<Match> notFull() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.lessThan(root.get("currentCount"), root.get("capacity"));
+    }
+
+    private Specification<Match> recruitDeadlineAfter(LocalDateTime now) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.greaterThan(root.get("recruitDeadline"), now);
+    }
+
+    private MatchRecommendationResponse recommend(
+            Match match,
+            BigDecimal userSkillScore,
+            RequiredGender gender,
+            LocalDateTime now
+    ) {
+        RecommendationScore score = new RecommendationScore();
+        applySkillScore(match, userSkillScore, score);
+        applyGenderScore(match, gender, score);
+        applySeatScore(match, score);
+        applyDeadlineScore(match, now, score);
+        return MatchRecommendationResponse.of(match, score.value, score.reasons);
+    }
+
+    private void applySkillScore(Match match, BigDecimal userSkillScore, RecommendationScore score) {
+        if (match.getMinSkillLevel().isAny() && match.getMaxSkillLevel().isAny()) {
+            score.add(20, "실력 제한이 없는 매칭입니다.");
+            return;
+        }
+        BigDecimal minScore = BigDecimal.valueOf(match.getMinSkillLevel().getScore());
+        BigDecimal maxScore = BigDecimal.valueOf(match.getMaxSkillLevel().getScore());
+        if (userSkillScore.compareTo(minScore) >= 0 && userSkillScore.compareTo(maxScore) <= 0) {
+            score.add(40, "실력 조건이 일치합니다.");
+            return;
+        }
+        BigDecimal distance = userSkillScore.compareTo(minScore) < 0
+                ? minScore.subtract(userSkillScore)
+                : userSkillScore.subtract(maxScore);
+        int partialScore = Math.max(0, 25 - distance.multiply(BigDecimal.TEN).intValue());
+        if (partialScore > 0) {
+            score.add(partialScore, "실력 조건과 근접합니다.");
+        }
+    }
+
+    private void applyGenderScore(Match match, RequiredGender gender, RecommendationScore score) {
+        if (match.getRequiredGender() == RequiredGender.ANY || match.getRequiredGender() == RequiredGender.MIXED) {
+            score.add(20, "성별 제한이 없는 매칭입니다.");
+            return;
+        }
+        if (gender != null && match.getRequiredGender() == gender) {
+            score.add(20, "성별 조건이 일치합니다.");
+        }
+    }
+
+    private void applySeatScore(Match match, RecommendationScore score) {
+        int remainingSeats = match.getCapacity() - match.getCurrentCount();
+        if (remainingSeats <= 2) {
+            score.add(15, "마감이 임박한 인기 매칭입니다.");
+            return;
+        }
+        BigDecimal fillRate = BigDecimal.valueOf(match.getCurrentCount())
+                .divide(BigDecimal.valueOf(match.getCapacity()), 2, RoundingMode.HALF_UP);
+        if (fillRate.compareTo(BigDecimal.valueOf(0.5)) >= 0) {
+            score.add(10, "참가자가 절반 이상 모였습니다.");
+        }
+    }
+
+    private void applyDeadlineScore(Match match, LocalDateTime now, RecommendationScore score) {
+        long hoursUntilDeadline = Duration.between(
+                now.atZone(SERVICE_ZONE),
+                match.getRecruitDeadline().atZone(SERVICE_ZONE)
+        ).toHours();
+        if (hoursUntilDeadline <= 24) {
+            score.add(15, "모집 마감이 임박했습니다.");
+        } else if (hoursUntilDeadline <= 72) {
+            score.add(10, "곧 모집이 마감됩니다.");
+        }
+    }
+
+    private static class RecommendationScore {
+        private int value;
+        private final List<String> reasons = new java.util.ArrayList<>();
+
+        private void add(int score, String reason) {
+            value += score;
+            reasons.add(reason);
+        }
     }
 
     private void validateLeaveable(Match match, MatchParticipant participant, LocalDateTime now) {
