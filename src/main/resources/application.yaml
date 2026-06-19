@@ -63,6 +63,8 @@ app:
     kafka:
       topic:
         match: ${NOTIFICATION_MATCH_TOPIC:notification.match}
+  settlement:
+    platform-fee-rate: ${PLATFORM_FEE_RATE:0.07}
 
 match:
   payment-hold:
