@@ -7,10 +7,13 @@ import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
 import com.back.sportteam.domain.mypage.service.MypageMatchService;
 import com.back.sportteam.global.response.ApiResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users/me")
@@ -31,8 +35,8 @@ public class MypageController {
             @RequestParam(required = false) SportType sportType,
             @RequestParam(required = false) MyMatchStatus myMatchStatus,
             @RequestParam(required = false) MatchParticipantRole role,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
     ) {
         MyMatchCondition condition = new MyMatchCondition(sportType, myMatchStatus, role, page, size);
         Page<MyMatchResponse> response = mypageMatchService.getMyMatches(String.valueOf(userId), condition);

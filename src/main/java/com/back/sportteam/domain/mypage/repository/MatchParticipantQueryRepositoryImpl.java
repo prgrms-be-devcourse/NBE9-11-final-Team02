@@ -11,6 +11,7 @@ import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -44,7 +45,7 @@ public class MatchParticipantQueryRepositoryImpl implements MatchParticipantQuer
                 .from(mp)
                 .join(mp.match, m)
                 .where(builder)
-                .orderBy(m.matchDate.desc())
+                .orderBy(m.matchDate.desc(), m.createdAt.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -63,51 +64,34 @@ public class MatchParticipantQueryRepositoryImpl implements MatchParticipantQuer
                 ))
                 .toList();
 
-        long total = queryFactory
+        Long total = queryFactory
                 .select(mp.count())
                 .from(mp)
                 .join(mp.match, m)
                 .where(builder)
                 .fetchOne();
 
-        return new PageImpl<>(content, pageable, total);
+        return new PageImpl<>(content, pageable, total != null ? total : 0L);
     }
 
-    private BooleanBuilder toSportTypeCondition(SportType sportType) {
-        BooleanBuilder builder = new BooleanBuilder();
-        if (sportType != null) {
-            builder.and(m.sportType.eq(sportType));
-        }
-        return builder;
+    private BooleanExpression toSportTypeCondition(SportType sportType) {
+        return sportType != null ? m.sportType.eq(sportType) : null;
     }
 
-    private BooleanBuilder toRoleCondition(MatchParticipantRole role) {
-        BooleanBuilder builder = new BooleanBuilder();
-        if (role != null) {
-            builder.and(mp.role.eq(role));
-        }
-        return builder;
+    private BooleanExpression toRoleCondition(MatchParticipantRole role) {
+        return role != null ? mp.role.eq(role) : null;
     }
 
-    private BooleanBuilder toMyMatchStatusCondition(MyMatchStatus myMatchStatus) {
-        BooleanBuilder builder = new BooleanBuilder();
-        if (myMatchStatus == null) {
-            return builder;
-        }
+    private BooleanExpression toMyMatchStatusCondition(MyMatchStatus myMatchStatus) {
+        if (myMatchStatus == null) return null;
         return switch (myMatchStatus) {
-            case PARTICIPATING -> builder.and(
-                    mp.status.eq(MatchParticipantStatus.ACTIVE)
-                            .and(m.status.in(MatchStatus.RECRUITING, MatchStatus.CONFIRMED))
-            );
-            case COMPLETED -> builder.and(
-                    mp.status.eq(MatchParticipantStatus.ACTIVE)
-                            .and(m.status.eq(MatchStatus.COMPLETED))
-            );
-            case CANCELLED -> builder.and(
-                    mp.status.eq(MatchParticipantStatus.ACTIVE)
-                            .and(m.status.in(MatchStatus.RECRUITING, MatchStatus.CONFIRMED, MatchStatus.COMPLETED))
-                            .not()
-            );
+            case PARTICIPATING -> mp.status.eq(MatchParticipantStatus.ACTIVE)
+                    .and(m.status.in(MatchStatus.RECRUITING, MatchStatus.CONFIRMED));
+            case COMPLETED -> mp.status.eq(MatchParticipantStatus.ACTIVE)
+                    .and(m.status.eq(MatchStatus.COMPLETED));
+            case CANCELLED -> mp.status.eq(MatchParticipantStatus.ACTIVE)
+                    .and(m.status.in(MatchStatus.RECRUITING, MatchStatus.CONFIRMED, MatchStatus.COMPLETED))
+                    .not();
         };
     }
 }
