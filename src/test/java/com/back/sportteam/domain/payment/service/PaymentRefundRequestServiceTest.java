@@ -2,6 +2,7 @@ package com.back.sportteam.domain.payment.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,7 +66,7 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
-    void 이미_대기중인_환불이_있으면_중복_등록하지_않는다() {
+    void 이미_진행중인_환불이_있으면_중복_등록하지_않는다() {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
@@ -84,29 +85,10 @@ class PaymentRefundRequestServiceTest {
                 REQUESTED_AT
         );
 
-        verify(refundRepository, never()).saveAll(any());
-    }
-
-    @Test
-    void 이미_처리중인_환불이_있으면_중복_등록하지_않는다() {
-        Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
-        when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
-                .thenReturn(List.of(payment));
-        when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
-                .thenReturn(List.of());
-        when(refundRepository.existsByPaymentIdAndStatusIn(
-                payment.getId(),
-                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
-        ))
-                .thenReturn(true);
-
-        paymentRefundRequestService.requestMatchRefunds(
-                "match-id",
-                "slot-id",
-                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
-                REQUESTED_AT
-        );
-
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RefundStatus>> statusesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(refundRepository).existsByPaymentIdAndStatusIn(eq(payment.getId()), statusesCaptor.capture());
+        assertThat(statusesCaptor.getValue()).containsExactly(RefundStatus.PENDING, RefundStatus.PROCESSING);
         verify(refundRepository, never()).saveAll(any());
     }
 
