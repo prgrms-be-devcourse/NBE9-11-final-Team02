@@ -9,9 +9,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.back.sportteam.domain.payment.dto.request.PaymentConfirmRequest;
 import com.back.sportteam.domain.payment.dto.request.PaymentPrepareRequest;
+import com.back.sportteam.domain.payment.dto.response.PaymentConfirmResponse;
 import com.back.sportteam.domain.payment.dto.response.PaymentPrepareResponse;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
+import com.back.sportteam.domain.payment.service.PaymentConfirmService;
 import com.back.sportteam.domain.payment.service.PaymentService;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
@@ -24,13 +28,15 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class PaymentControllerTest {
 
     private PaymentService paymentService;
+    private PaymentConfirmService paymentConfirmService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         paymentService = mock(PaymentService.class);
+        paymentConfirmService = mock(PaymentConfirmService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new PaymentController(paymentService))
+                .standaloneSetup(new PaymentController(paymentService, paymentConfirmService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -51,6 +57,33 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data.amount").value(10000));
 
         verify(paymentService).prepare(any(String.class), nullable(String.class), any(PaymentPrepareRequest.class));
+    }
+
+    @Test
+    void 토스_결제_승인_요청이면_결제를_완료_처리한다() throws Exception {
+        PaymentConfirmResponse response =
+                new PaymentConfirmResponse("mid_12345", "payment-key", 10_000, PaymentStatus.PAID);
+        when(paymentConfirmService.confirm(any(String.class), any(PaymentConfirmRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/payments/confirm")
+                        .header("X-USER-ID", "user-id")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "paymentKey": "payment-key",
+                                  "orderId": "mid_12345",
+                                  "amount": 10000
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.merchantUid").value("mid_12345"))
+                .andExpect(jsonPath("$.data.paymentKey").value("payment-key"))
+                .andExpect(jsonPath("$.data.amount").value(10000))
+                .andExpect(jsonPath("$.data.status").value("PAID"));
+
+        verify(paymentConfirmService).confirm(any(String.class), any(PaymentConfirmRequest.class));
     }
 
     @Test

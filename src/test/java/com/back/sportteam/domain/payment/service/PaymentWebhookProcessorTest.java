@@ -37,10 +37,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -66,8 +66,22 @@ class PaymentWebhookProcessorTest {
     @Mock
     private ReservationRepository reservationRepository;
 
-    @InjectMocks
     private PaymentWebhookProcessor paymentWebhookProcessor;
+
+    @BeforeEach
+    void setUp() {
+        PaymentPostProcessor paymentPostProcessor = new PaymentPostProcessor(
+                matchParticipantRepository,
+                matchRepository,
+                facilitySlotRepository,
+                reservationRepository
+        );
+        paymentWebhookProcessor = new PaymentWebhookProcessor(
+                paymentRepository,
+                paymentWebhookEventRepository,
+                paymentPostProcessor
+        );
+    }
 
     @Test
     void 결제_성공_웹훅이면_결제를_PAID로_변경하고_이벤트를_저장한다() {
@@ -160,7 +174,7 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
-        when(facilitySlotRepository.findById("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
+        when(facilitySlotRepository.findByIdForUpdate("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
         when(reservationRepository.findByFacilitySlotId("facility-slot-id")).thenReturn(Optional.of(reservation));
         when(matchRepository.findByReservationId("reservation-id")).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
@@ -192,7 +206,7 @@ class PaymentWebhookProcessorTest {
                 10_000
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
-        when(facilitySlotRepository.findById("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
+        when(facilitySlotRepository.findByIdForUpdate("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
         when(reservationRepository.findByFacilitySlotId("facility-slot-id")).thenReturn(Optional.of(reservation));
         when(matchRepository.findByReservationId("reservation-id")).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(

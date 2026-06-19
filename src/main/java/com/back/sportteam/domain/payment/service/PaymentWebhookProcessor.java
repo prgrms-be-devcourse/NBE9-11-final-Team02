@@ -1,25 +1,13 @@
 package com.back.sportteam.domain.payment.service;
 
-import com.back.sportteam.domain.facility.entity.FacilitySlot;
-import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
-import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
-import com.back.sportteam.domain.match.entity.Match;
-import com.back.sportteam.domain.match.entity.MatchParticipant;
-import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
-import com.back.sportteam.domain.match.exception.MatchErrorCode;
-import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
-import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
-import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEvent;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookProcessingResult;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
-import com.back.sportteam.domain.reservation.entity.Reservation;
-import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -35,10 +23,7 @@ public class PaymentWebhookProcessor {
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookEventRepository paymentWebhookEventRepository;
-    private final MatchParticipantRepository matchParticipantRepository;
-    private final MatchRepository matchRepository;
-    private final FacilitySlotRepository facilitySlotRepository;
-    private final ReservationRepository reservationRepository;
+    private final PaymentPostProcessor paymentPostProcessor;
 
     @Transactional
     public void process(PaymentWebhookRequest request) {
@@ -82,13 +67,11 @@ public class PaymentWebhookProcessor {
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
                 payment.complete(request.pgTransactionId(), processedAt);
-                activateParticipantIfParticipationPayment(payment);
-                confirmFacilitySlotIfFacilityPayment(payment);
+                paymentPostProcessor.processPaidPayment(payment);
                 return WebhookProcessingResult.applied();
             }
             payment.fail(normalize(request.pgTransactionId()));
-            cancelParticipantIfParticipationPayment(payment, processedAt);
-            cancelMatchIfFacilityPayment(payment, processedAt);
+            paymentPostProcessor.processFailedPayment(payment, processedAt);
             return WebhookProcessingResult.applied();
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
@@ -98,86 +81,6 @@ public class PaymentWebhookProcessor {
     private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
         return request.eventType().getPaymentStatus() == PaymentStatus.FAILED
                 && (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.REFUNDED);
-    }
-
-    private void activateParticipantIfParticipationPayment(Payment payment) {
-        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
-            return;
-        }
-
-        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        participant.activate();
-    }
-
-    private void confirmFacilitySlotIfFacilityPayment(Payment payment) {
-        if (payment.getPaymentType() != PaymentType.FACILITY) {
-            return;
-        }
-
-        FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
-        facilitySlot.reserve();
-        activateHostParticipant(payment);
-    }
-
-    private void cancelParticipantIfParticipationPayment(Payment payment, LocalDateTime processedAt) {
-        if (payment.getPaymentType() != PaymentType.PARTICIPATION) {
-            return;
-        }
-
-        MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        if (participant.cancel()) {
-            participant.getMatch().decreaseCurrentCount();
-        }
-        if (participant.isHost()) {
-            participant.getMatch().cancel(processedAt);
-        }
-    }
-
-    private void cancelMatchIfFacilityPayment(Payment payment, LocalDateTime processedAt) {
-        if (payment.getPaymentType() != PaymentType.FACILITY) {
-            return;
-        }
-
-        FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
-        facilitySlot.release();
-
-        Match match = getMatchByFacilitySlotId(payment.getFacilitySlotId());
-        matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
-                payment.getUserId(),
-                MatchParticipantStatus.PAYMENT_PENDING
-        ).ifPresent(participant -> {
-            if (participant.cancel()) {
-                match.decreaseCurrentCount();
-            }
-        });
-        match.cancel(processedAt);
-    }
-
-    private void activateHostParticipant(Payment payment) {
-        Match match = getMatchByFacilitySlotId(payment.getFacilitySlotId());
-        MatchParticipant participant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                        match.getId(),
-                        payment.getUserId(),
-                        MatchParticipantStatus.PAYMENT_PENDING
-                )
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        participant.activate();
-    }
-
-    private FacilitySlot getFacilitySlot(String facilitySlotId) {
-        return facilitySlotRepository.findById(facilitySlotId)
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
-    }
-
-    private Match getMatchByFacilitySlotId(String facilitySlotId) {
-        Reservation reservation = reservationRepository.findByFacilitySlotId(facilitySlotId)
-                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
-
-        return matchRepository.findByReservationId(reservation.getId())
-                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
     }
 
     private String normalize(String value) {
