@@ -51,6 +51,16 @@ public enum PaymentErrorCode implements ErrorCode {
             "PAYMENT_012",
             "PG사 결제 정보 검증에 실패했습니다.",
             HttpStatus.BAD_GATEWAY
+    ),
+    PAYMENT_ACCESS_DENIED(
+            "PAYMENT_013",
+            "결제 정보에 접근할 수 없습니다.",
+            HttpStatus.FORBIDDEN
+    ),
+    PAYMENT_CONFIRM_STATUS_UNKNOWN(
+            "PAYMENT_014",
+            "PG사 결제 승인 결과를 확인할 수 없습니다. 잠시 후 결제 상태를 다시 확인해주세요.",
+            HttpStatus.SERVICE_UNAVAILABLE
     );
 
     private final String code;
