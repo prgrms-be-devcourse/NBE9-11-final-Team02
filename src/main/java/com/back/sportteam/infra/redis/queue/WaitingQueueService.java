@@ -6,12 +6,8 @@ import com.back.sportteam.domain.system.dto.response.WaitingQueueTokenResponse;
 import com.back.sportteam.domain.system.exception.SystemErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.util.TimeUtils;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +18,6 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class WaitingQueueService {
-
-    private static final String DELIMITER = ":";
 
     private final StringRedisTemplate redisTemplate;
     private final FacilitySlotRepository facilitySlotRepository;
@@ -53,7 +47,7 @@ public class WaitingQueueService {
 
         redisTemplate.opsForValue().set(
                 tokenKey,
-                facilitySlotId + DELIMITER + hashUserId(userId),
+                facilitySlotId,
                 Duration.ofSeconds(tokenTtlSeconds)
         );
         redisTemplate.opsForValue().set(
@@ -92,8 +86,8 @@ public class WaitingQueueService {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_EXPIRED);
         }
 
-        TokenPayload payload = parseTokenPayload(tokenValue);
-        String queueKey = WaitingQueueKeys.queue(payload.facilitySlotId());
+        String facilitySlotId = parseFacilitySlotId(tokenValue);
+        String queueKey = WaitingQueueKeys.queue(facilitySlotId);
         cleanupExpiredTokens(queueKey);
         Long rank = redisTemplate.opsForZSet().rank(queueKey, token);
         if (rank == null) {
@@ -105,7 +99,7 @@ public class WaitingQueueService {
 
         return new WaitingQueueTokenResponse(
                 token,
-                payload.facilitySlotId(),
+                facilitySlotId,
                 position,
                 waitingCount,
                 position <= entryLimit,
@@ -124,8 +118,9 @@ public class WaitingQueueService {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_EXPIRED);
         }
 
-        TokenPayload payload = parseTokenPayload(tokenValue);
-        if (!payload.facilitySlotId().equals(facilitySlotId) || !payload.userHash().equals(hashUserId(userId))) {
+        String tokenFacilitySlotId = parseFacilitySlotId(tokenValue);
+        String issuedToken = redisTemplate.opsForValue().get(WaitingQueueKeys.userToken(facilitySlotId, userId));
+        if (!tokenFacilitySlotId.equals(facilitySlotId) || !token.equals(issuedToken)) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
         }
 
@@ -156,26 +151,11 @@ public class WaitingQueueService {
         }
     }
 
-    private TokenPayload parseTokenPayload(String tokenValue) {
-        int delimiterIndex = tokenValue.indexOf(DELIMITER);
-        if (delimiterIndex <= 0) {
+    private String parseFacilitySlotId(String tokenValue) {
+        if (tokenValue == null || tokenValue.isBlank()) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
         }
-        String userHash = tokenValue.substring(delimiterIndex + 1);
-        if (userHash.isBlank()) {
-            throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_INVALID);
-        }
-        return new TokenPayload(tokenValue.substring(0, delimiterIndex), userHash);
-    }
-
-    private String hashUserId(String userId) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(userId.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm is unavailable.", e);
-        }
+        return tokenValue;
     }
 
     private LocalDateTime calculateExpiresAt(String tokenKey) {
@@ -194,9 +174,4 @@ public class WaitingQueueService {
         return Math.max(size - entryLimit, 0);
     }
 
-    private record TokenPayload(
-            String facilitySlotId,
-            String userHash
-    ) {
-    }
 }

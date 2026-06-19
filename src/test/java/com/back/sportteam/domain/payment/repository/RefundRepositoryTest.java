@@ -138,7 +138,7 @@ class RefundRepositoryTest {
                 PageRequest.of(0, 10)
         );
 
-        assertThat(beforeRetryTime).doesNotContain(refund.getId());
+        assertThat(beforeRetryTime).isEmpty();
         assertThat(afterRetryTime)
                 .isNotEmpty()
                 .contains(refund.getId());
