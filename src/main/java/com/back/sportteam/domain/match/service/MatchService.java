@@ -409,7 +409,10 @@ public class MatchService {
     }
 
     private void applyDeadlineScore(Match match, LocalDateTime now, RecommendationScore score) {
-        long hoursUntilDeadline = Duration.between(now, match.getRecruitDeadline()).toHours();
+        long hoursUntilDeadline = Duration.between(
+                now.atZone(SERVICE_ZONE),
+                match.getRecruitDeadline().atZone(SERVICE_ZONE)
+        ).toHours();
         if (hoursUntilDeadline <= 24) {
             score.add(15, "모집 마감이 임박했습니다.");
         } else if (hoursUntilDeadline <= 72) {
