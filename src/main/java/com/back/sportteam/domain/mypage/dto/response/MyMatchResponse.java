@@ -1,10 +1,10 @@
-package com.back.sportteam.domain.user.dto.response;
+package com.back.sportteam.domain.mypage.dto.response;
 
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.SportType;
-import com.back.sportteam.domain.user.dto.MyMatchStatus;
+import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

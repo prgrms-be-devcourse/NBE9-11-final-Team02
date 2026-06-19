@@ -1,8 +1,8 @@
-package com.back.sportteam.domain.user.dto.request;
+package com.back.sportteam.domain.mypage.dto.request;
 
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.SportType;
-import com.back.sportteam.domain.user.dto.MyMatchStatus;
+import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

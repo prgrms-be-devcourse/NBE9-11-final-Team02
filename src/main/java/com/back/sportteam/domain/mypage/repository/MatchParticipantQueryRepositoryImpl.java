@@ -1,4 +1,4 @@
-package com.back.sportteam.domain.match.repository;
+package com.back.sportteam.domain.mypage.repository;
 
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
@@ -6,9 +6,9 @@ import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.QMatch;
 import com.back.sportteam.domain.match.entity.QMatchParticipant;
 import com.back.sportteam.domain.match.entity.SportType;
-import com.back.sportteam.domain.user.dto.MyMatchStatus;
-import com.back.sportteam.domain.user.dto.request.MyMatchCondition;
-import com.back.sportteam.domain.user.dto.response.MyMatchResponse;
+import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
+import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
+import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;

@@ -1,4 +1,4 @@
-package com.back.sportteam.domain.user.dto;
+package com.back.sportteam.domain.mypage.dto;
 
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.entity.MatchStatus;
