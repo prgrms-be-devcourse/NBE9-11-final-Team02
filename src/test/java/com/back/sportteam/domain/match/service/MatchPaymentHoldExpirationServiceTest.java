@@ -29,6 +29,10 @@ import static org.mockito.Mockito.when;
 
 class MatchPaymentHoldExpirationServiceTest {
 
+    private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 12);
+    private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
+    private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
+
     private final MatchParticipantRepository matchParticipantRepository = mock(MatchParticipantRepository.class);
     private final FacilitySlotRepository facilitySlotRepository = mock(FacilitySlotRepository.class);
     private final MatchPaymentHoldExpirationService service =
@@ -87,6 +91,9 @@ class MatchPaymentHoldExpirationServiceTest {
                 .minSkillLevel(SkillLevel.LEVEL_1)
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
+                .matchDate(MATCH_DATE)
+                .startTime(MATCH_START_TIME)
+                .endTime(MATCH_END_TIME)
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
                 .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
