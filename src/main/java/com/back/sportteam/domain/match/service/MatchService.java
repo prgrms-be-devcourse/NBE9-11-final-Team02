@@ -63,6 +63,9 @@ public class MatchService {
                 .minSkillLevel(request.minSkillLevel())
                 .maxSkillLevel(request.maxSkillLevel())
                 .requiredGender(request.requiredGender())
+                .matchDate(facilitySlot.getSlotDate())
+                .startTime(facilitySlot.getStartTime())
+                .endTime(facilitySlot.getEndTime())
                 .recruitDeadline(request.recruitDeadline())
                 .cancelDeadline(request.cancelDeadline())
                 .build());
