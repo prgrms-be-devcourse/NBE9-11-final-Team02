@@ -5,6 +5,19 @@ server:
 spring:
   application:
     name: NBE9-11-final-Team02
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: ${KAFKA_NOTIFICATION_GROUP_ID:sportteam-notification}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+      auto-startup: ${KAFKA_LISTENER_AUTO_STARTUP:true}
 
 app:
   jwt:
@@ -20,12 +33,24 @@ app:
       base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
   scheduler:
+    notification:
+      fixed-delay-ms: ${NOTIFICATION_FIXED_DELAY_MS:60000}
+      reminder-before-minutes: ${NOTIFICATION_REMINDER_BEFORE_MINUTES:60}
+      reminder-window-minutes: ${NOTIFICATION_REMINDER_WINDOW_MINUTES:1}
     match-deadline:
       fixed-delay-ms: ${MATCH_DEADLINE_FIXED_DELAY_MS:60000}
       batch-size: ${MATCH_DEADLINE_BATCH_SIZE:100}
     refund:
       fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
       batch-size: ${REFUND_BATCH_SIZE:50}
+  queue:
+    reservation:
+      token-ttl-seconds: ${RESERVATION_QUEUE_TOKEN_TTL_SECONDS:300}
+      entry-limit: ${RESERVATION_QUEUE_ENTRY_LIMIT:1}
+  notification:
+    kafka:
+      topic:
+        match: ${NOTIFICATION_MATCH_TOPIC:notification.match}
 
 match:
   payment-hold:

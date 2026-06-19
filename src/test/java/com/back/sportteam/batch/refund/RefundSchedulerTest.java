@@ -34,12 +34,14 @@ class RefundSchedulerTest {
     void setUp() {
         refundScheduler = new RefundScheduler(refundRepository, paymentRefundProcessor);
         ReflectionTestUtils.setField(refundScheduler, "batchSize", 50);
+        ReflectionTestUtils.setField(refundScheduler, "processingTimeoutMinutes", 10L);
     }
 
     @Test
     void processPendingRefundsContinuesAfterFailure() {
-        when(refundRepository.findIdsByStatus(
+        when(refundRepository.findProcessableIds(
                 eq(RefundStatus.PENDING),
+                any(LocalDateTime.class),
                 any(Pageable.class)
         )).thenReturn(List.of("refund-1", "refund-2"));
         doThrow(new IllegalStateException("processing failed"))
@@ -48,6 +50,12 @@ class RefundSchedulerTest {
 
         refundScheduler.processPendingRefunds();
 
+        verify(refundRepository).recoverStaleProcessingRefunds(
+                eq(RefundStatus.PROCESSING),
+                eq(RefundStatus.PENDING),
+                any(LocalDateTime.class),
+                any(LocalDateTime.class)
+        );
         verify(paymentRefundProcessor).process(eq("refund-2"), any(LocalDateTime.class));
     }
 }
