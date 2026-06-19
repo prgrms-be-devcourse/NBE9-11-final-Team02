@@ -13,7 +13,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
@@ -70,6 +72,15 @@ public class Match {
     @Column(name = "required_gender", nullable = false, length = 10)
     private RequiredGender requiredGender;
 
+    @Column(name = "match_date", nullable = false)
+    private LocalDate matchDate;
+
+    @Column(name = "start_time", nullable = false)
+    private LocalTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
+
     @Column(name = "cancel_deadline", nullable = false)
     private LocalDateTime cancelDeadline;
 
@@ -105,6 +116,9 @@ public class Match {
         this.minSkillLevel = defaultSkillLevel(command.getMinSkillLevel());
         this.maxSkillLevel = defaultSkillLevel(command.getMaxSkillLevel());
         this.requiredGender = defaultRequiredGender(command.getRequiredGender());
+        this.matchDate = command.getMatchDate();
+        this.startTime = command.getStartTime();
+        this.endTime = command.getEndTime();
         this.recruitDeadline = command.getRecruitDeadline();
         this.cancelDeadline = command.getCancelDeadline();
         this.status = MatchStatus.RECRUITING;

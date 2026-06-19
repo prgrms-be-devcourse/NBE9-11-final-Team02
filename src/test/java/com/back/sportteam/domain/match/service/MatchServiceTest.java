@@ -58,6 +58,9 @@ class MatchServiceTest {
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
     private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
     private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
+    private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
+    private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
+    private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
 
     @Mock
     private MatchRepository matchRepository;
@@ -696,6 +699,9 @@ class MatchServiceTest {
                 .minSkillLevel(SkillLevel.LEVEL_2)
                 .maxSkillLevel(SkillLevel.LEVEL_4)
                 .requiredGender(RequiredGender.MIXED)
+                .matchDate(MATCH_DATE)
+                .startTime(MATCH_START_TIME)
+                .endTime(MATCH_END_TIME)
                 .recruitDeadline(recruitDeadline)
                 .cancelDeadline(cancelDeadline)
                 .build());
