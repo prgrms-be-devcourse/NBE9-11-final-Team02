@@ -34,7 +34,8 @@ public class SecurityConfig {
                                     "/api/v1/users/**",
                                     "/api/v1/payments/**",
                                     "/api/v1/health",
-                                    "/ws/**"
+                                    "/ws/**",
+                                    "/v3/api-docs/**"
                             )
                     )
                     .sessionManagement(session ->
@@ -46,7 +47,9 @@ public class SecurityConfig {
                                     "/api/v1/auth/login",
                                     "/api/v1/auth/refresh",
                                     "/api/v1/health",
-                                    "/actuator/health"
+                                    "/actuator/health",
+                                    "/v3/api-docs/**",
+                                    "/ws/v1/matches/**"
                             ).permitAll()
                             .anyRequest().authenticated()
                     )
