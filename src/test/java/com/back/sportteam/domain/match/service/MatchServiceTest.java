@@ -384,6 +384,20 @@ class MatchServiceTest {
     }
 
     @Test
+    void 방장은_자신의_매칭방에_참가_신청할_수_없다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.HOST_CANNOT_JOIN);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
+    }
+
+    @Test
     void 매칭방_참가를_취소한다() {
         Match match = createMatch();
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
@@ -481,6 +495,8 @@ class MatchServiceTest {
         Match match = createMatch(1);
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.countByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
+                .thenReturn(1L);
 
         MatchDetailResponse response = matchService.confirmMatch(matchId, "host-id");
 
@@ -530,6 +546,23 @@ class MatchServiceTest {
         Match match = createMatch();
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.countByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
+                .thenReturn(1L);
+
+        assertThatThrownBy(() -> matchService.confirmMatch(matchId, "host-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_NOT_FULL);
+    }
+
+    @Test
+    void 현재_인원이_정원이어도_결제완료_인원이_부족하면_확정할_수_없다() {
+        Match match = createMatch(2);
+        String matchId = match.getId();
+        match.increaseCurrentCount();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.countByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
+                .thenReturn(1L);
 
         assertThatThrownBy(() -> matchService.confirmMatch(matchId, "host-id"))
                 .isInstanceOf(BusinessException.class)
@@ -543,11 +576,14 @@ class MatchServiceTest {
         String matchId = match.getId();
         MatchParticipant host = MatchParticipant.host(match, "host-id");
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        MatchParticipant pendingParticipant = MatchParticipant.participant(match, "pending-id");
         FacilitySlot facilitySlot = createFutureSlot();
         facilitySlot.reserve();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE))
-                .thenReturn(List.of(host, participant));
+        when(matchParticipantRepository.findByMatchIdAndStatusIn(
+                matchId,
+                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+        )).thenReturn(List.of(host, participant, pendingParticipant));
         when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 
         matchService.cancelMatch(matchId, "host-id");
@@ -556,6 +592,7 @@ class MatchServiceTest {
         assertThat(match.getCancelledAt()).isNotNull();
         assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(pendingParticipant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
         assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
         assertThat(facilitySlot.getPendingUntil()).isNull();
         verify(paymentRefundRequestService).requestMatchRefunds(

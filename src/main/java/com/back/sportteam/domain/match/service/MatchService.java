@@ -116,6 +116,7 @@ public class MatchService {
 
     private MatchParticipantResponse joinMatch(Match match, String matchId, String userId) {
         validateJoinable(match);
+        validateNotHost(match, userId);
         validateNotParticipated(matchId, userId);
 
         match.increaseCurrentCount();
@@ -170,7 +171,10 @@ public class MatchService {
 
         LocalDateTime cancelledAt = LocalDateTime.now(SERVICE_ZONE);
         match.cancel(cancelledAt);
-        matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
+        matchParticipantRepository.findByMatchIdAndStatusIn(
+                        matchId,
+                        List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                )
                 .forEach(MatchParticipant::cancel);
         releaseFacilitySlot(match.getReservationId());
         paymentRefundRequestService.requestMatchRefunds(
@@ -244,6 +248,12 @@ public class MatchService {
         }
     }
 
+    private void validateNotHost(Match match, String userId) {
+        if (match.isHostedBy(userId)) {
+            throw new BusinessException(MatchErrorCode.HOST_CANNOT_JOIN);
+        }
+    }
+
     private Specification<Match> toSpecification(MatchSearchCondition condition) {
         return Specification
                 .where(equalSportType(condition))
@@ -306,7 +316,11 @@ public class MatchService {
         if (!match.isRecruiting()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_RECRUITING);
         }
-        if (!match.isFull()) {
+        long activeParticipantCount = matchParticipantRepository.countByMatchIdAndStatus(
+                match.getId(),
+                MatchParticipantStatus.ACTIVE
+        );
+        if (activeParticipantCount < match.getCapacity()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_FULL);
         }
     }
