@@ -159,7 +159,6 @@ jobs:
               --restart unless-stopped \
               --network "${NET}" \
               --memory 600m \
-              -p 8090:8090 \
               -e TZ=Asia/Seoul \
               -e SPRING_CONFIG_IMPORT=optional:file:/app/application-secret.yaml \
               -v /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro \
