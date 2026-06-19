@@ -71,7 +71,33 @@ class PaymentRefundRequestServiceTest {
                 .thenReturn(List.of(payment));
         when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of());
-        when(refundRepository.existsByPaymentIdAndStatus(payment.getId(), RefundStatus.PENDING))
+        when(refundRepository.existsByPaymentIdAndStatusIn(
+                payment.getId(),
+                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+        ))
+                .thenReturn(true);
+
+        paymentRefundRequestService.requestMatchRefunds(
+                "match-id",
+                "slot-id",
+                PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
+                REQUESTED_AT
+        );
+
+        verify(refundRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void 이미_처리중인_환불이_있으면_중복_등록하지_않는다() {
+        Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
+        when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
+                .thenReturn(List.of(payment));
+        when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
+                .thenReturn(List.of());
+        when(refundRepository.existsByPaymentIdAndStatusIn(
+                payment.getId(),
+                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+        ))
                 .thenReturn(true);
 
         paymentRefundRequestService.requestMatchRefunds(
