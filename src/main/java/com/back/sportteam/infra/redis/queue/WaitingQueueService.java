@@ -1,5 +1,6 @@
 package com.back.sportteam.infra.redis.queue;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.system.dto.response.WaitingQueueTokenResponse;
@@ -29,25 +30,23 @@ public class WaitingQueueService {
     private long entryLimit;
 
     public WaitingQueueTokenResponse issueToken(String facilitySlotId, String userId) {
-        if (!facilitySlotRepository.existsById(facilitySlotId)) {
-            throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND);
-        }
+        String verifiedFacilitySlotId = getVerifiedFacilitySlotId(facilitySlotId);
 
-        cleanupExpiredTokens(WaitingQueueKeys.queue(facilitySlotId));
-        WaitingQueueTokenResponse existingToken = findExistingToken(facilitySlotId, userId);
+        cleanupExpiredTokens(WaitingQueueKeys.queue(verifiedFacilitySlotId));
+        WaitingQueueTokenResponse existingToken = findExistingToken(verifiedFacilitySlotId, userId);
         if (existingToken != null) {
             return existingToken;
         }
 
         String token = UUID.randomUUID().toString();
-        String queueKey = WaitingQueueKeys.queue(facilitySlotId);
+        String queueKey = WaitingQueueKeys.queue(verifiedFacilitySlotId);
         String tokenKey = WaitingQueueKeys.token(token);
-        String userTokenKey = WaitingQueueKeys.userToken(facilitySlotId, userId);
+        String userTokenKey = WaitingQueueKeys.userToken(verifiedFacilitySlotId, userId);
         long issuedAt = System.currentTimeMillis();
 
         redisTemplate.opsForValue().set(
                 tokenKey,
-                facilitySlotId,
+                verifiedFacilitySlotId,
                 Duration.ofSeconds(tokenTtlSeconds)
         );
         redisTemplate.opsForValue().set(
@@ -58,6 +57,12 @@ public class WaitingQueueService {
         redisTemplate.opsForZSet().add(queueKey, token, issuedAt);
 
         return getStatus(token);
+    }
+
+    private String getVerifiedFacilitySlotId(String facilitySlotId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(facilitySlotId)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return facilitySlot.getId();
     }
 
     private WaitingQueueTokenResponse findExistingToken(String facilitySlotId, String userId) {

@@ -11,12 +11,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.system.dto.response.WaitingQueueTokenResponse;
 import com.back.sportteam.domain.system.exception.SystemErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +58,7 @@ class WaitingQueueServiceTest {
 
     @Test
     void issueTokenAddsTokenToSlotQueue() {
-        when(facilitySlotRepository.existsById("slot-id")).thenReturn(true);
+        stubFacilitySlotExists("slot-id");
         when(valueOperations.get(any(String.class))).thenAnswer(invocation -> {
             String key = invocation.getArgument(0);
             if (key.equals(WaitingQueueKeys.userToken("slot-id", "user-id"))) {
@@ -84,7 +86,7 @@ class WaitingQueueServiceTest {
 
     @Test
     void issueTokenReusesExistingTokenForSameUserAndSlot() {
-        when(facilitySlotRepository.existsById("slot-id")).thenReturn(true);
+        stubFacilitySlotExists("slot-id");
         when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn("existing-token");
         when(valueOperations.get(WaitingQueueKeys.token("existing-token"))).thenReturn("slot-id");
         when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1)).thenReturn(Set.of("existing-token"));
@@ -101,7 +103,7 @@ class WaitingQueueServiceTest {
 
     @Test
     void issueTokenRemovesExpiredTokenFromSlotQueue() {
-        when(facilitySlotRepository.existsById("slot-id")).thenReturn(true);
+        stubFacilitySlotExists("slot-id");
         when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1))
                 .thenReturn(Set.of("expired-token"));
         when(valueOperations.get(any(String.class))).thenAnswer(invocation -> {
@@ -122,7 +124,7 @@ class WaitingQueueServiceTest {
 
     @Test
     void issueTokenThrowsWhenFacilitySlotDoesNotExist() {
-        when(facilitySlotRepository.existsById("missing-slot")).thenReturn(false);
+        when(facilitySlotRepository.findById("missing-slot")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> waitingQueueService.issueToken("missing-slot", "user-id"))
                 .isInstanceOf(BusinessException.class)
@@ -165,5 +167,16 @@ class WaitingQueueServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(SystemErrorCode.QUEUE_TOKEN_INVALID);
+    }
+
+    private void stubFacilitySlotExists(String facilitySlotId) {
+        FacilitySlot facilitySlot = facilitySlot(facilitySlotId);
+        when(facilitySlotRepository.findById(facilitySlotId)).thenReturn(Optional.of(facilitySlot));
+    }
+
+    private FacilitySlot facilitySlot(String facilitySlotId) {
+        FacilitySlot facilitySlot = org.mockito.Mockito.mock(FacilitySlot.class);
+        when(facilitySlot.getId()).thenReturn(facilitySlotId);
+        return facilitySlot;
     }
 }
