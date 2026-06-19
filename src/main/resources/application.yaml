@@ -55,6 +55,9 @@ app:
     refund:
       fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
       batch-size: ${REFUND_BATCH_SIZE:50}
+    match-completion:
+      fixed-delay-ms: ${MATCH_COMPLETION_FIXED_DELAY_MS:600000}
+      batch-size: ${MATCH_COMPLETION_BATCH_SIZE:100}
   queue:
     reservation:
       token-ttl-seconds: ${RESERVATION_QUEUE_TOKEN_TTL_SECONDS:300}

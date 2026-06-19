@@ -3,7 +3,9 @@ package com.back.sportteam.domain.match.repository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +33,21 @@ public interface MatchRepository extends JpaRepository<Match, String>, JpaSpecif
     List<String> findIdsByStatusAndRecruitDeadlineBefore(
             @Param("status") MatchStatus status,
             @Param("deadline") LocalDateTime deadline,
+            Pageable pageable
+    );
+
+    @Query("""
+            select match.id
+            from Match match
+            where match.status = :status
+              and (match.matchDate < :today
+                   or (match.matchDate = :today and match.endTime <= :nowTime))
+            order by match.matchDate asc, match.endTime asc
+            """)
+    List<String> findIdsByStatusAndEndedBefore(
+            @Param("status") MatchStatus status,
+            @Param("today") LocalDate today,
+            @Param("nowTime") LocalTime nowTime,
             Pageable pageable
     );
 
