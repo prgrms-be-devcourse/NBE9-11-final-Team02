@@ -1,7 +1,6 @@
 package com.back.sportteam.global.config;
 
 import com.back.sportteam.domain.match.subscriber.MatchStatusSubscriber;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,11 +16,6 @@ import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 public class RedisConfig {
 
     private static final String MATCH_STATUS_CHANNEL_PATTERN = "match:status:*";
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
 
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
