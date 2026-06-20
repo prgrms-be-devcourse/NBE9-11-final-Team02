@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchCreateCommand;
-import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
@@ -102,7 +101,8 @@ class SettlementProcessorTest {
         when(paymentRepository.sumAmountByMatchId(match.getId(), PaymentType.PARTICIPATION, PaymentStatus.PAID))
                 .thenReturn(null);
 
-        assertThatThrownBy(() -> settlementProcessor.process(match.getId()))
+        String matchId = match.getId();
+        assertThatThrownBy(() -> settlementProcessor.process(matchId))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(settlementRepository, never()).save(any());

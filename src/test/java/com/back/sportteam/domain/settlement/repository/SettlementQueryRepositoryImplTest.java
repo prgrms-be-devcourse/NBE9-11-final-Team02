@@ -69,7 +69,7 @@ class SettlementQueryRepositoryImplTest {
                 LocalDate.of(2026, Month.JULY, 31)
         );
 
-        assertThat(result.total().count()).isEqualTo(0);
+        assertThat(result.total().count()).isZero();
         assertThat(result.breakdown()).isEmpty();
     }
 
