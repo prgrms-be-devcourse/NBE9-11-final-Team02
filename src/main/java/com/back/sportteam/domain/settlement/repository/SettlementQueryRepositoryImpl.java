@@ -55,11 +55,7 @@ public class SettlementQueryRepositoryImpl implements SettlementQueryRepository 
                 .orderBy(s.platformFee.sum().desc())
                 .fetch()
                 .stream()
-                .map(t -> new SettlementSummaryResponse.SportTypeBreakdown(
-                        t.get(s.sportType),
-                        t.get(s.count()),
-                        t.get(s.platformFee.sum().coalesce(0))
-                ))
+                .map(this::toBreakdown)
                 .toList();
 
         return new SettlementSummaryResponse(from, to, total, breakdown);
@@ -91,6 +87,14 @@ public class SettlementQueryRepositoryImpl implements SettlementQueryRepository 
                 content.stream().map(SettlementItemResponse::from).toList(),
                 pageable,
                 total != null ? total : 0L
+        );
+    }
+
+    private SettlementSummaryResponse.SportTypeBreakdown toBreakdown(com.querydsl.core.Tuple t) {
+        return new SettlementSummaryResponse.SportTypeBreakdown(
+                t.get(s.sportType),
+                t.get(s.count()),
+                t.get(s.platformFee.sum().coalesce(0))
         );
     }
 
