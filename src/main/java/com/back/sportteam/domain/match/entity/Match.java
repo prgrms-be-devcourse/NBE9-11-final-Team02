@@ -159,6 +159,10 @@ public class Match {
         this.confirmedAt = confirmedAt;
     }
 
+    public void complete() {
+        this.status = MatchStatus.COMPLETED;
+    }
+
     public void cancel(LocalDateTime cancelledAt) {
         this.status = MatchStatus.CANCELLED;
         this.cancelledAt = cancelledAt;

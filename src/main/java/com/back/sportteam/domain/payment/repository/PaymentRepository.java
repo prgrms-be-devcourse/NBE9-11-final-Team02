@@ -38,4 +38,17 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select payment from Payment payment where payment.merchantUid = :merchantUid")
     Optional<Payment> findByMerchantUidForUpdate(@Param("merchantUid") String merchantUid);
+
+    @Query("""
+            select sum(payment.amount)
+            from Payment payment
+            where payment.matchId = :matchId
+              and payment.paymentType = :paymentType
+              and payment.status = :status
+            """)
+    Long sumAmountByMatchId(
+            @Param("matchId") String matchId,
+            @Param("paymentType") PaymentType paymentType,
+            @Param("status") PaymentStatus status
+    );
 }

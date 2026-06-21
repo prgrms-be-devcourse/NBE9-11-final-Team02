@@ -35,6 +35,8 @@ public class SecurityConfig {
                                     "/api/v1/facilities/**",
                                     "/api/v1/users/**",
                                     "/api/v1/payments/**",
+                                    "/api/v1/manager/**",
+                                    "/api/v1/admin/**",
                                     "/api/v1/health",
                                     "/ws/**"
                             )
@@ -56,6 +58,8 @@ public class SecurityConfig {
                                     HttpMethod.GET,
                                     "^/api/v1/matches/[0-9a-fA-F-]{36}$"
                             )).permitAll()
+                            .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/v1/manager/**").hasRole("MANAGER")
                             .anyRequest().authenticated()
                     )
                     .addFilterBefore(
