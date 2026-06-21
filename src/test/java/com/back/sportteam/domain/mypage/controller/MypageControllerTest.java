@@ -15,7 +15,8 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
-import com.back.sportteam.domain.mypage.service.MypageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPagePaymentService;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
@@ -46,14 +47,16 @@ class MypageControllerTest {
     private static final LocalTime START_TIME = LocalTime.of(10, 0);
     private static final LocalTime END_TIME = LocalTime.of(12, 0);
 
-    private MypageMatchService mypageMatchService;
+    private MyPageMatchService mypageMatchService;
+    private MyPagePaymentService mypagePaymentService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mypageMatchService = mock(MypageMatchService.class);
+        mypageMatchService = mock(MyPageMatchService.class);
+        mypagePaymentService = mock(MyPagePaymentService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new MypageController(mypageMatchService))
+                .standaloneSetup(new MypageController(mypageMatchService, mypagePaymentService))
                 .setCustomArgumentResolvers(authenticationPrincipalResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();

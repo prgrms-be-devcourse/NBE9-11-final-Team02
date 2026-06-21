@@ -4,8 +4,10 @@ import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
+import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
-import com.back.sportteam.domain.mypage.service.MypageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPagePaymentService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -15,11 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @Validated
 @RestController
@@ -27,11 +28,12 @@ import java.util.UUID;
 @RequestMapping("/api/v1/users/me")
 public class MypageController {
 
-    private final MypageMatchService mypageMatchService;
+    private final MyPageMatchService mypageMatchService;
+    private final MyPagePaymentService mypagePaymentService;
 
     @GetMapping("/matches")
     public ResponseEntity<ApiResponse<Page<MyMatchResponse>>> getMyMatches(
-            @AuthenticationPrincipal UUID userId,
+            @AuthenticationPrincipal String userId,
             @RequestParam(required = false) SportType sportType,
             @RequestParam(required = false) MyMatchStatus myMatchStatus,
             @RequestParam(required = false) MatchParticipantRole role,
@@ -39,7 +41,16 @@ public class MypageController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
     ) {
         MyMatchCondition condition = new MyMatchCondition(sportType, myMatchStatus, role, page, size);
-        Page<MyMatchResponse> response = mypageMatchService.getMyMatches(String.valueOf(userId), condition);
+        Page<MyMatchResponse> response = mypageMatchService.getMyMatches(userId, condition);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/matches/{matchId}/payment")
+    public ResponseEntity<ApiResponse<MatchPaymentResponse>> getMatchPayment(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String matchId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                mypagePaymentService.getMatchPayment(userId, matchId)));
     }
 }
