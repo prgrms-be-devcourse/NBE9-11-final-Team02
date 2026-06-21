@@ -70,6 +70,6 @@ public class AuthLoginService {
         cookie.setMaxAge((int) (refreshTokenExpiry / 1000));
         response.addCookie(cookie);
 
-        return LoginResponse.of(accessToken);
+        return LoginResponse.of(accessToken, user.getRole().name());
     }
 }

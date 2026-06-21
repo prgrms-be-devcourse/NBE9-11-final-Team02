@@ -28,7 +28,7 @@ class FacilityManagerControllerTest {
 
     @Test
     void 시설명이_없으면_400_응답을_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/facilities")
+        mockMvc.perform(post("/api/v1/manager/facilities")
                         .header("X-USER-ID", "manager-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -47,7 +47,7 @@ class FacilityManagerControllerTest {
 
     @Test
     void 수용_인원이_1보다_작으면_400_응답을_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/facilities")
+        mockMvc.perform(post("/api/v1/manager/facilities")
                         .header("X-USER-ID", "manager-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -66,13 +66,13 @@ class FacilityManagerControllerTest {
 
     @Test
     void X_USER_ID_헤더가_없으면_400_응답을_반환한다() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/facilities"))
+        mockMvc.perform(get("/api/v1/manager/facilities"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void 슬롯_요금이_음수이면_400_응답을_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/facilities/facility-id/slots")
+        mockMvc.perform(post("/api/v1/manager/facilities/facility-id/slots")
                         .header("X-USER-ID", "manager-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -90,7 +90,7 @@ class FacilityManagerControllerTest {
 
     @Test
     void 슬롯_상태가_없으면_400_응답을_반환한다() throws Exception {
-        mockMvc.perform(patch("/api/v1/admin/facilities/facility-id/slots/slot-id")
+        mockMvc.perform(patch("/api/v1/manager/facilities/facility-id/slots/slot-id")
                         .header("X-USER-ID", "manager-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

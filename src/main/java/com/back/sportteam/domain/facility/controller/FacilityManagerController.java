@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/facilities")
+@RequestMapping("/api/v1/manager/facilities")
 public class FacilityManagerController {
 
     private final FacilityService facilityService;
