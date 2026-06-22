@@ -140,7 +140,6 @@ jobs:
             SLOT1="${{ env.CONTAINER_1_NAME }}"
             SLOT2="${{ env.CONTAINER_2_NAME }}"
             PORT_IN="${{ env.CONTAINER_PORT }}"
-            NET="${{ env.DOCKER_NETWORK }}"
 
             echo "이미지 pull: ${IMAGE}"
             docker pull "${IMAGE}"
@@ -164,12 +163,12 @@ jobs:
 
             CONTAINER_IP=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${GREEN}")
             while (( ELAPSED < TIMEOUT )); do
-              CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${CONTAINER_IP}:${PORT_IN}/actuator/health" || echo 000)
-              [[ "${CODE}" == "200" ]] && { echo "${GREEN} 정상 기동"; break; }
+              RESPONSE=$(curl -s "http://${CONTAINER_IP}:${PORT_IN}/actuator/health" || echo "")
+              [[ "${RESPONSE}" == *'"status":"UP"'* ]] && { echo "${GREEN} 정상 기동"; break; }
               sleep 5
               ELAPSED=$((ELAPSED + 5))
             done
-            [[ "${CODE:-000}" == "200" ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
+            [[ "${RESPONSE:-}" == *'"status":"UP"'* ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
 
             sed -i "s|proxy_pass http://[^:]*:${PORT_IN};|proxy_pass http://${GREEN}:${PORT_IN};|" /home/ec2-user/nginx/conf.d/sportteam.conf
             docker exec nginx_1 nginx -s reload
