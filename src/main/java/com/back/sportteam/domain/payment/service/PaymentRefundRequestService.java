@@ -7,6 +7,7 @@ import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class PaymentRefundRequestService {
             return Optional.empty();
         }
         return reservationRepository.findById(reservationId)
-                .map(reservation -> reservation.getFacilitySlotId());
+                .map(Reservation::getFacilitySlotId);
     }
 
     private void saveRefunds(List<Payment> paidPayments, String reason, LocalDateTime requestedAt) {

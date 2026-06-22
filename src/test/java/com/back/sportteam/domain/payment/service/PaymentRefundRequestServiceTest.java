@@ -2,7 +2,6 @@ package com.back.sportteam.domain.payment.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -95,7 +94,7 @@ class PaymentRefundRequestServiceTest {
                 REQUESTED_AT
         );
 
-        verify(refundRepository).existsByPaymentIdAndStatus(eq(payment.getId()), eq(RefundStatus.PENDING));
+        verify(refundRepository).existsByPaymentIdAndStatus(payment.getId(), RefundStatus.PENDING);
         verify(refundRepository, never()).saveAll(any());
     }
 

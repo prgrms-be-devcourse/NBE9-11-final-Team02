@@ -21,7 +21,7 @@ public class PaymentRefundProcessor {
     private final TransactionTemplate transactionTemplate;
 
     public void process(String refundId, LocalDateTime processedAt) {
-        Optional<RefundCommand> command = claimRefund(refundId, processedAt);
+        Optional<RefundCommand> command = claimRefund(refundId);
         if (command.isEmpty()) {
             return;
         }
@@ -41,7 +41,7 @@ public class PaymentRefundProcessor {
         completeRefund(refundCommand.refundId(), refundCommand.amount(), processedAt);
     }
 
-    private Optional<RefundCommand> claimRefund(String refundId, LocalDateTime processedAt) {
+    private Optional<RefundCommand> claimRefund(String refundId) {
         return transactionTemplate.execute(status -> refundRepository.findByIdForUpdate(refundId)
                 .filter(Refund::isPending)
                 .map(refund -> {
