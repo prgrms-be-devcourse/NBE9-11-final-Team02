@@ -4,10 +4,11 @@ import com.back.sportteam.domain.auth.dto.request.SignupRequest;
 import com.back.sportteam.domain.auth.dto.response.SignupResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.provider.AuthProvider;
-import com.back.sportteam.domain.user.exception.UserErrorCode;
-import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.domain.user.entity.User;
+import com.back.sportteam.domain.user.entity.UserRole;
+import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserRepository;
+import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +24,19 @@ public class AuthSignupService {
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
+        validateRole(request.role());
         validateDuplicateEmail(request.email());
         AuthProvider provider = request.provider() == null ? AuthProvider.LOCAL : request.provider();
         User user = provider == AuthProvider.LOCAL
                 ? createLocalUser(request)
                 : createSocialUser(request, provider);
         return SignupResponse.from(userRepository.save(user));
+    }
+
+    private void validateRole(UserRole role) {
+        if (role == UserRole.ADMIN) {
+            throw new BusinessException(AuthErrorCode.INVALID_SIGNUP_REQUEST, "관리자 권한으로는 회원가입할 수 없습니다.");
+        }
     }
 
     private void validateDuplicateEmail(String email) {
