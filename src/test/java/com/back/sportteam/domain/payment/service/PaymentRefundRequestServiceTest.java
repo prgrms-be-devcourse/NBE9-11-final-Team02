@@ -14,9 +14,12 @@ import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -35,20 +38,25 @@ class PaymentRefundRequestServiceTest {
     @Mock
     private RefundRepository refundRepository;
 
+    @Mock
+    private ReservationRepository reservationRepository;
+
     @InjectMocks
     private PaymentRefundRequestService paymentRefundRequestService;
 
     @Test
-    void 매칭의_결제완료_참가비를_환불_대기열에_등록한다() {
+    void matchPaidParticipationPaymentIsQueuedForRefund() {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
+        when(reservationRepository.findById("reservation-id"))
+                .thenReturn(Optional.of(reservation("slot-id")));
         when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of());
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
-                "slot-id",
+                "reservation-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
@@ -66,10 +74,12 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
-    void 이미_진행중인_환불이_있으면_중복_등록하지_않는다() {
+    void duplicatePendingRefundIsNotCreated() {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
+        when(reservationRepository.findById("reservation-id"))
+                .thenReturn(Optional.of(reservation("slot-id")));
         when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of());
         when(refundRepository.existsByPaymentIdAndStatus(
@@ -80,7 +90,7 @@ class PaymentRefundRequestServiceTest {
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
-                "slot-id",
+                "reservation-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
@@ -90,7 +100,7 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
-    void 참가자의_결제완료_참가비를_환불_대기열에_등록한다() {
+    void participantPaidPaymentIsQueuedForRefund() {
         Payment payment = createPaidPayment("participant-id", PaymentType.PARTICIPATION);
         when(paymentRepository.findAllByParticipantIdAndStatus("participant-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
@@ -114,16 +124,18 @@ class PaymentRefundRequestServiceTest {
     }
 
     @Test
-    void 매칭의_결제완료_시설_선결제를_환불_대기열에_등록한다() {
+    void matchPaidFacilityPaymentIsQueuedForRefundThroughReservationSlot() {
         Payment payment = createPaidFacilityPayment();
         when(paymentRepository.findAllByMatchIdAndStatus("match-id", PaymentStatus.PAID))
                 .thenReturn(List.of());
+        when(reservationRepository.findById("reservation-id"))
+                .thenReturn(Optional.of(reservation("slot-id")));
         when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of(payment));
 
         paymentRefundRequestService.requestMatchRefunds(
                 "match-id",
-                "slot-id",
+                "reservation-id",
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 REQUESTED_AT
         );
@@ -138,6 +150,10 @@ class PaymentRefundRequestServiceTest {
         assertThat(refund.getReason()).isEqualTo(PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST);
         assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
         assertThat(refund.getRequestedAt()).isEqualTo(REQUESTED_AT);
+    }
+
+    private Reservation reservation(String facilitySlotId) {
+        return Reservation.pending(facilitySlotId, REQUESTED_AT.minusMinutes(10));
     }
 
     private Payment createPaidPayment(String participantId, PaymentType paymentType) {
