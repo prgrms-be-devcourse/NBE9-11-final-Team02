@@ -9,6 +9,7 @@ import com.back.sportteam.domain.facility.dto.response.FacilityAvailableResponse
 import com.back.sportteam.domain.facility.repository.FacilityQueryRepository;
 import com.back.sportteam.domain.match.entity.SportType;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,7 +48,7 @@ class FacilityAvailableServiceTest {
     @Test
     void 종목_지역_날짜_조건으로_시설_목록_조회() {
         Pageable pageable = PageRequest.of(0, 20);
-        LocalDate date = LocalDate.of(2026, 6, 10);
+        LocalDate date = LocalDate.of(2026, Month.JUNE, 10);
 
         when(facilityQueryRepository.findAvailable(SportType.FUTSAL, "서울", date, pageable))
                 .thenReturn(new PageImpl<>(List.of()));
