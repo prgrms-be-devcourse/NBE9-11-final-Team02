@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface RefundRepository extends JpaRepository<Refund, String> {
 
+    Optional<Refund> findFirstByPayment_IdAndStatus(String paymentId, RefundStatus status);
+
     boolean existsByPaymentIdAndStatus(String paymentId, RefundStatus status);
 
     boolean existsByPaymentIdAndStatusIn(String paymentId, List<RefundStatus> statuses);

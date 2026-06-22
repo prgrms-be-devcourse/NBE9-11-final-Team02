@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class MypageMatchService {
+public class MyPageMatchService {
 
     private final MatchParticipantQueryRepository matchParticipantQueryRepository;
 
