@@ -20,10 +20,6 @@ public class PaymentRefundRequestService {
     public static final String MATCH_CANCELLED_BY_HOST = "MATCH_CANCELLED_BY_HOST";
     public static final String MATCH_MINIMUM_PARTICIPANTS_NOT_MET = "MATCH_MINIMUM_PARTICIPANTS_NOT_MET";
     public static final String MATCH_PARTICIPANT_LEFT = "MATCH_PARTICIPANT_LEFT";
-    private static final List<RefundStatus> IN_PROGRESS_REFUND_STATUSES = List.of(
-            RefundStatus.PENDING,
-            RefundStatus.PROCESSING
-    );
 
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
@@ -50,9 +46,9 @@ public class PaymentRefundRequestService {
                 .filter(payment -> payment.getPaymentType() == PaymentType.PARTICIPATION
                         || payment.getPaymentType() == PaymentType.FACILITY)
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
-                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
+                .filter(payment -> !refundRepository.existsByPaymentIdAndStatus(
                         payment.getId(),
-                        IN_PROGRESS_REFUND_STATUSES
+                        RefundStatus.PENDING
                 ))
                 .map(payment -> Refund.pending(
                         payment,

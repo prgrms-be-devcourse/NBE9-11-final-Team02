@@ -101,11 +101,8 @@ class PaymentRefundProcessorTest {
 
         paymentRefundProcessor.process(refund.getId(), processedAt);
 
-        assertThat(refund.getStatus()).isEqualTo(RefundStatus.PENDING);
+        assertThat(refund.getStatus()).isEqualTo(RefundStatus.FAILED);
         assertThat(refund.getFailureReason()).isNotBlank();
-        assertThat(refund.getRetryCount()).isEqualTo(1);
-        assertThat(refund.getNextRetryAt()).isEqualTo(processedAt.plusMinutes(1));
-        assertThat(refund.getLastAttemptedAt()).isEqualTo(processedAt);
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getRefundedAmount()).isZero();
     }

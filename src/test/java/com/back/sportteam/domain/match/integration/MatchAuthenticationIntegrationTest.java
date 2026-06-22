@@ -103,7 +103,7 @@ class MatchAuthenticationIntegrationTest {
         assertThat(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 matchId,
                 host.userId(),
-                MatchParticipantStatus.PAYMENT_PENDING
+                MatchParticipantStatus.ACTIVE
         )).isPresent()
                 .get()
                 .satisfies(participant -> assertThat(participant.getRole()).isEqualTo(MatchParticipantRole.HOST));
@@ -226,7 +226,7 @@ class MatchAuthenticationIntegrationTest {
         var hostParticipant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                         matchId,
                         hostId,
-                        MatchParticipantStatus.PAYMENT_PENDING
+                        MatchParticipantStatus.ACTIVE
                 )
                 .orElseThrow();
         hostParticipant.activate();

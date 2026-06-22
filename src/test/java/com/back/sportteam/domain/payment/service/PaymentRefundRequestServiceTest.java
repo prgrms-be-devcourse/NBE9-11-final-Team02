@@ -72,9 +72,9 @@ class PaymentRefundRequestServiceTest {
                 .thenReturn(List.of(payment));
         when(paymentRepository.findAllByFacilitySlotIdAndStatus("slot-id", PaymentStatus.PAID))
                 .thenReturn(List.of());
-        when(refundRepository.existsByPaymentIdAndStatusIn(
+        when(refundRepository.existsByPaymentIdAndStatus(
                 payment.getId(),
-                List.of(RefundStatus.PENDING, RefundStatus.PROCESSING)
+                RefundStatus.PENDING
         ))
                 .thenReturn(true);
 
@@ -85,10 +85,7 @@ class PaymentRefundRequestServiceTest {
                 REQUESTED_AT
         );
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<RefundStatus>> statusesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(refundRepository).existsByPaymentIdAndStatusIn(eq(payment.getId()), statusesCaptor.capture());
-        assertThat(statusesCaptor.getValue()).containsExactly(RefundStatus.PENDING, RefundStatus.PROCESSING);
+        verify(refundRepository).existsByPaymentIdAndStatus(eq(payment.getId()), eq(RefundStatus.PENDING));
         verify(refundRepository, never()).saveAll(any());
     }
 

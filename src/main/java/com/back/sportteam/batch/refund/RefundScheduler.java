@@ -24,22 +24,12 @@ public class RefundScheduler {
     @Value("${app.scheduler.refund.batch-size:50}")
     private int batchSize;
 
-    @Value("${app.scheduler.refund.processing-timeout-minutes:10}")
-    private long processingTimeoutMinutes;
-
     @Scheduled(fixedDelayString = "${app.scheduler.refund.fixed-delay-ms:60000}")
     public void processPendingRefunds() {
         LocalDateTime processedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
-        refundRepository.recoverStaleProcessingRefunds(
-                RefundStatus.PROCESSING,
-                RefundStatus.PENDING,
-                processedAt.minusMinutes(processingTimeoutMinutes),
-                processedAt
-        );
 
         List<String> refundIds = refundRepository.findProcessableIds(
                 RefundStatus.PENDING,
-                processedAt,
                 PageRequest.of(0, batchSize)
         );
 
