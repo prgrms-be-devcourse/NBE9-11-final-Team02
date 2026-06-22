@@ -15,7 +15,8 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
-import com.back.sportteam.domain.mypage.service.MypageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPageMatchService;
+import com.back.sportteam.domain.mypage.service.MyPagePaymentService;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
@@ -37,23 +38,24 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
-import java.util.UUID;
 
 class MypageControllerTest {
 
-    private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final String USER_ID = "00000000-0000-0000-0000-000000000001";
     private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
     private static final LocalTime START_TIME = LocalTime.of(10, 0);
     private static final LocalTime END_TIME = LocalTime.of(12, 0);
 
-    private MypageMatchService mypageMatchService;
+    private MyPageMatchService mypageMatchService;
+    private MyPagePaymentService mypagePaymentService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mypageMatchService = mock(MypageMatchService.class);
+        mypageMatchService = mock(MyPageMatchService.class);
+        mypagePaymentService = mock(MyPagePaymentService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new MypageController(mypageMatchService))
+                .standaloneSetup(new MypageController(mypageMatchService, mypagePaymentService))
                 .setCustomArgumentResolvers(authenticationPrincipalResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -61,7 +63,7 @@ class MypageControllerTest {
 
     @Test
     void 필터_없이_요청해도_200을_반환한다() throws Exception {
-        when(mypageMatchService.getMyMatches(eq(USER_ID.toString()), any(MyMatchCondition.class)))
+        when(mypageMatchService.getMyMatches(eq(USER_ID), any(MyMatchCondition.class)))
                 .thenReturn(new PageImpl<>(List.of(createResponse()), PageRequest.of(0, 10), 1));
 
         mockMvc.perform(get("/api/v1/users/me/matches")
@@ -70,7 +72,7 @@ class MypageControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].matchId").value("match-id"));
 
-        verify(mypageMatchService).getMyMatches(eq(USER_ID.toString()), any(MyMatchCondition.class));
+        verify(mypageMatchService).getMyMatches(eq(USER_ID), any(MyMatchCondition.class));
     }
 
     @Test
@@ -88,7 +90,7 @@ class MypageControllerTest {
                         .param("size", "5"))
                 .andExpect(status().isOk());
 
-        verify(mypageMatchService).getMyMatches(eq(USER_ID.toString()), captor.capture());
+        verify(mypageMatchService).getMyMatches(eq(USER_ID), captor.capture());
         MyMatchCondition condition = captor.getValue();
         assertThat(condition.sportType()).isEqualTo(SportType.FUTSAL);
         assertThat(condition.myMatchStatus()).isEqualTo(MyMatchStatus.PARTICIPATING);
