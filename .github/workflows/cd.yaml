@@ -155,7 +155,7 @@ jobs:
             echo "blue(현재): ${BLUE}, green(다음): ${GREEN}"
 
             docker rm -f "${GREEN}" >/dev/null 2>&1 || true
-            APP_IMAGE="${IMAGE}" docker compose -f /home/ec2-user/app/docker-compose.yaml up -d --no-deps "${GREEN}"
+            APP_IMAGE="${IMAGE}" docker-compose -f /home/ec2-user/app/docker-compose.yaml up -d --no-deps "${GREEN}"
 
             echo "헬스체크 대기: ${GREEN}"
             TIMEOUT=180
@@ -171,7 +171,7 @@ jobs:
             done
             [[ "${CODE:-000}" == "200" ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
 
-            docker compose -f /home/ec2-user/app/docker-compose.yaml stop "${BLUE}" >/dev/null 2>&1 || true
+            docker-compose -f /home/ec2-user/app/docker-compose.yaml stop "${BLUE}" >/dev/null 2>&1 || true
             echo "이전 컨테이너 중지: ${BLUE}"
 
             sed -i "s|proxy_pass http://[^:]*:${PORT_IN};|proxy_pass http://${GREEN}:${PORT_IN};|" /home/ec2-user/nginx/conf.d/sportteam.conf
