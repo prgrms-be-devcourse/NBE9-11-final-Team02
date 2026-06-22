@@ -7,9 +7,12 @@ import com.back.sportteam.domain.payment.entity.Refund;
 import com.back.sportteam.domain.payment.entity.RefundStatus;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.RefundRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,23 +23,25 @@ public class PaymentRefundRequestService {
     public static final String MATCH_CANCELLED_BY_HOST = "MATCH_CANCELLED_BY_HOST";
     public static final String MATCH_MINIMUM_PARTICIPANTS_NOT_MET = "MATCH_MINIMUM_PARTICIPANTS_NOT_MET";
     public static final String MATCH_PARTICIPANT_LEFT = "MATCH_PARTICIPANT_LEFT";
-    private static final List<RefundStatus> IN_PROGRESS_REFUND_STATUSES = List.of(
-            RefundStatus.PENDING,
-            RefundStatus.PROCESSING
-    );
 
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
+    private final ReservationRepository reservationRepository;
 
     public void requestMatchRefunds(
             String matchId,
-            String facilitySlotId,
+            String reservationId,
             String reason,
             LocalDateTime requestedAt
     ) {
         List<Payment> paidPayments = new ArrayList<>();
         paidPayments.addAll(paymentRepository.findAllByMatchIdAndStatus(matchId, PaymentStatus.PAID));
-        paidPayments.addAll(paymentRepository.findAllByFacilitySlotIdAndStatus(facilitySlotId, PaymentStatus.PAID));
+        findFacilitySlotId(reservationId)
+                .map(facilitySlotId -> paymentRepository.findAllByFacilitySlotIdAndStatus(
+                        facilitySlotId,
+                        PaymentStatus.PAID
+                ))
+                .ifPresent(paidPayments::addAll);
         saveRefunds(paidPayments, reason, requestedAt);
     }
 
@@ -45,14 +50,22 @@ public class PaymentRefundRequestService {
         saveRefunds(paidPayments, reason, requestedAt);
     }
 
+    private Optional<String> findFacilitySlotId(String reservationId) {
+        if (reservationId == null || reservationId.isBlank()) {
+            return Optional.empty();
+        }
+        return reservationRepository.findById(reservationId)
+                .map(Reservation::getFacilitySlotId);
+    }
+
     private void saveRefunds(List<Payment> paidPayments, String reason, LocalDateTime requestedAt) {
         List<Refund> refunds = paidPayments.stream()
                 .filter(payment -> payment.getPaymentType() == PaymentType.PARTICIPATION
                         || payment.getPaymentType() == PaymentType.FACILITY)
                 .filter(payment -> payment.getAmount() > payment.getRefundedAmount())
-                .filter(payment -> !refundRepository.existsByPaymentIdAndStatusIn(
+                .filter(payment -> !refundRepository.existsByPaymentIdAndStatus(
                         payment.getId(),
-                        IN_PROGRESS_REFUND_STATUSES
+                        RefundStatus.PENDING
                 ))
                 .map(payment -> Refund.pending(
                         payment,

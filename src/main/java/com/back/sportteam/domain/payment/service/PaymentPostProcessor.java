@@ -55,7 +55,6 @@ public class PaymentPostProcessor {
     private void confirmFacilitySlot(Payment payment) {
         FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
         facilitySlot.reserve();
-        activateHostParticipant(payment);
     }
 
     private void cancelParticipant(Payment payment, LocalDateTime processedAt) {
@@ -77,24 +76,13 @@ public class PaymentPostProcessor {
         matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 match.getId(),
                 payment.getUserId(),
-                MatchParticipantStatus.PAYMENT_PENDING
+                MatchParticipantStatus.ACTIVE
         ).ifPresent(participant -> {
             if (participant.cancel()) {
                 match.decreaseCurrentCount();
             }
         });
         match.cancel(processedAt);
-    }
-
-    private void activateHostParticipant(Payment payment) {
-        Match match = getMatchByFacilitySlotId(payment.getFacilitySlotId());
-        MatchParticipant participant = matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                        match.getId(),
-                        payment.getUserId(),
-                        MatchParticipantStatus.PAYMENT_PENDING
-                )
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
-        participant.activate();
     }
 
     private FacilitySlot getFacilitySlot(String facilitySlotId) {

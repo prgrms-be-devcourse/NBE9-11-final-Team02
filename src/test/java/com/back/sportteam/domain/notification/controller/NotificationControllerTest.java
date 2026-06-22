@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.back.sportteam.domain.notification.dto.response.NotificationResponse;
+import com.back.sportteam.domain.notification.entity.NotificationStatus;
 import com.back.sportteam.domain.notification.entity.NotificationType;
 import com.back.sportteam.domain.notification.service.NotificationService;
 import com.back.sportteam.domain.notification.service.NotificationSseService;
@@ -59,9 +60,9 @@ class NotificationControllerTest {
                 notificationId,
                 NotificationType.MATCH_CONFIRMED,
                 "title",
-                "message",
-                "MATCH",
+                "content",
                 "match-id",
+                NotificationStatus.PENDING,
                 false,
                 LocalDateTime.of(2026, Month.JUNE, 18, 10, 0),
                 null

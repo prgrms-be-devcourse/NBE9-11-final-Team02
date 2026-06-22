@@ -102,7 +102,6 @@ class PaymentWebhookProcessorTest {
         assertThat(payment.getPgTransactionId()).isEqualTo("pg-transaction-1");
         assertThat(payment.getPaidAt()).isNotNull();
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
-        assertThat(participant.getPaymentDeadline()).isNull();
 
         ArgumentCaptor<PaymentWebhookEvent> eventCaptor =
                 ArgumentCaptor.forClass(PaymentWebhookEvent.class);
@@ -132,7 +131,6 @@ class PaymentWebhookProcessorTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getPgTransactionId()).isNull();
         assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
-        assertThat(participant.getPaymentDeadline()).isNull();
         assertThat(participant.getMatch().getCurrentCount()).isEqualTo(1);
         verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
     }
@@ -163,9 +161,6 @@ class PaymentWebhookProcessorTest {
     @Test
     void 시설_결제_성공_웹훅이면_슬롯을_예약_확정하고_방장_참가자를_활성화한다() {
         Payment payment = createPendingFacilityPayment();
-        Reservation reservation = createReservation();
-        Match match = createMatch();
-        MatchParticipant host = MatchParticipant.host(match, "user-id");
         FacilitySlot facilitySlot = createPendingSlot();
         PaymentWebhookRequest request = createRequest(
                 "event-4",
@@ -175,20 +170,12 @@ class PaymentWebhookProcessorTest {
         );
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
         when(facilitySlotRepository.findByIdForUpdate("facility-slot-id")).thenReturn(Optional.of(facilitySlot));
-        when(reservationRepository.findByFacilitySlotId("facility-slot-id")).thenReturn(Optional.of(reservation));
-        when(matchRepository.findByReservationId("reservation-id")).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
-                match.getId(),
-                "user-id",
-                MatchParticipantStatus.PAYMENT_PENDING
-        )).thenReturn(Optional.of(host));
 
         paymentWebhookProcessor.process(request);
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.RESERVED);
         assertThat(facilitySlot.getPendingUntil()).isNull();
-        assertThat(host.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
         verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
     }
 
@@ -212,7 +199,7 @@ class PaymentWebhookProcessorTest {
         when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 match.getId(),
                 "user-id",
-                MatchParticipantStatus.PAYMENT_PENDING
+                MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(host));
 
         paymentWebhookProcessor.process(request);

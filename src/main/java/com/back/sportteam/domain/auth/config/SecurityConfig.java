@@ -35,6 +35,7 @@ public class SecurityConfig {
                                     "/api/v1/facilities/**",
                                     "/api/v1/users/**",
                                     "/api/v1/payments/**",
+                                    "/api/v1/queue/**",
                                     "/api/v1/manager/**",
                                     "/api/v1/admin/**",
                                     "/api/v1/health",
@@ -68,7 +69,7 @@ public class SecurityConfig {
                     )
                     .build();
         } catch (Exception e) {
-            throw new IllegalStateException("Security 필터 체인 구성 중 오류 발생", e);
+            throw new IllegalStateException("Failed to configure security filter chain.", e);
         }
     }
 }

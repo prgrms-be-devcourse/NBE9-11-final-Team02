@@ -82,7 +82,7 @@ public class MatchService {
                 .build());
 
         Match savedMatch = matchRepository.save(match);
-        matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId, paymentHoldDuration()));
+        matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));
 
         return MatchCreateResponse.from(savedMatch);
     }
@@ -156,9 +156,7 @@ public class MatchService {
         validateNotParticipated(matchId, userId);
 
         match.increaseCurrentCount();
-        MatchParticipant participant = matchParticipantRepository.save(
-                MatchParticipant.participant(match, userId, paymentHoldDuration())
-        );
+        MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
 
         return MatchParticipantResponse.from(participant);
     }
@@ -209,7 +207,7 @@ public class MatchService {
         match.cancel(cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatusIn(
                         matchId,
-                        List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                        List.of(MatchParticipantStatus.ACTIVE)
                 )
                 .forEach(MatchParticipant::cancel);
         releaseFacilitySlot(match.getReservationId());
@@ -277,7 +275,7 @@ public class MatchService {
         boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 userId,
-                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                List.of(MatchParticipantStatus.ACTIVE)
         );
         if (alreadyParticipated) {
             throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);

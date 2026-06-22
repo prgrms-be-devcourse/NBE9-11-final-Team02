@@ -126,7 +126,7 @@ public class PaymentService {
         return matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                         request.matchId(),
                         userId,
-                        MatchParticipantStatus.PAYMENT_PENDING
+                        MatchParticipantStatus.ACTIVE
                 )
                 .map(MatchParticipant::getId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));

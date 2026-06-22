@@ -108,8 +108,7 @@ class MatchServiceTest {
         MatchParticipant participant = participantCaptor.getValue();
         assertThat(participant.getUserId()).isEqualTo("host-id");
         assertThat(participant.getRole()).isEqualTo(MatchParticipantRole.HOST);
-        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(participant.getPaymentDeadline()).isEqualTo(participant.getJoinedAt().plusMinutes(1));
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
     }
 
     @Test
@@ -329,7 +328,7 @@ class MatchServiceTest {
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 match.getId(),
                 "participant-id",
-                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                List.of(MatchParticipantStatus.ACTIVE)
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -338,8 +337,28 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(match.getCurrentCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 비관적_락으로_매칭방에_참가한다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId,
+                "participant-id",
+                List.of(MatchParticipantStatus.ACTIVE)
+        )).thenReturn(false);
+        when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchParticipantResponse response = matchService.joinMatch(matchId, "participant-id");
+
+        assertThat(response.participantId()).isNotBlank();
+        assertThat(response.userId()).isEqualTo("participant-id");
+        assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -385,7 +404,7 @@ class MatchServiceTest {
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                List.of(MatchParticipantStatus.ACTIVE)
         )).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
@@ -593,7 +612,7 @@ class MatchServiceTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndStatusIn(
                 matchId,
-                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
+                List.of(MatchParticipantStatus.ACTIVE)
         )).thenReturn(List.of(host, participant, pendingParticipant));
         when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 

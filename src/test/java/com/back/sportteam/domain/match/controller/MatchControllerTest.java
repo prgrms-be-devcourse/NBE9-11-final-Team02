@@ -269,7 +269,7 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.data.participantId").value("participant-id"))
                 .andExpect(jsonPath("$.data.userId").value("user-id"))
                 .andExpect(jsonPath("$.data.role").value("PARTICIPANT"))
-                .andExpect(jsonPath("$.data.status").value("PAYMENT_PENDING"));
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
 
         verify(matchJoinFacade).joinMatchWithDistributedLock("match-id", "user-id");
     }
@@ -520,7 +520,7 @@ class MatchControllerTest {
             String userId,
             MatchParticipantRole role
     ) {
-        return createParticipantResponse(participantId, userId, role, MatchParticipantStatus.ACTIVE, null);
+        return createParticipantResponse(participantId, userId, role, MatchParticipantStatus.ACTIVE);
     }
 
     private MatchParticipantResponse createPendingParticipantResponse(String participantId, String userId) {
@@ -528,8 +528,7 @@ class MatchControllerTest {
                 participantId,
                 userId,
                 MatchParticipantRole.PARTICIPANT,
-                MatchParticipantStatus.PAYMENT_PENDING,
-                CREATED_AT.plusMinutes(1)
+                MatchParticipantStatus.ACTIVE
         );
     }
 
@@ -537,16 +536,14 @@ class MatchControllerTest {
             String participantId,
             String userId,
             MatchParticipantRole role,
-            MatchParticipantStatus status,
-            LocalDateTime paymentDeadline
+            MatchParticipantStatus status
     ) {
         return new MatchParticipantResponse(
                 participantId,
                 userId,
                 role,
                 status,
-                CREATED_AT,
-                paymentDeadline
+                CREATED_AT
         );
     }
 
