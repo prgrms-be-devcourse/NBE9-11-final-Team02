@@ -6,7 +6,7 @@ export const options = {
     duration: '300s',
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://3.36.243.212:8090';
+const BASE_URL = __ENV.BASE_URL || 'http://3.36.243.212';
 
 export default function () {
     const res = http.get(`${BASE_URL}/actuator/health`);

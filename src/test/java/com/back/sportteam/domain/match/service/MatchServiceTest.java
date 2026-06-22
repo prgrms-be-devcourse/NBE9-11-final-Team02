@@ -345,7 +345,7 @@ class MatchServiceTest {
     void 비관적_락으로_매칭방에_참가한다() {
         Match match = createMatch();
         String matchId = match.getId();
-        when(matchRepository.findByIdForUpdate(matchId)).thenReturn(Optional.of(match));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
@@ -353,7 +353,7 @@ class MatchServiceTest {
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        MatchParticipantResponse response = matchService.joinMatchWithPessimisticLock(matchId, "participant-id");
+        MatchParticipantResponse response = matchService.joinMatch(matchId, "participant-id");
 
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");

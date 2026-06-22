@@ -1,26 +1,25 @@
 package com.back.sportteam.domain.user.entity;
 
 import com.back.sportteam.domain.auth.provider.AuthProvider;
-import jakarta.persistence.CascadeType;
+import com.back.sportteam.global.util.TimeUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
 @Entity
 @Table(name = "users")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
     @Id
@@ -65,72 +64,39 @@ public class User {
     @Column(name = "skill_score", nullable = false)
     private Double skillScore = 0.0;
 
-    @Column(name = "manner_rating_sum", nullable = false, precision = 5, scale = 1)
+    @Column(name = "manner_rating_sum", precision = 5, scale = 1, nullable = false)
     private BigDecimal mannerRatingSum = BigDecimal.ZERO;
 
     @Column(name = "manner_review_count", nullable = false)
     private int mannerReviewCount = 0;
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserSportStat> sportStats = new ArrayList<>();
-
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected User() {
+    private User(String email, String nickname, String passwordHash, UserRole role,
+                 AuthProvider provider, String providerId) {
+        LocalDateTime now = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
+        this.id = UUID.randomUUID().toString();
+        this.email = email;
+        this.nickname = nickname;
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.provider = provider;
+        this.providerId = providerId;
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     public static User local(String email, String nickname, String passwordHash, UserRole role) {
-        User user = new User();
-        user.id = UUID.randomUUID().toString();
-        user.email = email;
-        user.nickname = nickname;
-        user.passwordHash = passwordHash;
-        user.role = role;
-        user.provider = AuthProvider.LOCAL;
-        return user;
+        return new User(email, nickname, passwordHash, role, AuthProvider.LOCAL, null);
     }
 
     public static User google(String email, String nickname, UserRole role, String providerId) {
-        User user = new User();
-        user.id = UUID.randomUUID().toString();
-        user.email = email;
-        user.nickname = nickname;
-        user.role = role;
-        user.provider = AuthProvider.GOOGLE;
-        user.providerId = providerId;
-        return user;
+        return new User(email, nickname, null, role, AuthProvider.GOOGLE, providerId);
     }
-
-    public void addMannerRating(BigDecimal newRating) {
-        this.mannerRatingSum = this.mannerRatingSum.add(newRating);
-        this.mannerReviewCount++;
-        this.mannerScore = this.mannerRatingSum
-                .divide(BigDecimal.valueOf(this.mannerReviewCount), 2, RoundingMode.HALF_UP)
-                .doubleValue();
-    }
-
-    public String getId() { return id; }
-    public String getEmail() { return email; }
-    public String getNickname() { return nickname; }
-    public String getPasswordHash() { return passwordHash; }
-    public UserRole getRole() { return role; }
-    public AuthProvider getProvider() { return provider; }
-    public String getProviderId() { return providerId; }
-    public String getProfileImg() { return profileImg; }
-    public String getPosition() { return position; }
-    public String getActiveRegion() { return activeRegion; }
-    public String getPreferredSport() { return preferredSport; }
-    public Double getMannerScore() { return mannerScore; }
-    public Double getSkillScore() { return skillScore; }
-    public List<UserSportStat> getSportStats() { return sportStats; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public void updateProfile(
             String nickname,
@@ -144,5 +110,18 @@ public class User {
         if (activeRegion != null) this.activeRegion = activeRegion;
         if (preferredSport != null) this.preferredSport = preferredSport;
         if (profileImg != null) this.profileImg = profileImg;
+    }
+
+    public void addMannerRating(BigDecimal rating) {
+        this.mannerRatingSum = this.mannerRatingSum.add(rating);
+        this.mannerReviewCount++;
+        this.mannerScore = this.mannerRatingSum
+                .divide(BigDecimal.valueOf(this.mannerReviewCount), 1, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        this.updatedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
     }
 }
