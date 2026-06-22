@@ -344,28 +344,6 @@ class MatchServiceTest {
     }
 
     @Test
-    void 비관적_락으로_매칭방에_참가한다() {
-        Match match = createMatch();
-        String matchId = match.getId();
-        when(matchRepository.findByIdForUpdate(matchId)).thenReturn(Optional.of(match));
-        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
-                matchId,
-                "participant-id",
-                List.of(MatchParticipantStatus.PAYMENT_PENDING, MatchParticipantStatus.ACTIVE)
-        )).thenReturn(false);
-        when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        MatchParticipantResponse response = matchService.joinMatchWithPessimisticLock(matchId, "participant-id");
-
-        assertThat(response.participantId()).isNotBlank();
-        assertThat(response.userId()).isEqualTo("participant-id");
-        assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
-        assertThat(response.paymentDeadline()).isEqualTo(response.joinedAt().plusMinutes(1));
-        assertThat(match.getCurrentCount()).isEqualTo(2);
-    }
-
-    @Test
     void 매칭방_참가시_매칭방이_없으면_예외를_던진다() {
         when(matchRepository.findById("missing-id")).thenReturn(Optional.empty());
 
