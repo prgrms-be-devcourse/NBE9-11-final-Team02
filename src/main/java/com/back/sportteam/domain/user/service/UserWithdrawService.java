@@ -4,7 +4,6 @@ import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.global.exception.BusinessException;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,8 +31,8 @@ public class UserWithdrawService {
     }
 
     @Transactional
-    public void withdraw(UUID userId, String accessToken) {
-        User user = userRepository.findById(String.valueOf(userId))
+    public void withdraw(String userId, String accessToken) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
         userRepository.delete(user);
