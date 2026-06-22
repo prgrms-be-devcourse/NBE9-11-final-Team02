@@ -47,7 +47,7 @@ class UserWithdrawServiceTest {
     @DisplayName("회원 탈퇴 성공 시 RefreshToken 삭제 및 AccessToken 블랙리스트 등록 후 유저 삭제")
     @Test
     void 회원_탈퇴_성공_시_RefreshToken_삭제_및_AccessToken_블랙리스트_등록_후_유저_삭제() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
         User user = User.local("dnclsehd122@gmail.com", "오상민", "hashed", UserRole.USER);
 
         when(userRepository.findById(String.valueOf(userId))).thenReturn(Optional.of(user));
@@ -67,7 +67,7 @@ class UserWithdrawServiceTest {
     @DisplayName("존재하지 않는 유저일 시 예외 발생")
     @Test
     void 존재하지_않는_유저일_시_예외_발생() {
-        UUID userId = UUID.randomUUID();
+        String userId = UUID.randomUUID().toString();
 
         when(userRepository.findById(String.valueOf(userId))).thenReturn(Optional.empty());
 
