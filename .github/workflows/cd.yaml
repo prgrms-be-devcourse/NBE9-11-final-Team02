@@ -171,12 +171,12 @@ jobs:
             done
             [[ "${CODE:-000}" == "200" ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
 
-            docker-compose -f /home/ec2-user/app/docker-compose.yaml stop "${BLUE}" >/dev/null 2>&1 || true
-            echo "이전 컨테이너 중지: ${BLUE}"
-
             sed -i "s|proxy_pass http://[^:]*:${PORT_IN};|proxy_pass http://${GREEN}:${PORT_IN};|" /home/ec2-user/nginx/conf.d/sportteam.conf
             docker exec nginx_1 nginx -s reload
             echo "Nginx 트래픽 전환 완료: ${GREEN}"
+
+            docker-compose -f /home/ec2-user/app/docker-compose.yaml stop "${BLUE}" >/dev/null 2>&1 || true
+            echo "이전 컨테이너 중지: ${BLUE}"
 
             docker image prune -f
 
