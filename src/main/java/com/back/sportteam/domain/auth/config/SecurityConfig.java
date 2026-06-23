@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -22,11 +23,13 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         try {
             return http
+                    .cors(cors -> cors.configurationSource(corsConfigurationSource))
                     .csrf(csrf -> csrf
                             .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                             .ignoringRequestMatchers(
