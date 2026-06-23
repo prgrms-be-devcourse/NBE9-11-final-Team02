@@ -71,8 +71,8 @@ class PaymentConfirmServiceTest {
     }
 
     @Test
-    void 토스_승인에_성공하면_결제를_PAID로_변경하고_후처리를_실행한다() {
-        Payment payment = createPendingPayment();
+    void confirmMarksPaymentAsPaidAndRunsPostProcessorWhenTossConfirmSucceeds() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         TossPaymentsPaymentResponse tossResponse =
                 new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 10_000);
@@ -91,8 +91,8 @@ class PaymentConfirmServiceTest {
     }
 
     @Test
-    void 요청_금액이_주문서_금액과_다르면_토스_승인을_호출하지_않는다() {
-        Payment payment = createPendingPayment();
+    void confirmDoesNotCallTossWhenRequestedAmountDoesNotMatchPaymentAmount() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(9_000);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
 
@@ -106,8 +106,8 @@ class PaymentConfirmServiceTest {
     }
 
     @Test
-    void 다른_사용자의_결제는_승인할_수_없다() {
-        Payment payment = createPendingPayment();
+    void confirmRejectsPaymentOwnedByAnotherUser() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
 
@@ -120,8 +120,8 @@ class PaymentConfirmServiceTest {
     }
 
     @Test
-    void 토스_승인에_실패하면_PENDING_결제를_FAILED로_변경하고_후처리한다() {
-        Payment payment = createPendingPayment();
+    void confirmMarksParticipationPaymentAsFailedWithoutCancellingParticipantWhenTossConfirmFails() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
         doThrow(new BusinessException(PaymentErrorCode.PAYMENT_FAILED))
@@ -135,12 +135,38 @@ class PaymentConfirmServiceTest {
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getPgTransactionId()).isEqualTo("payment-key");
+        verify(paymentPostProcessor, never()).processFailedPayment(any(Payment.class), any());
+    }
+
+    @Test
+    void confirmRunsFailurePostProcessorWhenFacilityPaymentConfirmFails() {
+        Payment payment = Payment.create(
+                null,
+                "user-id",
+                null,
+                "facility-slot-id",
+                PaymentType.FACILITY,
+                "mid_12345",
+                10_000
+        );
+        PaymentConfirmRequest request = createRequest(10_000);
+        when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+        doThrow(new BusinessException(PaymentErrorCode.PAYMENT_FAILED))
+                .when(tossPaymentsClient)
+                .confirm("payment-key", "mid_12345", 10_000);
+
+        assertThatThrownBy(() -> paymentConfirmService.confirm("user-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(PaymentErrorCode.PAYMENT_FAILED);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         verify(paymentPostProcessor).processFailedPayment(any(Payment.class), any());
     }
 
     @Test
-    void 토스_승인_결과가_불명확하면_PENDING_상태를_유지한다() {
-        Payment payment = createPendingPayment();
+    void confirmKeepsPaymentPendingWhenTossConfirmResultIsUnknown() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
         doThrow(new BusinessException(PaymentErrorCode.PAYMENT_CONFIRM_STATUS_UNKNOWN))
@@ -158,8 +184,8 @@ class PaymentConfirmServiceTest {
     }
 
     @Test
-    void 토스_승인_응답이_주문서와_다르면_결제를_완료하지_않는다() {
-        Payment payment = createPendingPayment();
+    void confirmRejectsMismatchedTossConfirmResponse() {
+        Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         TossPaymentsPaymentResponse tossResponse =
                 new TossPaymentsPaymentResponse("payment-key", "different-order-id", "DONE", 10_000);
@@ -175,7 +201,7 @@ class PaymentConfirmServiceTest {
         verify(paymentPostProcessor, never()).processPaidPayment(any());
     }
 
-    private Payment createPendingPayment() {
+    private Payment createPendingParticipationPayment() {
         return Payment.create(
                 "participant-id",
                 "user-id",

@@ -4,6 +4,7 @@ import com.back.sportteam.domain.payment.dto.request.PaymentConfirmRequest;
 import com.back.sportteam.domain.payment.dto.response.PaymentConfirmResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
@@ -74,7 +75,9 @@ public class PaymentConfirmService {
             validateAmount(payment, request.amount());
             if (payment.getStatus() == PaymentStatus.PENDING) {
                 payment.fail(request.paymentKey());
-                paymentPostProcessor.processFailedPayment(payment, LocalDateTime.now(TimeUtils.SERVICE_ZONE));
+                if (payment.getPaymentType() == PaymentType.FACILITY) {
+                    paymentPostProcessor.processFailedPayment(payment, LocalDateTime.now(TimeUtils.SERVICE_ZONE));
+                }
             }
         });
     }
