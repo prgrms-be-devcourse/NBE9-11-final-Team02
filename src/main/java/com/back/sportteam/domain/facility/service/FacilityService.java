@@ -5,6 +5,8 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilityReservationOverviewResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilityReservationSlotResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
@@ -15,6 +17,12 @@ import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
+import com.back.sportteam.domain.payment.repository.FacilityRevenueProjection;
+import com.back.sportteam.domain.payment.repository.PaymentRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.util.TimeUtils;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +33,10 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +49,8 @@ public class FacilityService {
 
     private final FacilityRepository facilityRepository;
     private final FacilitySlotRepository facilitySlotRepository;
+    private final ReservationRepository reservationRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional
     public FacilityResponse createFacility(String managerId, FacilityCreateRequest request) {
@@ -122,6 +135,100 @@ public class FacilityService {
                 .stream()
                 .map(FacilitySlotResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public FacilityReservationOverviewResponse getReservations(
+            String managerId,
+            String facilityId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+        if (fromDate.isAfter(toDate)) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_RESERVATION_INVALID_DATE_RANGE);
+        }
+
+        List<FacilitySlot> slots = facilitySlotRepository
+                .findAllByFacilityIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                        facilityId,
+                        fromDate,
+                        toDate
+                );
+        if (slots.isEmpty()) {
+            return emptyReservationOverview(facilityId, fromDate, toDate);
+        }
+
+        List<String> slotIds = slots.stream().map(FacilitySlot::getId).toList();
+        Map<String, Reservation> reservationsBySlotId = reservationRepository
+                .findAllByFacilitySlotIdIn(slotIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Reservation::getFacilitySlotId,
+                        Function.identity(),
+                        this::latestReservation
+                ));
+        Map<String, Long> revenueBySlotId = paymentRepository
+                .sumNetRevenueByFacilitySlotIds(
+                        slotIds,
+                        PaymentType.FACILITY,
+                        List.of(PaymentStatus.PAID, PaymentStatus.REFUNDED)
+                )
+                .stream()
+                .collect(Collectors.toMap(
+                        FacilityRevenueProjection::getFacilitySlotId,
+                        projection -> projection.getNetRevenue() == null ? 0L : projection.getNetRevenue()
+                ));
+
+        List<FacilityReservationSlotResponse> slotResponses = slots.stream()
+                .map(slot -> FacilityReservationSlotResponse.of(
+                        slot,
+                        reservationsBySlotId.get(slot.getId()),
+                        revenueBySlotId.getOrDefault(slot.getId(), 0L)
+                ))
+                .toList();
+        long reservedSlots = slots.stream()
+                .filter(slot -> slot.getStatus() == SlotStatus.RESERVED)
+                .count();
+        long availableSlots = slots.stream()
+                .filter(slot -> slot.getStatus() == SlotStatus.AVAILABLE)
+                .count();
+        long totalRevenue = slotResponses.stream()
+                .mapToLong(FacilityReservationSlotResponse::revenue)
+                .sum();
+
+        return new FacilityReservationOverviewResponse(
+                facilityId,
+                fromDate,
+                toDate,
+                slots.size(),
+                reservedSlots,
+                availableSlots,
+                totalRevenue,
+                slotResponses
+        );
+    }
+
+    private FacilityReservationOverviewResponse emptyReservationOverview(
+            String facilityId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        return new FacilityReservationOverviewResponse(
+                facilityId,
+                fromDate,
+                toDate,
+                0,
+                0,
+                0,
+                0,
+                List.of()
+        );
+    }
+
+    private Reservation latestReservation(Reservation first, Reservation second) {
+        return first.getReservedAt().isAfter(second.getReservedAt()) ? first : second;
     }
 
     @Transactional

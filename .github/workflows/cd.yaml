@@ -91,6 +91,12 @@ jobs:
       actions: read
       pull-requests: read
     steps:
+      - uses: actions/checkout@v4
+
+      - name: prod compose 파일 base64 인코딩
+        id: compose
+        run: echo "b64=$(base64 -w0 docker-compose.prod.yaml)" >> "${GITHUB_OUTPUT}"
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ secrets.AWS_REGION }}
@@ -133,6 +139,15 @@ jobs:
             chmod 600 /home/ec2-user/secrets/application-secret.yaml
             echo "✅ Secret 파일 갱신 완료"
 
+            # docker-compose.yaml 최신화 (레포의 docker-compose.prod.yaml을 base64로 전달)
+            mkdir -p /home/ec2-user/app
+            echo "${{ steps.compose.outputs.b64 }}" | base64 -d > /home/ec2-user/app/docker-compose.yaml
+            echo "✅ docker-compose.yaml 최신화 완료"
+
+            # kafka 미실행 시 시작
+            docker-compose -f /home/ec2-user/app/docker-compose.yaml up -d kafka
+            echo "✅ Kafka 기동 확인"
+
             OWNER_LC="${{ github.repository_owner }}"
             OWNER_LC="${OWNER_LC,,}"
             IMAGE_TAG="${{ needs.calculateTag.outputs.tag_name }}"
@@ -140,7 +155,6 @@ jobs:
             SLOT1="${{ env.CONTAINER_1_NAME }}"
             SLOT2="${{ env.CONTAINER_2_NAME }}"
             PORT_IN="${{ env.CONTAINER_PORT }}"
-            NET="${{ env.DOCKER_NETWORK }}"
 
             echo "이미지 pull: ${IMAGE}"
             docker pull "${IMAGE}"
@@ -155,7 +169,7 @@ jobs:
             echo "blue(현재): ${BLUE}, green(다음): ${GREEN}"
 
             docker rm -f "${GREEN}" >/dev/null 2>&1 || true
-            APP_IMAGE="${IMAGE}" docker-compose -f /home/ec2-user/app/docker-compose.yaml up -d --no-deps "${GREEN}"
+            APP_IMAGE="${IMAGE}" docker-compose -f /home/ec2-user/app/docker-compose.yaml --profile prod up -d --no-deps "${GREEN}"
 
             echo "헬스체크 대기: ${GREEN}"
             TIMEOUT=180
@@ -164,18 +178,18 @@ jobs:
 
             CONTAINER_IP=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${GREEN}")
             while (( ELAPSED < TIMEOUT )); do
-              CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${CONTAINER_IP}:${PORT_IN}/actuator/health" || echo 000)
-              [[ "${CODE}" == "200" ]] && { echo "${GREEN} 정상 기동"; break; }
+              RESPONSE=$(curl -s "http://${CONTAINER_IP}:${PORT_IN}/actuator/health" || echo "")
+              [[ "${RESPONSE}" == *'"status":"UP"'* ]] && { echo "${GREEN} 정상 기동"; break; }
               sleep 5
               ELAPSED=$((ELAPSED + 5))
             done
-            [[ "${CODE:-000}" == "200" ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
+            [[ "${RESPONSE:-}" == *'"status":"UP"'* ]] || { echo "${GREEN} 헬스체크 실패"; docker logs --tail=200 "${GREEN}" || true; docker rm -f "${GREEN}" || true; exit 1; }
 
             sed -i "s|proxy_pass http://[^:]*:${PORT_IN};|proxy_pass http://${GREEN}:${PORT_IN};|" /home/ec2-user/nginx/conf.d/sportteam.conf
             docker exec nginx_1 nginx -s reload
             echo "Nginx 트래픽 전환 완료: ${GREEN}"
 
-            docker-compose -f /home/ec2-user/app/docker-compose.yaml stop "${BLUE}" >/dev/null 2>&1 || true
+            docker-compose -f /home/ec2-user/app/docker-compose.yaml --profile prod stop "${BLUE}" >/dev/null 2>&1 || true
             echo "이전 컨테이너 중지: ${BLUE}"
 
             docker image prune -f

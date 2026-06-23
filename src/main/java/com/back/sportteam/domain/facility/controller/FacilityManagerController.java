@@ -5,6 +5,7 @@ import com.back.sportteam.domain.facility.dto.request.FacilityUpdateRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilityReservationOverviewResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.service.FacilityService;
@@ -16,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +35,22 @@ public class FacilityManagerController {
             @RequestHeader("X-USER-ID") @NotBlank String managerId
     ) {
         List<FacilitySummaryResponse> response = facilityService.getMyFacilities(managerId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/{facilityId}/reservations")
+    public ResponseEntity<ApiResponse<FacilityReservationOverviewResponse>> getReservations(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+    ) {
+        FacilityReservationOverviewResponse response = facilityService.getReservations(
+                managerId,
+                facilityId,
+                fromDate,
+                toDate
+        );
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

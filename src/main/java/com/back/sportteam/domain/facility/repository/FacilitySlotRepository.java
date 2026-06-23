@@ -34,6 +34,12 @@ public interface FacilitySlotRepository extends JpaRepository<FacilitySlot, Stri
 
     List<FacilitySlot> findAllByFacilityIdAndSlotDateOrderByStartTime(String facilityId, LocalDate slotDate);
 
+    List<FacilitySlot> findAllByFacilityIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+            String facilityId,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
     @Modifying
     @Query("UPDATE FacilitySlot s SET s.price = :price " +
            "WHERE s.facilityId = :facilityId AND s.status IN :statuses " +
