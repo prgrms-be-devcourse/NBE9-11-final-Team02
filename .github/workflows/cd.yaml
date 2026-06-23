@@ -144,6 +144,10 @@ jobs:
             echo "${{ steps.compose.outputs.b64 }}" | base64 -d > /home/ec2-user/app/docker-compose.yaml
             echo "✅ docker-compose.yaml 최신화 완료"
 
+            # common 네트워크 없으면 생성
+            docker network inspect common >/dev/null 2>&1 || docker network create common
+            echo "✅ Docker 네트워크 확인"
+
             # kafka 미실행 시 시작
             docker-compose -f /home/ec2-user/app/docker-compose.yaml up -d kafka
             echo "✅ Kafka 기동 확인"
