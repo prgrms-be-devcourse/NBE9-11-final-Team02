@@ -24,6 +24,7 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
@@ -36,8 +37,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,6 +69,9 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private MatchQueryRepository matchQueryRepository;
 
     @Mock
     private FacilitySlotRepository facilitySlotRepository;
@@ -233,7 +235,7 @@ class MatchServiceTest {
                 0,
                 20
         );
-        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(matchQueryRepository.findAll(condition))
                 .thenReturn(new PageImpl<>(List.of(createMatch())));
 
         Page<MatchSummaryResponse> response = matchService.getMatches(condition);
@@ -257,8 +259,12 @@ class MatchServiceTest {
         lowerScoreMatch.increaseCurrentCount();
         when(userSportStatRepository.findByUser_IdAndSportType("user-id", SportType.FUTSAL))
                 .thenReturn(Optional.empty());
-        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(lowerScoreMatch, recommendedMatch)));
+        when(matchQueryRepository.findRecommendationCandidates(
+                eq(SportType.FUTSAL),
+                eq(MatchStatus.RECRUITING),
+                any(LocalDateTime.class),
+                eq(10)
+        )).thenReturn(List.of(lowerScoreMatch, recommendedMatch));
 
         List<MatchRecommendationResponse> response = matchService.recommendMatches("user-id", request);
 
