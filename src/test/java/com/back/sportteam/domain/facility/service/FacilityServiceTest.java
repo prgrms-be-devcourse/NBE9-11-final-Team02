@@ -647,9 +647,10 @@ class FacilityServiceTest {
         LocalDate date = LocalDate.of(2026, Month.JULY, 1);
         when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
                 .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
 
         assertThatThrownBy(() -> facilityService.getReservations(
-                "other-manager-id", facility.getId(), date, date
+                "other-manager-id", facilityId, date, date
         ))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
@@ -663,9 +664,10 @@ class FacilityServiceTest {
         LocalDate toDate = LocalDate.of(2026, Month.JULY, 1);
         when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
                 .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
 
         assertThatThrownBy(() -> facilityService.getReservations(
-                "manager-id", facility.getId(), fromDate, toDate
+                "manager-id", facilityId, fromDate, toDate
         ))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
