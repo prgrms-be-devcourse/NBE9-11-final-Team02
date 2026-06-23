@@ -50,6 +50,7 @@ public class SecurityConfig {
                                     "/api/v1/auth/signup",
                                     "/api/v1/auth/login",
                                     "/api/v1/auth/refresh",
+                                    "/api/v1/payments/webhook/**",
                                     "/api/v1/health",
                                     "/actuator/health",
                                     "/actuator/prometheus"
