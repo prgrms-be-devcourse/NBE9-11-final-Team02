@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum MypageErrorCode implements ErrorCode {
+public enum MyPageErrorCode implements ErrorCode {
     FACILITY_PAYMENT_NOT_FOUND("MYPAGE_001", "시설 결제 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     PARTICIPATION_PAYMENT_NOT_FOUND("MYPAGE_002", "참가비 결제 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 

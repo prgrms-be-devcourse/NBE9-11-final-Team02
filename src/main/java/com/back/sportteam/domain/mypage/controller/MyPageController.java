@@ -28,10 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users/me")
-public class MypageController {
+public class MyPageController {
 
-    private final MyPageMatchService mypageMatchService;
-    private final MyPagePaymentService mypagePaymentService;
+    private final MyPageMatchService myPageMatchService;
+    private final MyPagePaymentService myPagePaymentService;
     private final MyPageRecordService myPageRecordService;
 
     @GetMapping("/records")
@@ -51,7 +51,7 @@ public class MypageController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
     ) {
         MyMatchCondition condition = new MyMatchCondition(sportType, myMatchStatus, role, page, size);
-        Page<MyMatchResponse> response = mypageMatchService.getMyMatches(userId, condition);
+        Page<MyMatchResponse> response = myPageMatchService.getMyMatches(userId, condition);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -61,6 +61,6 @@ public class MypageController {
             @PathVariable String matchId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                mypagePaymentService.getMatchPayment(userId, matchId)));
+                myPagePaymentService.getMatchPayment(userId, matchId)));
     }
 }
