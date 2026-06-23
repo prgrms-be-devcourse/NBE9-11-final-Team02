@@ -14,8 +14,9 @@ public record UserProfileResponse(
         String position,
         String activeRegion,
         String preferredSport,
-        Double mannerScore,
-        Double skillScore
+        java.math.BigDecimal mannerScore,
+        java.math.BigDecimal skillScore
+
 ) {
     public static UserProfileResponse from(User user) {
         return new UserProfileResponse(

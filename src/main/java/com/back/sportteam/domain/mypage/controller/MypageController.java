@@ -6,8 +6,10 @@ import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
+import com.back.sportteam.domain.mypage.dto.response.MyRecordResponse;
 import com.back.sportteam.domain.mypage.service.MyPageMatchService;
 import com.back.sportteam.domain.mypage.service.MyPagePaymentService;
+import com.back.sportteam.domain.mypage.service.MyPageRecordService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -30,6 +32,14 @@ public class MypageController {
 
     private final MyPageMatchService mypageMatchService;
     private final MyPagePaymentService mypagePaymentService;
+    private final MyPageRecordService myPageRecordService;
+
+    @GetMapping("/records")
+    public ResponseEntity<ApiResponse<MyRecordResponse>> getMyRecord(
+            @AuthenticationPrincipal String userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(myPageRecordService.getMyRecord(userId)));
+    }
 
     @GetMapping("/matches")
     public ResponseEntity<ApiResponse<Page<MyMatchResponse>>> getMyMatches(

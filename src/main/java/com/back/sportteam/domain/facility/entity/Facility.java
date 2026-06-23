@@ -92,7 +92,7 @@ public class Facility {
     @Column(name = "rating_avg", precision = 3, scale = 2)
     private BigDecimal ratingAvg = BigDecimal.ZERO;
 
-    @Column(name = "rating_sum", precision = 5, scale = 1)
+    @Column(name = "rating_sum", precision = 5, scale = 2)
     private BigDecimal ratingSum = BigDecimal.ZERO;
 
     @Column(name = "review_count", nullable = false)
