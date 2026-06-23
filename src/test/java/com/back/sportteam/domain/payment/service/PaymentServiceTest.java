@@ -89,7 +89,6 @@ class PaymentServiceTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(payment.getPaidAt()).isNull();
         assertThat(payment.getRefundedAt()).isNull();
-        assertThat(payment.getCreatedAt()).isNotNull();
     }
 
     @Test

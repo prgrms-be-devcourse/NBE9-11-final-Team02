@@ -7,12 +7,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Getter
 @Entity
@@ -20,7 +20,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
 
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -68,6 +67,7 @@ public class Payment {
     @Column(name = "refunded_at")
     private LocalDateTime refundedAt;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -91,7 +91,6 @@ public class Payment {
         this.refundedAmount = 0;
         this.pgProvider = PaymentProvider.TOSSPAYMENTS;
         this.status = PaymentStatus.PENDING;
-        this.createdAt = LocalDateTime.now(SERVICE_ZONE);
     }
 
     public static Payment create(
