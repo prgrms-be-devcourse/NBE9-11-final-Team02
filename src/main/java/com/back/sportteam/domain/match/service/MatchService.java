@@ -20,18 +20,17 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -49,6 +48,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final MatchQueryRepository matchQueryRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
@@ -89,7 +89,7 @@ public class MatchService {
 
     @Transactional(readOnly = true)
     public Page<MatchSummaryResponse> getMatches(MatchSearchCondition condition) {
-        return matchRepository.findAll(toSpecification(condition), condition.toPageable())
+        return matchQueryRepository.findAll(condition)
                 .map(MatchSummaryResponse::from);
     }
 
@@ -101,18 +101,12 @@ public class MatchService {
 
         LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
         int size = request.recommendationSize();
-        MatchSearchCondition condition = new MatchSearchCondition(
-                request.sportType(),
-                MatchStatus.RECRUITING,
-                null,
-                null,
-                null,
-                null,
-                0,
-                size * 5
-        );
-
-        return matchRepository.findAll(toRecommendationSpecification(condition, now), PageRequest.of(0, size * 5))
+        return matchQueryRepository.findRecommendationCandidates(
+                        request.sportType(),
+                        MatchStatus.RECRUITING,
+                        now,
+                        size * 5
+                )
                 .stream()
                 .map(match -> recommend(match, userSkillScore, request.gender(), now))
                 .sorted(Comparator
@@ -286,61 +280,6 @@ public class MatchService {
         if (match.isHostedBy(userId)) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_JOIN);
         }
-    }
-
-    private Specification<Match> toSpecification(MatchSearchCondition condition) {
-        return Specification
-                .where(equalSportType(condition))
-                .and(equalStatus(condition))
-                .and(equalMinSkillLevel(condition))
-                .and(equalMaxSkillLevel(condition))
-                .and(equalRequiredGender(condition));
-    }
-
-    private Specification<Match> toRecommendationSpecification(MatchSearchCondition condition, LocalDateTime now) {
-        return Specification
-                .where(equalSportType(condition))
-                .and(equalStatus(condition))
-                .and(notFull())
-                .and(recruitDeadlineAfter(now));
-    }
-
-    private Specification<Match> equalSportType(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.sportType() == null
-                ? null
-                : criteriaBuilder.equal(root.get("sportType"), condition.sportType());
-    }
-
-    private Specification<Match> equalStatus(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.status() == null
-                ? null
-                : criteriaBuilder.equal(root.get("status"), condition.status());
-    }
-
-    private Specification<Match> equalMinSkillLevel(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.minSkillLevel() == null
-                ? null
-                : criteriaBuilder.equal(root.get("minSkillLevel"), condition.minSkillLevel());
-    }
-
-    private Specification<Match> equalMaxSkillLevel(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.maxSkillLevel() == null
-                ? null
-                : criteriaBuilder.equal(root.get("maxSkillLevel"), condition.maxSkillLevel());
-    }
-
-    private Specification<Match> equalRequiredGender(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.requiredGender() == null
-                ? null
-                : criteriaBuilder.equal(root.get("requiredGender"), condition.requiredGender());
-    }
-
-    private Specification<Match> notFull() {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.lessThan(root.get("currentCount"), root.get("capacity"));
-    }
-
-    private Specification<Match> recruitDeadlineAfter(LocalDateTime now) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.greaterThan(root.get("recruitDeadline"), now);
     }
 
     private MatchRecommendationResponse recommend(
