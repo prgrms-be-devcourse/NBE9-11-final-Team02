@@ -71,6 +71,22 @@ class FacilityManagerControllerTest {
     }
 
     @Test
+    void 시설_예약_현황을_조회하면_200_응답을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/manager/facilities/facility-id/reservations")
+                        .header("X-USER-ID", "manager-id")
+                        .param("fromDate", "2026-07-01")
+                        .param("toDate", "2026-07-31"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 시설_예약_조회_날짜가_없으면_400_응답을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/manager/facilities/facility-id/reservations")
+                        .header("X-USER-ID", "manager-id"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void 슬롯_요금이_음수이면_400_응답을_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/manager/facilities/facility-id/slots")
                         .header("X-USER-ID", "manager-id")

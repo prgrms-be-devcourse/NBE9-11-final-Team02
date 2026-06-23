@@ -6,6 +6,7 @@ import com.back.sportteam.domain.facility.dto.request.SlotSetupRequest;
 import com.back.sportteam.domain.facility.dto.request.SlotUpdateRequest;
 import com.back.sportteam.domain.facility.dto.response.FacilitySlotResponse;
 import com.back.sportteam.domain.facility.dto.response.FacilitySummaryResponse;
+import com.back.sportteam.domain.facility.dto.response.FacilityReservationOverviewResponse;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.dto.response.FacilityResponse;
 import com.back.sportteam.domain.facility.entity.Facility;
@@ -16,6 +17,12 @@ import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.SportType;
+import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
+import com.back.sportteam.domain.payment.repository.FacilityRevenueProjection;
+import com.back.sportteam.domain.payment.repository.PaymentRepository;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +33,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Month;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +54,12 @@ class FacilityServiceTest {
 
     @Mock
     private FacilitySlotRepository facilitySlotRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
 
     @InjectMocks
     private FacilityService facilityService;
@@ -574,6 +592,86 @@ class FacilityServiceTest {
         List<FacilitySlotResponse> response = facilityService.getSlotsByDate(facility.getId(), date);
 
         assertThat(response).isEmpty();
+    }
+
+    @Test
+    void 시설_예약_현황과_수익과_잔여_타임을_조회한다() {
+        Facility facility = createFacility("manager-id");
+        LocalDate date = LocalDate.of(2026, Month.JULY, 1);
+        FacilitySlot reservedSlot = FacilitySlot.create(
+                facility.getId(), date, LocalTime.of(9, 0), LocalTime.of(10, 0), 50_000
+        );
+        reservedSlot.reserve();
+        FacilitySlot availableSlot = FacilitySlot.create(
+                facility.getId(), date, LocalTime.of(10, 0), LocalTime.of(11, 0), 50_000
+        );
+        Reservation reservation = Reservation.pending(
+                reservedSlot.getId(),
+                LocalDateTime.of(2026, Month.JUNE, 20, 10, 0)
+        );
+        reservation.confirm();
+        FacilityRevenueProjection revenue = mock(FacilityRevenueProjection.class);
+
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findAllByFacilityIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                facility.getId(), date, date
+        )).thenReturn(List.of(reservedSlot, availableSlot));
+        when(reservationRepository.findAllByFacilitySlotIdIn(
+                List.of(reservedSlot.getId(), availableSlot.getId())
+        )).thenReturn(List.of(reservation));
+        when(paymentRepository.sumNetRevenueByFacilitySlotIds(
+                List.of(reservedSlot.getId(), availableSlot.getId()),
+                PaymentType.FACILITY,
+                List.of(PaymentStatus.PAID, PaymentStatus.REFUNDED)
+        )).thenReturn(List.of(revenue));
+        when(revenue.getFacilitySlotId()).thenReturn(reservedSlot.getId());
+        when(revenue.getNetRevenue()).thenReturn(45_000L);
+
+        FacilityReservationOverviewResponse response = facilityService.getReservations(
+                "manager-id", facility.getId(), date, date
+        );
+
+        assertThat(response.totalSlots()).isEqualTo(2);
+        assertThat(response.reservedSlots()).isEqualTo(1);
+        assertThat(response.availableSlots()).isEqualTo(1);
+        assertThat(response.totalRevenue()).isEqualTo(45_000L);
+        assertThat(response.slots()).hasSize(2);
+        assertThat(response.slots().getFirst().reservationId()).isEqualTo(reservation.getId());
+        assertThat(response.slots().getFirst().revenue()).isEqualTo(45_000L);
+    }
+
+    @Test
+    void 다른_매니저는_시설_예약_현황을_조회할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        LocalDate date = LocalDate.of(2026, Month.JULY, 1);
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.getReservations(
+                "other-manager-id", facilityId, date, date
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+    }
+
+    @Test
+    void 예약_조회_시작일이_종료일보다_늦으면_예외가_발생한다() {
+        Facility facility = createFacility("manager-id");
+        LocalDate fromDate = LocalDate.of(2026, Month.JULY, 2);
+        LocalDate toDate = LocalDate.of(2026, Month.JULY, 1);
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.getReservations(
+                "manager-id", facilityId, fromDate, toDate
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_RESERVATION_INVALID_DATE_RANGE);
     }
 
     private FacilityCreateRequest createRequest() {

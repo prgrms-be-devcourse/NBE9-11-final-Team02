@@ -52,4 +52,19 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             @Param("paymentType") PaymentType paymentType,
             @Param("status") PaymentStatus status
     );
+
+    @Query("""
+            select payment.facilitySlotId as facilitySlotId,
+                   sum(payment.amount - payment.refundedAmount) as netRevenue
+            from Payment payment
+            where payment.facilitySlotId in :facilitySlotIds
+              and payment.paymentType = :paymentType
+              and payment.status in :statuses
+            group by payment.facilitySlotId
+            """)
+    List<FacilityRevenueProjection> sumNetRevenueByFacilitySlotIds(
+            @Param("facilitySlotIds") List<String> facilitySlotIds,
+            @Param("paymentType") PaymentType paymentType,
+            @Param("statuses") List<PaymentStatus> statuses
+    );
 }
