@@ -4,6 +4,7 @@ import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+@Slf4j
 @Component
 public class TossPaymentsRestClient implements TossPaymentsClient {
 
@@ -37,6 +39,7 @@ public class TossPaymentsRestClient implements TossPaymentsClient {
                     .retrieve()
                     .body(TossPaymentsPaymentResponse.class);
         } catch (RestClientResponseException exception) {
+            log.warn("TossPayments confirm request failed. status={}", exception.getStatusCode());
             if (exception.getStatusCode().is5xxServerError()) {
                 throw new BusinessException(PaymentErrorCode.PAYMENT_CONFIRM_STATUS_UNKNOWN);
             }
