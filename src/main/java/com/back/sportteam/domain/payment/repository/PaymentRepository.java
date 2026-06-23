@@ -4,8 +4,10 @@ import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +41,20 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select payment from Payment payment where payment.merchantUid = :merchantUid")
     Optional<Payment> findByMerchantUidForUpdate(@Param("merchantUid") String merchantUid);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select payment
+            from Payment payment
+            where payment.status = :status
+              and payment.createdAt < :threshold
+            order by payment.createdAt asc
+            """)
+    List<Payment> findStalePendingPaymentsForUpdate(
+            @Param("status") PaymentStatus status,
+            @Param("threshold") LocalDateTime threshold,
+            Pageable pageable
+    );
 
     @Query("""
             select sum(payment.amount)
