@@ -60,7 +60,7 @@ public class MyPageRecordService {
                 .collect(Collectors.toSet());
 
         List<MyRecordResponse.SkillStat> skillStats = userSportStatRepository
-                .findByUser_IdAndReviewCountGreaterThan(userId, 0)
+                .findByUser_Id(userId)
                 .stream()
                 .filter(stat -> participatedSportTypeNames.contains(stat.getSportType().name()))
                 .map(MyRecordResponse.SkillStat::from)

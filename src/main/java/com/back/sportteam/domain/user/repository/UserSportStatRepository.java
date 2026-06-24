@@ -12,6 +12,4 @@ public interface UserSportStatRepository extends JpaRepository<UserSportStat, St
     List<UserSportStat> findByUser_Id(String userId);
 
     Optional<UserSportStat> findByUser_IdAndSportType(String userId, SportType sportType);
-
-    List<UserSportStat> findByUser_IdAndReviewCountGreaterThan(String userId, int minReviewCount);
 }
