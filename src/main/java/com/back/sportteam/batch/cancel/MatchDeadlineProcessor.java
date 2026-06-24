@@ -5,6 +5,7 @@ import com.back.sportteam.domain.match.entity.MatchParticipant;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class MatchDeadlineProcessor {
     private final MatchParticipantRepository matchParticipantRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final ReservationSlotService reservationSlotService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Transactional
     public void process(String matchId, LocalDateTime processedAt) {
@@ -31,6 +33,7 @@ public class MatchDeadlineProcessor {
         if (match.isFull()) {
             match.confirm(processedAt);
             reservationSlotService.confirmReservation(match.getReservationId());
+            notificationEventPublisher.publishMatchConfirmed(matchId, processedAt);
             return;
         }
 
@@ -43,6 +46,7 @@ public class MatchDeadlineProcessor {
                 PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
                 processedAt
         );
+        notificationEventPublisher.publishMatchCancelled(matchId, processedAt);
     }
 
     private void cancelActiveParticipants(String matchId) {

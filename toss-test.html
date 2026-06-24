@@ -1,0 +1,70 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SportTeam Toss Test</title>
+  <script src="https://js.tosspayments.com/v1/payment"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 760px; margin: 40px auto; line-height: 1.5; }
+    button { padding: 12px 16px; font-size: 16px; cursor: pointer; }
+    input { width: 100%; padding: 10px; margin: 6px 0 14px; box-sizing: border-box; }
+    pre { background: #f4f4f4; padding: 16px; overflow: auto; }
+    .box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>SportTeam Toss Test</h1>
+  <div class="box">
+    <label>orderId / merchantUid</label>
+    <input id="orderId" value="mid_a19cafdc65f24e83b2de0a47904a9a4d" />
+
+    <label>amount</label>
+    <input id="amount" type="number" value="10000" />
+
+    <label>orderName</label>
+    <input id="orderName" value="강남 풋살 테스트 매칭 참가비" />
+
+    <label>customerName</label>
+    <input id="customerName" value="결제테스트유저" />
+
+    <button id="payButton">Toss 테스트 결제창 열기</button>
+  </div>
+
+  <h2>결제 성공 후 confirm 요청 Body</h2>
+  <pre id="result">결제 성공 후 여기에 paymentKey/orderId/amount가 표시됩니다.</pre>
+
+  <script>
+    const clientKey = 'test_ck_KNbdOvk5rk5xLOez4XZo3n07xlzm';
+    const tossPayments = TossPayments(clientKey);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('paymentKey')) {
+      const confirmBody = {
+        paymentKey: params.get('paymentKey'),
+        orderId: params.get('orderId'),
+        amount: Number(params.get('amount'))
+      };
+      document.getElementById('result').textContent = JSON.stringify(confirmBody, null, 2);
+    }
+
+    document.getElementById('payButton').addEventListener('click', function () {
+      const orderId = document.getElementById('orderId').value;
+      const amount = Number(document.getElementById('amount').value);
+      const orderName = document.getElementById('orderName').value;
+      const customerName = document.getElementById('customerName').value;
+      const currentUrl = window.location.origin + window.location.pathname;
+
+      tossPayments.requestPayment('카드', {
+        amount,
+        orderId,
+        orderName,
+        customerName,
+        successUrl: currentUrl,
+        failUrl: currentUrl + '?fail=1'
+      });
+    });
+  </script>
+</body>
+</html>
+
