@@ -79,7 +79,7 @@ public class MatchParticipant {
                 match,
                 userId,
                 MatchParticipantRole.PARTICIPANT,
-                MatchParticipantStatus.ACTIVE,
+                MatchParticipantStatus.PAYMENT_PENDING,
                 joinedAt
         );
     }
