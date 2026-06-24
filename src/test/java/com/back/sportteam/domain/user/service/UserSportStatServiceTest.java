@@ -66,8 +66,11 @@ class UserSportStatServiceTest {
 
         SportStatRegisterResponse response = userSportStatService.registerSportStats(USER_ID, request);
 
-        assertThat(response.stats()).hasSize(1);
-        assertThat(response.stats().get(0).sportType()).isEqualTo(SportType.FUTSAL);
+        assertThat(response.stats())
+                .hasSize(1)
+                .first()
+                .extracting(SportStatRegisterResponse.SportStatItem::sportType)
+                .isEqualTo(SportType.FUTSAL);
     }
 
     @Test
@@ -134,14 +137,16 @@ class UserSportStatServiceTest {
         SportStatResponse futsal = response.stream()
                 .filter(r -> r.sportType() == SportType.FUTSAL)
                 .findFirst().orElseThrow();
-        assertThat(futsal.registered()).isTrue();
-        assertThat(futsal.selfReportedLevel()).isEqualTo(SelfReportedLevel.INTERMEDIATE);
+        assertThat(futsal)
+                .extracting(SportStatResponse::registered, SportStatResponse::selfReportedLevel)
+                .containsExactly(true, SelfReportedLevel.INTERMEDIATE);
 
         SportStatResponse basketball = response.stream()
                 .filter(r -> r.sportType() == SportType.BASKETBALL)
                 .findFirst().orElseThrow();
-        assertThat(basketball.registered()).isFalse();
-        assertThat(basketball.selfReportedLevel()).isNull();
+        assertThat(basketball)
+                .extracting(SportStatResponse::registered, SportStatResponse::selfReportedLevel)
+                .containsExactly(false, null);
     }
 
     @Test
