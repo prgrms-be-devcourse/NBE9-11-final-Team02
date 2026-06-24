@@ -27,10 +27,11 @@ public class PaymentPostProcessor {
     private final MatchRepository matchRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final ReservationRepository reservationRepository;
+    private final PaymentRefundRequestService paymentRefundRequestService;
 
-    public void processPaidPayment(Payment payment) {
+    public void processPaidPayment(Payment payment, LocalDateTime approvedAt) {
         if (payment.getPaymentType() == PaymentType.PARTICIPATION) {
-            activateParticipant(payment);
+            activateParticipant(payment, approvedAt);
             return;
         }
 
@@ -46,10 +47,29 @@ public class PaymentPostProcessor {
         cancelMatchForFacilityPayment(payment, processedAt);
     }
 
-    private void activateParticipant(Payment payment) {
+    private void activateParticipant(Payment payment, LocalDateTime approvedAt) {
         MatchParticipant participant = matchParticipantRepository.findById(payment.getParticipantId())
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_PARTICIPANT_NOT_FOUND));
+        if (participant.getMatch().isRecruitClosed(approvedAt)) {
+            cancelLateApprovedParticipant(payment, participant, approvedAt);
+            return;
+        }
         participant.activate();
+    }
+
+    private void cancelLateApprovedParticipant(
+            Payment payment,
+            MatchParticipant participant,
+            LocalDateTime approvedAt
+    ) {
+        if (participant.cancel()) {
+            participant.getMatch().decreaseCurrentCount();
+        }
+        paymentRefundRequestService.requestParticipantRefunds(
+                payment.getParticipantId(),
+                PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
+                approvedAt
+        );
     }
 
     private void confirmFacilitySlot(Payment payment) {

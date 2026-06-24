@@ -9,6 +9,9 @@ import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.service.PaymentWebhookProcessor;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.response.ApiResponse;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +19,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @RestController
 @Profile("dev")
@@ -27,6 +28,7 @@ public class PaymentWebhookTestController {
 
     private static final String DEV_EVENT_PREFIX = "dev_event_";
     private static final String DEV_TRANSACTION_PREFIX = "dev_pg_";
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookProcessor paymentWebhookProcessor;
@@ -39,7 +41,8 @@ public class PaymentWebhookTestController {
                 PaymentWebhookEventType.PAYMENT_SUCCEEDED,
                 merchantUid,
                 generateTransactionId(),
-                payment.getAmount()
+                payment.getAmount(),
+                LocalDateTime.now(SERVICE_ZONE)
         ));
         return ResponseEntity.ok(ApiResponse.ok(PaymentWebhookResponse.ok()));
     }
@@ -52,7 +55,8 @@ public class PaymentWebhookTestController {
                 PaymentWebhookEventType.PAYMENT_FAILED,
                 merchantUid,
                 null,
-                payment.getAmount()
+                payment.getAmount(),
+                null
         ));
         return ResponseEntity.ok(ApiResponse.ok(PaymentWebhookResponse.ok()));
     }

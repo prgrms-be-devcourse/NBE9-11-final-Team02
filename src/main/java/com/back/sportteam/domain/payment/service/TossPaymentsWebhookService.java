@@ -5,9 +5,12 @@ import com.back.sportteam.domain.payment.dto.response.PaymentWebhookResponse;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEventType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.global.util.TimeUtils;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import com.back.sportteam.infra.payment.toss.TossPaymentsPaymentResponse;
 import com.back.sportteam.infra.payment.toss.TossPaymentsWebhookRequest;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
@@ -43,7 +46,8 @@ public class TossPaymentsWebhookService {
                 eventType,
                 data.orderId(),
                 data.paymentKey(),
-                data.totalAmount()
+                data.totalAmount(),
+                toServiceLocalDateTime(payment.approvedAt())
         ));
     }
 
@@ -89,6 +93,13 @@ public class TossPaymentsWebhookService {
                 || !webhook.totalAmount().equals(payment.totalAmount())) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);
         }
+    }
+
+    private LocalDateTime toServiceLocalDateTime(OffsetDateTime approvedAt) {
+        if (approvedAt == null) {
+            return null;
+        }
+        return approvedAt.atZoneSameInstant(TimeUtils.SERVICE_ZONE).toLocalDateTime();
     }
 
     private boolean hasText(String value) {

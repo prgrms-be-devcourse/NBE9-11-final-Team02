@@ -19,6 +19,7 @@ import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import com.back.sportteam.infra.payment.toss.TossPaymentsPaymentResponse;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentConfirmServiceTest {
+
+    private static final OffsetDateTime APPROVED_AT = OffsetDateTime.parse("2026-06-23T17:22:17+09:00");
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -75,7 +78,7 @@ class PaymentConfirmServiceTest {
         Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         TossPaymentsPaymentResponse tossResponse =
-                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 10_000);
+                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 10_000, APPROVED_AT);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
         when(tossPaymentsClient.confirm("payment-key", "mid_12345", 10_000)).thenReturn(tossResponse);
 
@@ -87,7 +90,7 @@ class PaymentConfirmServiceTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getPgTransactionId()).isEqualTo("payment-key");
         assertThat(payment.getPaidAt()).isNotNull();
-        verify(paymentPostProcessor).processPaidPayment(payment);
+        verify(paymentPostProcessor).processPaidPayment(any(Payment.class), any());
     }
 
     @Test
@@ -188,7 +191,7 @@ class PaymentConfirmServiceTest {
         Payment payment = createPendingParticipationPayment();
         PaymentConfirmRequest request = createRequest(10_000);
         TossPaymentsPaymentResponse tossResponse =
-                new TossPaymentsPaymentResponse("payment-key", "different-order-id", "DONE", 10_000);
+                new TossPaymentsPaymentResponse("payment-key", "different-order-id", "DONE", 10_000, APPROVED_AT);
         when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
         when(tossPaymentsClient.confirm("payment-key", "mid_12345", 10_000)).thenReturn(tossResponse);
 
@@ -198,7 +201,7 @@ class PaymentConfirmServiceTest {
                 .isEqualTo(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
-        verify(paymentPostProcessor, never()).processPaidPayment(any());
+        verify(paymentPostProcessor, never()).processPaidPayment(any(Payment.class), any());
     }
 
     private Payment createPendingParticipationPayment() {

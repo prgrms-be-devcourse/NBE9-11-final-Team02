@@ -8,8 +8,8 @@ import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.global.util.TimeUtils;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PaymentWebhookProcessor {
-
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final PaymentRepository paymentRepository;
     private final PaymentWebhookEventRepository paymentWebhookEventRepository;
@@ -34,7 +32,7 @@ public class PaymentWebhookProcessor {
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
         validateAmount(payment, request.amount());
 
-        LocalDateTime processedAt = LocalDateTime.now(SERVICE_ZONE);
+        LocalDateTime processedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
         changePaymentStatus(payment, request, processedAt);
         paymentWebhookEventRepository.saveAndFlush(PaymentWebhookEvent.create(
                 payment,
@@ -60,8 +58,9 @@ public class PaymentWebhookProcessor {
 
         try {
             if (request.eventType().getPaymentStatus() == PaymentStatus.PAID) {
-                payment.complete(request.pgTransactionId(), processedAt);
-                paymentPostProcessor.processPaidPayment(payment);
+                LocalDateTime approvedAt = getApprovedAt(request, processedAt);
+                payment.complete(request.pgTransactionId(), approvedAt);
+                paymentPostProcessor.processPaidPayment(payment, approvedAt);
                 return;
             }
             payment.fail(normalize(request.pgTransactionId()));
@@ -69,6 +68,13 @@ public class PaymentWebhookProcessor {
         } catch (IllegalStateException _) {
             throw new BusinessException(PaymentErrorCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
+    }
+
+    private LocalDateTime getApprovedAt(PaymentWebhookRequest request, LocalDateTime processedAt) {
+        if (request.approvedAt() == null) {
+            return processedAt;
+        }
+        return request.approvedAt();
     }
 
     private boolean shouldIgnoreFailureWebhook(Payment payment, PaymentWebhookRequest request) {
