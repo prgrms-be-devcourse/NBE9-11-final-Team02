@@ -13,6 +13,7 @@ import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import com.back.sportteam.infra.payment.toss.TossPaymentsPaymentResponse;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class TossPaymentsWebhookServiceTest {
+
+    private static final OffsetDateTime APPROVED_AT = OffsetDateTime.parse("2026-06-23T17:22:17+09:00");
 
     @Mock
     private TossPaymentsClient tossPaymentsClient;
@@ -44,7 +47,7 @@ class TossPaymentsWebhookServiceTest {
     @Test
     void DONE_웹훅이면_토스_결제를_재조회한_뒤_PAID_이벤트로_처리한다() {
         when(tossPaymentsClient.getPayment("payment-key")).thenReturn(
-                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 10_000)
+                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 10_000, APPROVED_AT)
         );
         when(paymentWebhookService.handle(any())).thenReturn(PaymentWebhookResponse.ok());
 
@@ -58,12 +61,13 @@ class TossPaymentsWebhookServiceTest {
         org.assertj.core.api.Assertions.assertThat(request.eventType())
                 .isEqualTo(PaymentWebhookEventType.PAYMENT_SUCCEEDED);
         org.assertj.core.api.Assertions.assertThat(request.pgTransactionId()).isEqualTo("payment-key");
+        org.assertj.core.api.Assertions.assertThat(request.approvedAt()).isNotNull();
     }
 
     @Test
     void 토스_재조회_결과가_웹훅과_다르면_처리하지_않는다() {
         when(tossPaymentsClient.getPayment("payment-key")).thenReturn(
-                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 9_000)
+                new TossPaymentsPaymentResponse("payment-key", "mid_12345", "DONE", 9_000, APPROVED_AT)
         );
         String payload = donePayload();
 
@@ -93,7 +97,8 @@ class TossPaymentsWebhookServiceTest {
                     "paymentKey": "payment-key",
                     "orderId": "mid_12345",
                     "status": "DONE",
-                    "totalAmount": 10000
+                    "totalAmount": 10000,
+                  "approvedAt": "2026-06-23T17:22:17+09:00"
                   }
                 }
                 """;

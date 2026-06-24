@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import com.back.sportteam.domain.payment.dto.request.PaymentWebhookRequest;
 import com.back.sportteam.domain.payment.entity.PaymentWebhookEventType;
 import com.back.sportteam.domain.payment.repository.PaymentWebhookEventRepository;
+import java.time.LocalDateTime;
+import java.time.Month;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -46,7 +48,8 @@ class PaymentWebhookServiceTest {
                 PaymentWebhookEventType.PAYMENT_SUCCEEDED,
                 "mid_12345",
                 "payment-key",
-                10_000
+                10_000,
+                LocalDateTime.of(2026, Month.JUNE, 23, 17, 22)
         );
     }
 }
