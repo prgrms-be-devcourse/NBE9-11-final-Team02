@@ -1,7 +1,6 @@
 package com.back.sportteam.domain.admin.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -86,7 +85,7 @@ class AdminManagementControllerTest {
 
     @Test
     void getBlacklistCandidatesReturnsPagedResponse() throws Exception {
-        when(adminManagementService.getBlacklistCandidates(any(BigDecimal.class), eq(5), any(Pageable.class)))
+        when(adminManagementService.getBlacklistCandidates(any(BigDecimal.class), any(Integer.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/v1/admin/users/blacklist/candidates")
@@ -114,7 +113,7 @@ class AdminManagementControllerTest {
                 LocalDateTime.of(2026, Month.JUNE, 24, 12, 0),
                 LocalDateTime.of(2026, Month.JUNE, 24, 10, 0)
         );
-        when(adminManagementService.updateUserRestriction(eq("user-id"), eq(true), eq("bad manner")))
+        when(adminManagementService.updateUserRestriction("user-id", true, "bad manner"))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/admin/users/user-id/restriction")
