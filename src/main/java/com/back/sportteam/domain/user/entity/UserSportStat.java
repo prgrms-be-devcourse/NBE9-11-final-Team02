@@ -42,7 +42,7 @@ public class UserSportStat {
     @Column(name = "skill_rating", nullable = false, precision = 3, scale = 2)
     private BigDecimal skillRating;
 
-    @Column(name = "skill_rating_sum", nullable = false, precision = 5, scale = 1)
+    @Column(name = "skill_rating_sum", nullable = false, precision = 5, scale = 2)
     private BigDecimal skillRatingSum;
 
     @Column(name = "review_count", nullable = false)

@@ -58,13 +58,13 @@ public class User {
     @Column(name = "preferred_sport", length = 50)
     private String preferredSport;
 
-    @Column(name = "manner_score", nullable = false)
-    private Double mannerScore = 0.0;
+    @Column(name = "manner_score", nullable = false, precision = 3, scale = 2)
+    private BigDecimal mannerScore = BigDecimal.ZERO;
 
-    @Column(name = "skill_score", nullable = false)
-    private Double skillScore = 0.0;
+    @Column(name = "skill_score", nullable = false, precision = 3, scale = 2)
+    private BigDecimal skillScore = BigDecimal.ZERO;
 
-    @Column(name = "manner_rating_sum", precision = 5, scale = 1, nullable = false)
+    @Column(name = "manner_rating_sum", precision = 5, scale = 2, nullable = false)
     private BigDecimal mannerRatingSum = BigDecimal.ZERO;
 
     @Column(name = "manner_review_count", nullable = false)
@@ -116,8 +116,7 @@ public class User {
         this.mannerRatingSum = this.mannerRatingSum.add(rating);
         this.mannerReviewCount++;
         this.mannerScore = this.mannerRatingSum
-                .divide(BigDecimal.valueOf(this.mannerReviewCount), 1, java.math.RoundingMode.HALF_UP)
-                .doubleValue();
+                .divide(BigDecimal.valueOf(this.mannerReviewCount), 2, java.math.RoundingMode.HALF_UP);
     }
 
     @PreUpdate

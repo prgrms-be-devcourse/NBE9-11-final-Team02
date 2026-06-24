@@ -6,8 +6,10 @@ import com.back.sportteam.domain.mypage.dto.MyMatchStatus;
 import com.back.sportteam.domain.mypage.dto.request.MyMatchCondition;
 import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
 import com.back.sportteam.domain.mypage.dto.response.MyMatchResponse;
+import com.back.sportteam.domain.mypage.dto.response.MyRecordResponse;
 import com.back.sportteam.domain.mypage.service.MyPageMatchService;
 import com.back.sportteam.domain.mypage.service.MyPagePaymentService;
+import com.back.sportteam.domain.mypage.service.MyPageRecordService;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -26,10 +28,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users/me")
-public class MypageController {
+public class MyPageController {
 
-    private final MyPageMatchService mypageMatchService;
-    private final MyPagePaymentService mypagePaymentService;
+    private final MyPageMatchService myPageMatchService;
+    private final MyPagePaymentService myPagePaymentService;
+    private final MyPageRecordService myPageRecordService;
+
+    @GetMapping("/records")
+    public ResponseEntity<ApiResponse<MyRecordResponse>> getMyRecord(
+            @AuthenticationPrincipal String userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(myPageRecordService.getMyRecord(userId)));
+    }
 
     @GetMapping("/matches")
     public ResponseEntity<ApiResponse<Page<MyMatchResponse>>> getMyMatches(
@@ -41,7 +51,7 @@ public class MypageController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
     ) {
         MyMatchCondition condition = new MyMatchCondition(sportType, myMatchStatus, role, page, size);
-        Page<MyMatchResponse> response = mypageMatchService.getMyMatches(userId, condition);
+        Page<MyMatchResponse> response = myPageMatchService.getMyMatches(userId, condition);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -51,6 +61,6 @@ public class MypageController {
             @PathVariable String matchId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                mypagePaymentService.getMatchPayment(userId, matchId)));
+                myPagePaymentService.getMatchPayment(userId, matchId)));
     }
 }

@@ -12,6 +12,7 @@ import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
 import com.back.sportteam.domain.user.repository.UserRepository;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,8 +44,8 @@ class UserProfileServiceTest {
         assertThat(response.nickname()).isEqualTo("오상민");
         assertThat(response.role()).isEqualTo(UserRole.USER);
         assertThat(response.provider()).isEqualTo(AuthProvider.LOCAL);
-        assertThat(response.mannerScore()).isEqualTo(0.0);
-        assertThat(response.skillScore()).isEqualTo(0.0);
+        assertThat(response.mannerScore()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(response.skillScore()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @DisplayName("존재하지 않는 유저일 시 예외 발생")

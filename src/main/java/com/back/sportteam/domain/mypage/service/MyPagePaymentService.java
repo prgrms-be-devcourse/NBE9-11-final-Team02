@@ -6,7 +6,7 @@ import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
-import com.back.sportteam.domain.mypage.exception.MypageErrorCode;
+import com.back.sportteam.domain.mypage.exception.MyPageErrorCode;
 import com.back.sportteam.domain.reservation.exception.ReservationErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.errorcode.CommonErrorCode;
@@ -70,7 +70,7 @@ public class MyPagePaymentService {
                 .orElseGet(() -> paymentRepository
                         .findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
                                 userId, reservation.getFacilitySlotId(), PaymentType.FACILITY, PaymentStatus.PENDING)
-                        .orElseThrow(() -> new BusinessException(MypageErrorCode.FACILITY_PAYMENT_NOT_FOUND)));
+                        .orElseThrow(() -> new BusinessException(MyPageErrorCode.FACILITY_PAYMENT_NOT_FOUND)));
 
         LocalDateTime refundedAt = null;
         String refundReason = null;
@@ -109,7 +109,7 @@ public class MyPagePaymentService {
                 .orElseGet(() -> paymentRepository
                         .findFirstByUserIdAndMatchIdAndPaymentTypeAndStatus(
                                 userId, matchId, PaymentType.PARTICIPATION, PaymentStatus.PENDING)
-                        .orElseThrow(() -> new BusinessException(MypageErrorCode.PARTICIPATION_PAYMENT_NOT_FOUND)));
+                        .orElseThrow(() -> new BusinessException(MyPageErrorCode.PARTICIPATION_PAYMENT_NOT_FOUND)));
 
         LocalDateTime refundedAt = null;
         String refundReason = null;
