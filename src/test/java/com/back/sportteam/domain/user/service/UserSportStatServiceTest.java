@@ -166,8 +166,9 @@ class UserSportStatServiceTest {
 
         List<SportStatResponse> response = userSportStatService.getSportStats(USER_ID);
 
-        assertThat(response).hasSize(SportType.values().length);
-        assertThat(response).allMatch(r -> !r.registered());
+        assertThat(response)
+                .hasSize(SportType.values().length)
+                .allMatch(r -> !r.registered());
     }
 
     private User user() {
