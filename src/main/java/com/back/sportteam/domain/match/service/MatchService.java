@@ -24,6 +24,7 @@ import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -80,6 +81,8 @@ public class MatchService {
                 .recruitDeadline(request.recruitDeadline())
                 .cancelDeadline(request.cancelDeadline())
                 .build());
+
+        validateSportStatExists(hostId, match);
 
         Match savedMatch = matchRepository.save(match);
         matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));
@@ -148,6 +151,7 @@ public class MatchService {
         validateJoinable(match);
         validateNotHost(match, userId);
         validateNotParticipated(matchId, userId);
+        validateSportStatExists(userId, match);
 
         match.increaseCurrentCount();
         MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
@@ -211,6 +215,12 @@ public class MatchService {
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 cancelledAt
         );
+    }
+
+    private void validateSportStatExists(String userId, Match match) {
+        if (userSportStatRepository.findByUser_IdAndSportType(userId, match.getSportType()).isEmpty()) {
+            throw new BusinessException(UserErrorCode.SPORT_STAT_NOT_FOUND);
+        }
     }
 
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {

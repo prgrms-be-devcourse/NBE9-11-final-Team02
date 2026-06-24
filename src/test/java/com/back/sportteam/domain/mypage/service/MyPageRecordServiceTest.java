@@ -166,7 +166,6 @@ class MyPageRecordServiceTest {
     private UserSportStat sportStat(SportType sportType) {
         UserSportStat stat = org.mockito.Mockito.mock(UserSportStat.class);
         when(stat.getSportType()).thenReturn(sportType);
-        when(stat.getPosition()).thenReturn("FW");
         when(stat.getSkillRating()).thenReturn(new BigDecimal("3.50"));
         when(stat.getReviewCount()).thenReturn(3);
         return stat;

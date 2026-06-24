@@ -27,9 +27,9 @@ public record MyRecordResponse(
         }
     }
 
-    public record SkillStat(SportType sportType, String position, BigDecimal skillRating, int reviewCount) {
+    public record SkillStat(SportType sportType, BigDecimal skillRating, int reviewCount) {
         public static SkillStat from(UserSportStat stat) {
-            return new SkillStat(stat.getSportType(), stat.getPosition(), stat.getSkillRating(), stat.getReviewCount());
+            return new SkillStat(stat.getSportType(), stat.getSkillRating(), stat.getReviewCount());
         }
     }
 
