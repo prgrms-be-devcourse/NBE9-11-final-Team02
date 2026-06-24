@@ -15,10 +15,10 @@ import com.back.sportteam.domain.review.dto.request.ReviewSubmitRequest;
 import com.back.sportteam.domain.review.dto.response.FacilityReviewResponse;
 import com.back.sportteam.domain.review.entity.FacilityReview;
 import com.back.sportteam.domain.review.entity.ParticipantReview;
-import com.back.sportteam.domain.review.exception.ReviewErrorCode;
 import com.back.sportteam.domain.review.repository.FacilityReviewRepository;
 import com.back.sportteam.domain.review.repository.ParticipantReviewRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.repository.UserRepository;
@@ -120,10 +120,9 @@ public class ReviewService {
                 reviewee.addMannerRating(pr.getMannerRating());
             }
             if (pr.getSkillRating() != null) {
-                // TODO: 매칭 참가 전 해당 종목에 대한 본인 실력 정보 등록 필수화 구현 후 에러코드 재검토
-                Optional<UserSportStat> statOpt = userSportStatRepository
-                        .findByUser_IdAndSportType(revieweeId, match.getSportType());
-                UserSportStat stat = statOpt.orElseThrow(() -> new BusinessException(ReviewErrorCode.NOT_A_PARTICIPANT));
+                UserSportStat stat = userSportStatRepository
+                        .findByUser_IdAndSportType(revieweeId, match.getSportType())
+                        .orElseThrow(() -> new BusinessException(UserErrorCode.SPORT_STAT_NOT_FOUND));
                 stat.addSkillRating(pr.getSkillRating());
             }
         }

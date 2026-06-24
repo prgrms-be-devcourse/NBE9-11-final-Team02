@@ -28,7 +28,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,7 +65,7 @@ class MyPageRecordServiceTest {
                 .thenReturn(7);
         when(myPageRecordRepository.findSportStats(any(), any(), any())).thenReturn(List.of());
         when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(any(), anyInt())).thenReturn(List.of());
+        when(userSportStatRepository.findByUser_Id(any())).thenReturn(List.of());
 
         MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
 
@@ -74,9 +74,8 @@ class MyPageRecordServiceTest {
         assertThat(response.totalMatchCount()).isEqualTo(10);
     }
 
-    // TODO : 참가이력만 있어도 skillStats에 포함되도록 개선
     @Test
-    void 참가이력과_리뷰가_모두_있는_종목만_skillStats에_포함된다() {
+    void 참가이력이_있는_종목은_리뷰_여부와_무관하게_skillStats에_포함된다() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user()));
         when(myPageRecordRepository.countByUserIdAndStatusAndMatch_StatusAndRole(any(), any(), any(), any())).thenReturn(0);
         List<Object[]> sportStatRows = new ArrayList<>();
@@ -86,29 +85,13 @@ class MyPageRecordServiceTest {
         when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
         UserSportStat futsalStat = sportStat(SportType.FUTSAL);
         UserSportStat tennisStat = sportStat(SportType.TENNIS);
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(any(), anyInt()))
+        when(userSportStatRepository.findByUser_Id(any()))
                 .thenReturn(List.of(futsalStat, tennisStat));
 
         MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
 
         assertThat(response.skillStats()).hasSize(1);
         assertThat(response.skillStats().get(0).sportType()).isEqualTo(SportType.FUTSAL);
-    }
-
-    @Test
-    void 참가이력이_있어도_리뷰가_없으면_skillStats에서_제외된다() {
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user()));
-        when(myPageRecordRepository.countByUserIdAndStatusAndMatch_StatusAndRole(any(), any(), any(), any())).thenReturn(0);
-        List<Object[]> sportStatRows = new ArrayList<>();
-        sportStatRows.add(new Object[]{SportType.FUTSAL, 3L});
-        when(myPageRecordRepository.findSportStats(any(), any(), any())).thenReturn(sportStatRows);
-        when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(USER_ID, 0))
-                .thenReturn(List.of());
-
-        MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
-
-        assertThat(response.skillStats()).isEmpty();
     }
 
     @Test
@@ -120,7 +103,7 @@ class MyPageRecordServiceTest {
         when(myPageRecordRepository.countByUserIdAndStatusAndMatch_StatusAndRole(any(), any(), any(), any())).thenReturn(0);
         when(myPageRecordRepository.findSportStats(any(), any(), any())).thenReturn(List.of());
         when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(any(), anyInt())).thenReturn(List.of());
+        when(userSportStatRepository.findByUser_Id(any())).thenReturn(List.of());
 
         MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
 
@@ -129,13 +112,13 @@ class MyPageRecordServiceTest {
     }
 
     @Test
-    void 리뷰는_있지만_참가이력이_없는_종목은_skillStats에서_제외된다() {
+    void 종목을_등록했더라도_참가이력이_없으면_skillStats에서_제외된다() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user()));
         when(myPageRecordRepository.countByUserIdAndStatusAndMatch_StatusAndRole(any(), any(), any(), any())).thenReturn(0);
         when(myPageRecordRepository.findSportStats(any(), any(), any())).thenReturn(List.of());
         when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
         UserSportStat tennisStat = sportStat(SportType.TENNIS);
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(any(), anyInt()))
+        when(userSportStatRepository.findByUser_Id(any()))
                 .thenReturn(List.of(tennisStat));
 
         MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
@@ -149,7 +132,7 @@ class MyPageRecordServiceTest {
         when(myPageRecordRepository.countByUserIdAndStatusAndMatch_StatusAndRole(any(), any(), any(), any())).thenReturn(0);
         when(myPageRecordRepository.findSportStats(any(), any(), any())).thenReturn(List.of());
         when(myPageRecordRepository.findMonthlyStats(any(), any(), any(), any())).thenReturn(List.of());
-        when(userSportStatRepository.findByUser_IdAndReviewCountGreaterThan(any(), anyInt())).thenReturn(List.of());
+        when(userSportStatRepository.findByUser_Id(any())).thenReturn(List.of());
 
         MyRecordResponse response = myPageRecordService.getMyRecord(USER_ID);
 
@@ -166,7 +149,6 @@ class MyPageRecordServiceTest {
     private UserSportStat sportStat(SportType sportType) {
         UserSportStat stat = org.mockito.Mockito.mock(UserSportStat.class);
         when(stat.getSportType()).thenReturn(sportType);
-        when(stat.getPosition()).thenReturn("FW");
         when(stat.getSkillRating()).thenReturn(new BigDecimal("3.50"));
         when(stat.getReviewCount()).thenReturn(3);
         return stat;

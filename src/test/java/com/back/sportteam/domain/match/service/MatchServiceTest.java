@@ -27,6 +27,7 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
@@ -50,10 +53,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class MatchServiceTest {
 
     private static final LocalDateTime CLOSED_RECRUIT_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 1, 10, 0);
@@ -84,6 +89,12 @@ class MatchServiceTest {
 
     @InjectMocks
     private MatchService matchService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpStatMock() {
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any()))
+                .thenReturn(Optional.of(org.mockito.Mockito.mock(UserSportStat.class)));
+    }
 
     @Test
     void 매칭방을_생성하면_방장_참가자도_함께_생성한다() {
@@ -417,6 +428,36 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.ALREADY_PARTICIPATED);
+    }
+
+    @Test
+    void 매칭방_생성시_해당_종목_실력이_미등록이면_예외를_던진다() {
+        MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
+        when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.createMatch("host-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가시_해당_종목_실력이_미등록이면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", List.of(MatchParticipantStatus.ACTIVE)
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
     }
 
     @Test
