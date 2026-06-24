@@ -15,6 +15,10 @@ public record AdminUserResponse(
         String activeRegion,
         BigDecimal mannerScore,
         BigDecimal skillScore,
+        int mannerReviewCount,
+        boolean restricted,
+        String restrictionReason,
+        LocalDateTime restrictedAt,
         LocalDateTime createdAt
 ) {
 
@@ -28,6 +32,10 @@ public record AdminUserResponse(
                 user.getActiveRegion(),
                 user.getMannerScore(),
                 user.getSkillScore(),
+                user.getMannerReviewCount(),
+                user.isRestricted(),
+                user.getRestrictionReason(),
+                user.getRestrictedAt(),
                 user.getCreatedAt()
         );
     }
