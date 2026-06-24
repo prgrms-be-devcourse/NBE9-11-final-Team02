@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,6 +27,8 @@ public class MyPageRecordService {
 
     private final MyPageRecordRepository myPageRecordRepository;
     private final UserRepository userRepository;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+
     private final UserSportStatRepository userSportStatRepository;
 
     @Transactional(readOnly = true)
@@ -45,7 +48,7 @@ public class MyPageRecordService {
                 .map(row -> new MyRecordResponse.SportStat((SportType) row[0], (Long) row[1]))
                 .toList();
 
-        LocalDate fromDate = LocalDate.now().minusMonths(2).withDayOfMonth(1);
+        LocalDate fromDate = LocalDate.now(SERVICE_ZONE).minusMonths(2).withDayOfMonth(1);
         List<MyRecordResponse.MonthlyStat> monthlyStats = myPageRecordRepository
                 .findMonthlyStats(userId, MatchParticipantStatus.ACTIVE, MatchStatus.COMPLETED, fromDate)
                 .stream()

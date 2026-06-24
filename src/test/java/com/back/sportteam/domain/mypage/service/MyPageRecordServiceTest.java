@@ -9,7 +9,6 @@ import com.back.sportteam.domain.mypage.repository.MyPageRecordRepository;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
 import com.back.sportteam.domain.user.entity.UserSportStat;
-import com.back.sportteam.domain.user.entity.SelfReportedLevel;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
@@ -23,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
