@@ -3,6 +3,7 @@ package com.back.sportteam.domain.admin.dto.response;
 import com.back.sportteam.domain.auth.provider.AuthProvider;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record AdminUserResponse(
@@ -12,8 +13,8 @@ public record AdminUserResponse(
         UserRole role,
         AuthProvider provider,
         String activeRegion,
-        double mannerScore,
-        double skillScore,
+        BigDecimal mannerScore,
+        BigDecimal skillScore,
         LocalDateTime createdAt
 ) {
 
