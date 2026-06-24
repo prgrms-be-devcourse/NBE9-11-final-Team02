@@ -14,7 +14,9 @@ import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
 import com.back.sportteam.domain.user.repository.UserRepository;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +41,7 @@ class AdminManagementServiceTest {
     private AdminManagementService adminManagementService;
 
     @Test
-    void 관리자는_플랫폼의_전체_시설을_조회한다() {
+    void getFacilitiesReturnsAllFacilitiesWhenStatusIsNull() {
         Facility facility = createFacility();
         Pageable pageable = PageRequest.of(0, 20);
         when(facilityRepository.findAll(pageable))
@@ -53,7 +55,7 @@ class AdminManagementServiceTest {
     }
 
     @Test
-    void 관리자는_상태별로_시설을_조회한다() {
+    void getFacilitiesFiltersByStatus() {
         Pageable pageable = PageRequest.of(0, 20);
         when(facilityRepository.findAllByStatus(FacilityStatus.ACTIVE, pageable))
                 .thenReturn(Page.empty(pageable));
@@ -64,8 +66,8 @@ class AdminManagementServiceTest {
     }
 
     @Test
-    void 관리자는_플랫폼의_전체_회원을_조회한다() {
-        User user = User.local("user@example.com", "사용자", "password-hash", UserRole.USER);
+    void getUsersReturnsAllUsersWhenRoleIsNull() {
+        User user = User.local("user@example.com", "user", "password-hash", UserRole.USER);
         Pageable pageable = PageRequest.of(0, 20);
         when(userRepository.findAll(pageable))
                 .thenReturn(new PageImpl<>(List.of(user), pageable, 1));
@@ -78,7 +80,7 @@ class AdminManagementServiceTest {
     }
 
     @Test
-    void 관리자는_역할별로_회원을_조회한다() {
+    void getUsersFiltersByRole() {
         Pageable pageable = PageRequest.of(0, 20);
         when(userRepository.findAllByRole(UserRole.MANAGER, pageable))
                 .thenReturn(Page.empty(pageable));
@@ -88,11 +90,69 @@ class AdminManagementServiceTest {
         verify(userRepository).findAllByRole(UserRole.MANAGER, pageable);
     }
 
+    @Test
+    void getRestrictedUsersReturnsRestrictedUsers() {
+        User user = User.local("restricted@example.com", "restricted", "password-hash", UserRole.USER);
+        user.restrict("bad manner");
+        Pageable pageable = PageRequest.of(0, 20);
+        when(userRepository.findAllByRestrictedTrue(pageable))
+                .thenReturn(new PageImpl<>(List.of(user), pageable, 1));
+
+        Page<AdminUserResponse> response = adminManagementService.getRestrictedUsers(pageable);
+
+        assertThat(response.getTotalElements()).isEqualTo(1);
+        assertThat(response.getContent().getFirst().restricted()).isTrue();
+        assertThat(response.getContent().getFirst().restrictionReason()).isEqualTo("bad manner");
+    }
+
+    @Test
+    void getBlacklistCandidatesUsesDefaultThresholdsWhenParamsAreNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(userRepository.findAllByMannerReviewCountGreaterThanEqualAndMannerScoreLessThanEqual(
+                3,
+                new BigDecimal("2.50"),
+                pageable
+        )).thenReturn(Page.empty(pageable));
+
+        adminManagementService.getBlacklistCandidates(null, null, pageable);
+
+        verify(userRepository).findAllByMannerReviewCountGreaterThanEqualAndMannerScoreLessThanEqual(
+                3,
+                new BigDecimal("2.50"),
+                pageable
+        );
+    }
+
+    @Test
+    void updateUserRestrictionRestrictsUser() {
+        User user = User.local("user@example.com", "user", "password-hash", UserRole.USER);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        AdminUserResponse response = adminManagementService.updateUserRestriction(user.getId(), true, "review abuse");
+
+        assertThat(response.restricted()).isTrue();
+        assertThat(response.restrictionReason()).isEqualTo("review abuse");
+        assertThat(response.restrictedAt()).isNotNull();
+    }
+
+    @Test
+    void updateUserRestrictionReleasesUserRestriction() {
+        User user = User.local("user@example.com", "user", "password-hash", UserRole.USER);
+        user.restrict("review abuse");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        AdminUserResponse response = adminManagementService.updateUserRestriction(user.getId(), false, null);
+
+        assertThat(response.restricted()).isFalse();
+        assertThat(response.restrictionReason()).isNull();
+        assertThat(response.restrictedAt()).isNull();
+    }
+
     private Facility createFacility() {
         return Facility.create(
                 "manager-id",
-                "테스트 시설",
-                "서울시 강남구",
+                "test facility",
+                "Seoul Gangnam",
                 FacilityDetails.builder()
                         .capacity(10)
                         .slotDurationMinutes(60)

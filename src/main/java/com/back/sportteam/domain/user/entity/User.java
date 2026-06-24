@@ -70,6 +70,15 @@ public class User {
     @Column(name = "manner_review_count", nullable = false)
     private int mannerReviewCount = 0;
 
+    @Column(nullable = false)
+    private boolean restricted = false;
+
+    @Column(name = "restriction_reason", length = 500)
+    private String restrictionReason;
+
+    @Column(name = "restricted_at")
+    private LocalDateTime restrictedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -117,6 +126,18 @@ public class User {
         this.mannerReviewCount++;
         this.mannerScore = this.mannerRatingSum
                 .divide(BigDecimal.valueOf(this.mannerReviewCount), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public void restrict(String reason) {
+        this.restricted = true;
+        this.restrictionReason = reason;
+        this.restrictedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
+    }
+
+    public void releaseRestriction() {
+        this.restricted = false;
+        this.restrictionReason = null;
+        this.restrictedAt = null;
     }
 
     @PreUpdate
