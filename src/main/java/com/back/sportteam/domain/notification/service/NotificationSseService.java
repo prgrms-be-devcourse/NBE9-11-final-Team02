@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -15,6 +16,7 @@ public class NotificationSseService {
 
     private static final long DEFAULT_TIMEOUT_MILLIS = 60L * 60L * 1000L;
     private static final String CONNECT_EVENT_NAME = "connect";
+    private static final String HEARTBEAT_EVENT_NAME = "heartbeat";
     private static final String NOTIFICATION_EVENT_NAME = "notification";
 
     private final Map<String, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -41,12 +43,28 @@ public class NotificationSseService {
         userEmitters.forEach(emitter -> sendNotification(notification.getUserId(), emitter, response));
     }
 
+    @Scheduled(fixedDelayString = "${app.notification.sse.heartbeat-delay-ms:25000}")
+    public void sendHeartbeat() {
+        emitters.forEach((userId, userEmitters) ->
+                userEmitters.forEach(emitter -> sendHeartbeat(userId, emitter)));
+    }
+
     private void sendConnectEvent(String userId, SseEmitter emitter) {
         try {
             emitter.send(SseEmitter.event()
                     .name(CONNECT_EVENT_NAME)
                     .data("connected"));
         } catch (IOException _) {
+            removeEmitter(userId, emitter);
+        }
+    }
+
+    private void sendHeartbeat(String userId, SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(HEARTBEAT_EVENT_NAME)
+                    .data("ping"));
+        } catch (IOException | IllegalStateException _) {
             removeEmitter(userId, emitter);
         }
     }
