@@ -17,9 +17,10 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.notification.service.NotificationEventPublisher;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
-import java.time.LocalDate;
 import com.back.sportteam.domain.reservation.service.ReservationSlotService;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
@@ -50,11 +51,14 @@ class MatchDeadlineProcessorTest {
     @Mock
     private ReservationSlotService reservationSlotService;
 
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
+
     @InjectMocks
     private MatchDeadlineProcessor matchDeadlineProcessor;
 
     @Test
-    void 정원을_충족한_마감_경기는_자동_확정한다() {
+    void confirmsFullExpiredMatchAndPublishesNotification() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         when(matchRepository.findByIdForUpdate(match.getId())).thenReturn(Optional.of(match));
@@ -64,11 +68,12 @@ class MatchDeadlineProcessorTest {
         assertThat(match.getStatus()).isEqualTo(MatchStatus.CONFIRMED);
         assertThat(match.getConfirmedAt()).isEqualTo(processedAt);
         verify(reservationSlotService).confirmReservation(match.getReservationId());
+        verify(notificationEventPublisher).publishMatchConfirmed(match.getId(), processedAt);
         verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
     }
 
     @Test
-    void 정원에_미달한_마감_경기는_취소하고_환불을_대기열에_등록한다() {
+    void cancelsNotFullExpiredMatchRequestsRefundAndPublishesNotification() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(2, processedAt.minusMinutes(1));
         MatchParticipant participant = mock(MatchParticipant.class);
@@ -90,10 +95,11 @@ class MatchDeadlineProcessorTest {
                 PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
                 processedAt
         );
+        verify(notificationEventPublisher).publishMatchCancelled(match.getId(), processedAt);
     }
 
     @Test
-    void 이미_처리된_경기는_다시_처리하지_않는다() {
+    void skipsAlreadyProcessedMatch() {
         LocalDateTime processedAt = LocalDateTime.of(2026, Month.JUNE, 15, 12, 0);
         Match match = createMatch(1, processedAt.minusMinutes(1));
         match.confirm(processedAt.minusSeconds(1));
@@ -103,13 +109,15 @@ class MatchDeadlineProcessorTest {
 
         verify(matchParticipantRepository, never()).findByMatchIdAndStatus(any(), any());
         verify(paymentRefundRequestService, never()).requestMatchRefunds(any(), any(), any(), any());
+        verify(notificationEventPublisher, never()).publishMatchConfirmed(any(), any());
+        verify(notificationEventPublisher, never()).publishMatchCancelled(any(), any());
     }
 
     private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
         return Match.create(MatchCreateCommand.builder()
                 .reservationId("reservation-" + capacity)
                 .hostId("host-id")
-                .title("풋살 매칭")
+                .title("deadline test match")
                 .sportType(SportType.FUTSAL)
                 .capacity(capacity)
                 .feePerPerson(10_000)

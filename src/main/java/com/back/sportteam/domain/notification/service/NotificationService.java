@@ -38,7 +38,7 @@ public class NotificationService {
         }
 
         List<Notification> notifications = matchParticipantRepository
-                .findByMatchIdAndStatus(event.matchId(), MatchParticipantStatus.ACTIVE)
+                .findByMatchIdAndStatusIn(event.matchId(), notificationTargetStatuses(event.type()))
                 .stream()
                 .map(MatchParticipant::getUserId)
                 .filter(userId -> !notificationRepository.existsByUserIdAndTypeAndReferenceId(
@@ -73,6 +73,13 @@ public class NotificationService {
 
         notification.markRead(LocalDateTime.now(TimeUtils.SERVICE_ZONE));
         return NotificationResponse.from(notification);
+    }
+
+    private List<MatchParticipantStatus> notificationTargetStatuses(NotificationType type) {
+        if (type == NotificationType.MATCH_CANCELLED) {
+            return List.of(MatchParticipantStatus.ACTIVE, MatchParticipantStatus.CANCELLED);
+        }
+        return List.of(MatchParticipantStatus.ACTIVE);
     }
 
     private Notification createNotification(String userId, Match match, MatchNotificationEvent event) {
