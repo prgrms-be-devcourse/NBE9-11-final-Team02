@@ -24,7 +24,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,15 +47,15 @@ class UserSportStatServiceTest {
 
         assertThatThrownBy(() -> userSportStatService.registerSportStats(USER_ID, request))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(UserErrorCode.USER_NOT_FOUND));
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
     }
 
     @Test
     void 종목_실력을_정상_등록하면_등록된_종목과_초기점수를_반환한다() {
         User user = user();
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(userSportStatRepository.findByUser_IdAndSportType(eq(USER_ID), eq(SportType.FUTSAL)))
+        when(userSportStatRepository.findByUser_IdAndSportType(USER_ID, SportType.FUTSAL))
                 .thenReturn(Optional.empty());
         when(userSportStatRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -102,8 +101,8 @@ class UserSportStatServiceTest {
 
         assertThatThrownBy(() -> userSportStatService.registerSportStats(USER_ID, request))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(UserErrorCode.SPORT_STAT_ALREADY_EXISTS));
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.SPORT_STAT_ALREADY_EXISTS);
     }
 
     @Test
@@ -117,8 +116,8 @@ class UserSportStatServiceTest {
 
         assertThatThrownBy(() -> userSportStatService.registerSportStats(USER_ID, request))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(UserErrorCode.SPORT_STAT_ALREADY_EXISTS));
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.SPORT_STAT_ALREADY_EXISTS);
     }
 
     @Test
@@ -151,8 +150,8 @@ class UserSportStatServiceTest {
 
         assertThatThrownBy(() -> userSportStatService.getSportStats(USER_ID))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(UserErrorCode.USER_NOT_FOUND));
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
     }
 
     @Test

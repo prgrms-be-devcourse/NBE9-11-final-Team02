@@ -15,7 +15,6 @@ import com.back.sportteam.domain.review.dto.request.ReviewSubmitRequest;
 import com.back.sportteam.domain.review.dto.response.FacilityReviewResponse;
 import com.back.sportteam.domain.review.entity.FacilityReview;
 import com.back.sportteam.domain.review.entity.ParticipantReview;
-import com.back.sportteam.domain.review.exception.ReviewErrorCode;
 import com.back.sportteam.domain.review.repository.FacilityReviewRepository;
 import com.back.sportteam.domain.review.repository.ParticipantReviewRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
