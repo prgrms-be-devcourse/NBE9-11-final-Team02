@@ -20,6 +20,7 @@ import com.back.sportteam.domain.payment.service.PaymentService;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.GlobalExceptionHandler;
 import java.time.LocalDateTime;
+import java.time.Month;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -63,7 +64,7 @@ class PaymentControllerTest {
     @Test
     void 토스_결제_승인_요청이면_결제를_완료_처리한다() throws Exception {
         PaymentConfirmResponse response =
-                new PaymentConfirmResponse("mid_12345", "payment-key", 10_000, PaymentStatus.PAID, LocalDateTime.of(2026, 6, 23, 17, 22));
+                new PaymentConfirmResponse("mid_12345", "payment-key", 10_000, PaymentStatus.PAID, LocalDateTime.of(2026, Month.JUNE, 23, 17, 22));
         when(paymentConfirmService.confirm(any(String.class), any(PaymentConfirmRequest.class)))
                 .thenReturn(response);
 
