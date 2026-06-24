@@ -354,7 +354,7 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -375,7 +375,7 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
