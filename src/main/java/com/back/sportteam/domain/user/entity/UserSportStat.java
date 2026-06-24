@@ -36,8 +36,9 @@ public class UserSportStat {
     @Column(name = "sport_type", nullable = false, length = 30)
     private SportType sportType;
 
-    @Column(name = "position", nullable = false, length = 20)
-    private String position;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "self_reported_level", nullable = false, length = 15)
+    private SelfReportedLevel selfReportedLevel;
 
     @Column(name = "skill_rating", nullable = false, precision = 3, scale = 2)
     private BigDecimal skillRating;
@@ -48,25 +49,18 @@ public class UserSportStat {
     @Column(name = "review_count", nullable = false)
     private int reviewCount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "self_reported_level", nullable = false, length = 15)
-    private SelfReportedLevel selfReportedLevel;
-
-    private UserSportStat(User user, SportType sportType, String position,
-                           SelfReportedLevel selfReportedLevel) {
+    private UserSportStat(User user, SportType sportType, SelfReportedLevel selfReportedLevel) {
         this.id = UUID.randomUUID().toString();
         this.user = user;
         this.sportType = sportType;
-        this.position = position;
         this.selfReportedLevel = selfReportedLevel;
         this.skillRatingSum = BigDecimal.ZERO;
         this.reviewCount = 0;
         this.skillRating = selfReportedLevel.getInitialScore().setScale(2, RoundingMode.HALF_UP);
     }
 
-    public static UserSportStat create(User user, SportType sportType, String position,
-                                        SelfReportedLevel selfReportedLevel) {
-        return new UserSportStat(user, sportType, position, selfReportedLevel);
+    public static UserSportStat create(User user, SportType sportType, SelfReportedLevel selfReportedLevel) {
+        return new UserSportStat(user, sportType, selfReportedLevel);
     }
 
     public void addSkillRating(BigDecimal newRating) {
@@ -75,7 +69,6 @@ public class UserSportStat {
         this.skillRating = calculateEffectiveRating();
     }
 
-    // 콜드 스타트: 리뷰 10개 미만이면 사용자가 등록한 실력값 가중치를 점진적으로 줄이며 반영
     private BigDecimal calculateEffectiveRating() {
         BigDecimal reviewAvg = skillRatingSum.divide(
                 BigDecimal.valueOf(reviewCount), 2, RoundingMode.HALF_UP);

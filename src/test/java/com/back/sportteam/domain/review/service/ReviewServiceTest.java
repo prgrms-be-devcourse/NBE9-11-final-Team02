@@ -178,7 +178,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);
@@ -220,7 +220,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);
@@ -272,7 +272,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);

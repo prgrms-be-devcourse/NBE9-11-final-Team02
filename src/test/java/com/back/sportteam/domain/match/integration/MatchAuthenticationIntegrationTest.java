@@ -17,9 +17,12 @@ import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
+import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.user.entity.UserRole;
+import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
@@ -69,6 +72,9 @@ class MatchAuthenticationIntegrationTest {
     @MockitoBean
     private StringRedisTemplate redisTemplate;
 
+    @MockitoBean
+    private UserSportStatRepository userSportStatRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
@@ -79,6 +85,9 @@ class MatchAuthenticationIntegrationTest {
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.hasKey(anyString())).thenReturn(false);
+
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), org.mockito.ArgumentMatchers.any(SportType.class)))
+                .thenReturn(java.util.Optional.of(mock(UserSportStat.class)));
     }
 
     @Test
