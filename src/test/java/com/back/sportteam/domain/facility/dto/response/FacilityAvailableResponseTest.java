@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.match.entity.SportType;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +51,25 @@ class FacilityAvailableResponseTest {
         assertThat(response.defaultWeekendPrice()).isEqualTo(20_000);
         assertThat(response.ratingAvg()).isEqualTo(0.0);
         assertThat(response.reviewCount()).isZero();
+    }
+
+    @DisplayName("Redis 캐시 저장을 위해 직렬화 가능")
+    @Test
+    void Redis_캐시_저장을_위해_직렬화_가능() throws IOException {
+        Facility facility = Facility.create(
+                "manager-id",
+                "캐시 테스트 시설",
+                "서울시 강남구",
+                details(List.of("https://img.com/cache.png"))
+        );
+        FacilityAvailableResponse response = FacilityAvailableResponse.from(facility);
+
+        try (
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)
+        ) {
+            objectOutputStream.writeObject(response);
+        }
     }
 
     private FacilityDetails details(List<String> imageUrls) {
