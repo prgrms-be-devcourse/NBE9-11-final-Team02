@@ -66,6 +66,9 @@ class PaymentWebhookProcessorTest {
     @Mock
     private ReservationRepository reservationRepository;
 
+    @Mock
+    private PaymentRefundRequestService paymentRefundRequestService;
+
     private PaymentWebhookProcessor paymentWebhookProcessor;
 
     @BeforeEach
@@ -74,7 +77,8 @@ class PaymentWebhookProcessorTest {
                 matchParticipantRepository,
                 matchRepository,
                 facilitySlotRepository,
-                reservationRepository
+                reservationRepository,
+                paymentRefundRequestService
         );
         paymentWebhookProcessor = new PaymentWebhookProcessor(
                 paymentRepository,
@@ -249,6 +253,36 @@ class PaymentWebhookProcessorTest {
         verify(paymentWebhookEventRepository, never()).saveAndFlush(any());
     }
 
+    @Test
+    void recruitDeadlineAfterApprovedPaymentCancelsParticipantAndRequestsRefund() {
+        Payment payment = createPendingPayment();
+        MatchParticipant participant = createPendingParticipant();
+        participant.getMatch().increaseCurrentCount();
+        LocalDateTime lateApprovedAt = LocalDateTime.of(2099, Month.JUNE, 10, 10, 1);
+        PaymentWebhookRequest request = new PaymentWebhookRequest(
+                "event-late-approved",
+                PaymentWebhookEventType.PAYMENT_SUCCEEDED,
+                "mid_12345",
+                "pg-transaction-late",
+                10_000,
+                lateApprovedAt
+        );
+        when(paymentRepository.findByMerchantUidForUpdate("mid_12345")).thenReturn(Optional.of(payment));
+        when(matchParticipantRepository.findById("participant-id")).thenReturn(Optional.of(participant));
+
+        paymentWebhookProcessor.process(request);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getPaidAt()).isEqualTo(lateApprovedAt);
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.CANCELLED);
+        assertThat(participant.getMatch().getCurrentCount()).isEqualTo(1);
+        verify(paymentRefundRequestService).requestParticipantRefunds(
+                "participant-id",
+                PaymentRefundRequestService.MATCH_MINIMUM_PARTICIPANTS_NOT_MET,
+                lateApprovedAt
+        );
+        verify(paymentWebhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
+    }
     private Payment createPendingPayment() {
         return Payment.create(
                 "participant-id",
@@ -293,7 +327,9 @@ class PaymentWebhookProcessorTest {
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
+                .participantCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
     }
 
@@ -329,7 +365,8 @@ class PaymentWebhookProcessorTest {
                 eventType,
                 "mid_12345",
                 pgTransactionId,
-                amount
+                amount,
+                LocalDateTime.of(2099, Month.JUNE, 10, 9, 0)
         );
     }
 }

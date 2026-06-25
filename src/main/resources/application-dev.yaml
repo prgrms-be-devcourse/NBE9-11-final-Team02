@@ -16,9 +16,10 @@ spring:
       hibernate:
         format_sql: true
 
-toss:
+app:
   payment:
-    secret-key: "${custom.dev.toss.secretKey}"
+    toss:
+      secret-key: "${custom.dev.toss.secretKey}"
 
 match:
   payment-hold:

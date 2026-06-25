@@ -89,7 +89,9 @@ class MatchCompletionQueryTest {
                 .startTime(endTime.minusHours(2))
                 .endTime(endTime)
                 .recruitDeadline(LocalDateTime.of(matchDate, endTime).minusDays(2))
-                .cancelDeadline(LocalDateTime.of(matchDate, endTime).minusDays(1))
+                .participantCancelDeadline(LocalDateTime.of(matchDate, endTime).minusDays(1))
+
+                .hostCancelDeadline(LocalDateTime.of(matchDate, endTime).minusDays(1))
                 .build());
     }
 }

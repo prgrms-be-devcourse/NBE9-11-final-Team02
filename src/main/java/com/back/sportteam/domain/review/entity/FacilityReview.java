@@ -33,7 +33,7 @@ public class FacilityReview {
     @Column(name = "facility_id", columnDefinition = "CHAR(36)", nullable = false)
     private String facilityId;
 
-    @Column(name = "rating", nullable = false, precision = 3, scale = 1)
+    @Column(name = "rating", nullable = false, precision = 2, scale = 1)
     private BigDecimal rating;
 
     @Column(name = "comment", columnDefinition = "TEXT")

@@ -55,6 +55,10 @@ app:
     refund:
       fixed-delay-ms: ${REFUND_FIXED_DELAY_MS:60000}
       batch-size: ${REFUND_BATCH_SIZE:50}
+    payment-pending:
+      fixed-delay-ms: ${PAYMENT_PENDING_FIXED_DELAY_MS:600000}
+      expire-minutes: ${PAYMENT_PENDING_EXPIRE_MINUTES:30}
+      batch-size: ${PAYMENT_PENDING_BATCH_SIZE:100}
     match-completion:
       fixed-delay-ms: ${MATCH_COMPLETION_FIXED_DELAY_MS:600000}
       batch-size: ${MATCH_COMPLETION_BATCH_SIZE:100}
@@ -71,6 +75,10 @@ app:
         match: ${NOTIFICATION_MATCH_TOPIC:notification.match}
   settlement:
     platform-fee-rate: ${PLATFORM_FEE_RATE:0.07}
+  s3:
+    bucket: ${S3_BUCKET_NAME:team02-bucket-8282}
+    region: ${S3_REGION:ap-northeast-2}
+    presigned-url-expiration-minutes: ${S3_PRESIGNED_URL_EXPIRATION_MINUTES:10}
 
 match:
   payment-hold:

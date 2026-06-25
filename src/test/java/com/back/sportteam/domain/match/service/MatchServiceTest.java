@@ -24,8 +24,10 @@ import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -34,10 +36,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,16 +53,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class MatchServiceTest {
 
     private static final LocalDateTime CLOSED_RECRUIT_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 1, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
     private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime PARTICIPANT_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 9, 10, 0);
+    private static final LocalDateTime HOST_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 7, 10, 0);
     private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
     private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
     private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
@@ -70,6 +75,9 @@ class MatchServiceTest {
 
     @Mock
     private MatchParticipantRepository matchParticipantRepository;
+
+    @Mock
+    private MatchQueryRepository matchQueryRepository;
 
     @Mock
     private FacilitySlotRepository facilitySlotRepository;
@@ -82,6 +90,12 @@ class MatchServiceTest {
 
     @InjectMocks
     private MatchService matchService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpStatMock() {
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any()))
+                .thenReturn(Optional.of(org.mockito.Mockito.mock(UserSportStat.class)));
+    }
 
     @Test
     void 매칭방을_생성하면_방장_참가자도_함께_생성한다() {
@@ -156,7 +170,8 @@ class MatchServiceTest {
                 SkillLevel.ANY,
                 RequiredGender.ANY,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE
         );
         when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
                 .thenReturn(Optional.of(createFutureSlot()));
@@ -198,7 +213,7 @@ class MatchServiceTest {
     }
 
     @Test
-    void 모집_마감이_취소_마감보다_늦으면_매칭방을_생성하지_않는다() {
+    void 마감_시간_순서가_올바르지_않으면_매칭방을_생성하지_않는다() {
         MatchCreateRequest request = new MatchCreateRequest(
                 "reservation-id",
                 "풋살 매칭",
@@ -208,8 +223,9 @@ class MatchServiceTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
-                CANCEL_DEADLINE.plusDays(1),
-                CANCEL_DEADLINE
+                RECRUIT_DEADLINE.minusDays(1),
+                RECRUIT_DEADLINE.minusDays(3),
+                RECRUIT_DEADLINE.minusDays(2)
         );
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
@@ -233,7 +249,7 @@ class MatchServiceTest {
                 0,
                 20
         );
-        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(matchQueryRepository.findAll(condition))
                 .thenReturn(new PageImpl<>(List.of(createMatch())));
 
         Page<MatchSummaryResponse> response = matchService.getMatches(condition);
@@ -257,8 +273,12 @@ class MatchServiceTest {
         lowerScoreMatch.increaseCurrentCount();
         when(userSportStatRepository.findByUser_IdAndSportType("user-id", SportType.FUTSAL))
                 .thenReturn(Optional.empty());
-        when(matchRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(lowerScoreMatch, recommendedMatch)));
+        when(matchQueryRepository.findRecommendationCandidates(
+                eq(SportType.FUTSAL),
+                eq(MatchStatus.RECRUITING),
+                any(LocalDateTime.class),
+                eq(10)
+        )).thenReturn(List.of(lowerScoreMatch, recommendedMatch));
 
         List<MatchRecommendationResponse> response = matchService.recommendMatches("user-id", request);
 
@@ -337,7 +357,7 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -358,7 +378,7 @@ class MatchServiceTest {
         assertThat(response.participantId()).isNotBlank();
         assertThat(response.userId()).isEqualTo("participant-id");
         assertThat(response.role()).isEqualTo(MatchParticipantRole.PARTICIPANT);
-        assertThat(response.status()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        assertThat(response.status()).isEqualTo(MatchParticipantStatus.PAYMENT_PENDING);
         assertThat(match.getCurrentCount()).isEqualTo(2);
     }
 
@@ -414,6 +434,36 @@ class MatchServiceTest {
     }
 
     @Test
+    void 매칭방_생성시_해당_종목_실력이_미등록이면_예외를_던진다() {
+        MatchCreateRequest request = createRequest(10);
+        FacilitySlot facilitySlot = createFutureSlot();
+        when(facilitySlotRepository.findByIdForUpdate(request.reservationId())).thenReturn(Optional.of(facilitySlot));
+        when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.createMatch("host-id", request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가시_해당_종목_실력이_미등록이면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", List.of(MatchParticipantStatus.ACTIVE)
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
+    }
+
+    @Test
     void 방장은_자신의_매칭방에_참가_신청할_수_없다() {
         Match match = createMatch();
         String matchId = match.getId();
@@ -438,8 +488,6 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
-        when(facilitySlotRepository.findById(match.getReservationId()))
-                .thenReturn(Optional.of(createFutureSlot()));
 
         matchService.leaveMatch(match.getId(), "participant-id");
 
@@ -499,7 +547,7 @@ class MatchServiceTest {
 
     @Test
     void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
-        Match match = createMatch();
+        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
         String matchId = match.getId();
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
         participant.activate();
@@ -509,8 +557,6 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
-        when(facilitySlotRepository.findById(match.getReservationId()))
-                .thenReturn(Optional.of(createPastSlot()));
 
         assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
@@ -699,7 +745,8 @@ class MatchServiceTest {
                 maxSkillLevel,
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE
         );
     }
 
@@ -712,21 +759,56 @@ class MatchServiceTest {
     }
 
     private Match createMatch(int capacity, SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
-        return createMatch(capacity, RECRUIT_DEADLINE, CANCEL_DEADLINE, minSkillLevel, maxSkillLevel);
+        return createMatch(
+                capacity,
+                RECRUIT_DEADLINE,
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE,
+                minSkillLevel,
+                maxSkillLevel
+        );
     }
 
     private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
-        return createMatch(capacity, recruitDeadline, CANCEL_DEADLINE);
-    }
-
-    private Match createMatch(int capacity, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
-        return createMatch(capacity, recruitDeadline, cancelDeadline, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        return createMatch(capacity, recruitDeadline, PARTICIPANT_CANCEL_DEADLINE, HOST_CANCEL_DEADLINE);
     }
 
     private Match createMatch(
             int capacity,
             LocalDateTime recruitDeadline,
-            LocalDateTime cancelDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline
+    ) {
+        return createMatch(
+                capacity,
+                recruitDeadline,
+                participantCancelDeadline,
+                hostCancelDeadline,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4
+        );
+    }
+
+    private Match createMatch(
+            int capacity,
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline
+    ) {
+        return createMatch(
+                capacity,
+                recruitDeadline,
+                participantCancelDeadline,
+                participantCancelDeadline,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4
+        );
+    }
+
+    private Match createMatch(
+            int capacity,
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline,
             SkillLevel minSkillLevel,
             SkillLevel maxSkillLevel
     ) {
@@ -744,7 +826,8 @@ class MatchServiceTest {
                 .startTime(MATCH_START_TIME)
                 .endTime(MATCH_END_TIME)
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(cancelDeadline)
+                .participantCancelDeadline(participantCancelDeadline)
+                .hostCancelDeadline(hostCancelDeadline)
                 .build());
     }
 
@@ -758,13 +841,4 @@ class MatchServiceTest {
         );
     }
 
-    private FacilitySlot createPastSlot() {
-        return FacilitySlot.create(
-                "facility-id",
-                LocalDate.of(2026, Month.JUNE, 1),
-                LocalTime.of(10, 0),
-                LocalTime.of(12, 0),
-                10000
-        );
-    }
 }

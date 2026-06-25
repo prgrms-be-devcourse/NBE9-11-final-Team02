@@ -24,9 +24,10 @@ logging:
     org.springframework.transaction.interceptor: WARN
     com.back: INFO
 
-toss:
+app:
   payment:
-    secret-key: "${custom.prod.toss.secretKey}"
+    toss:
+      secret-key: "${custom.prod.toss.secretKey}"
 
 match:
   payment-hold:

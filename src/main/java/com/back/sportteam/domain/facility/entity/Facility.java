@@ -92,7 +92,7 @@ public class Facility {
     @Column(name = "rating_avg", precision = 3, scale = 2)
     private BigDecimal ratingAvg = BigDecimal.ZERO;
 
-    @Column(name = "rating_sum", precision = 5, scale = 1)
+    @Column(name = "rating_sum", precision = 5, scale = 2)
     private BigDecimal ratingSum = BigDecimal.ZERO;
 
     @Column(name = "review_count", nullable = false)
@@ -142,6 +142,10 @@ public class Facility {
         this.reviewCount++;
         this.ratingAvg = this.ratingSum
                 .divide(BigDecimal.valueOf(this.reviewCount), 2, RoundingMode.HALF_UP);
+    }
+
+    public void removeImage(String imageUrl) {
+        this.imageUrls.remove(imageUrl);
     }
 
     public void close() {

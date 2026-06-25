@@ -12,7 +12,7 @@ import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
-import com.back.sportteam.domain.mypage.exception.MypageErrorCode;
+import com.back.sportteam.domain.mypage.exception.MyPageErrorCode;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
 import com.back.sportteam.domain.payment.entity.PaymentType;
@@ -230,7 +230,7 @@ class MyPagePaymentServiceTest {
         assertThatThrownBy(() -> myPagePaymentService.getMatchPayment(HOST_ID, matchId))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(MypageErrorCode.FACILITY_PAYMENT_NOT_FOUND));
+                        .isEqualTo(MyPageErrorCode.FACILITY_PAYMENT_NOT_FOUND));
     }
 
     @Test
@@ -324,7 +324,7 @@ class MyPagePaymentServiceTest {
         assertThatThrownBy(() -> myPagePaymentService.getMatchPayment(USER_ID, matchId))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(MypageErrorCode.PARTICIPATION_PAYMENT_NOT_FOUND));
+                        .isEqualTo(MyPageErrorCode.PARTICIPATION_PAYMENT_NOT_FOUND));
     }
 
     private Match hostMatch() {
@@ -339,7 +339,9 @@ class MyPagePaymentServiceTest {
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
                 .recruitDeadline(LocalDateTime.of(2026, Month.JUNE, 29, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
+                .participantCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
                 .build());
     }
 

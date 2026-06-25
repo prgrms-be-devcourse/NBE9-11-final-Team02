@@ -1,5 +1,7 @@
 package com.back.sportteam.infra.payment.toss;
 
+import java.time.OffsetDateTime;
+
 public record TossPaymentsWebhookRequest(
         String eventType,
         TossPaymentsData data
@@ -9,7 +11,8 @@ public record TossPaymentsWebhookRequest(
             String paymentKey,
             String orderId,
             String status,
-            Integer totalAmount
+            Integer totalAmount,
+            OffsetDateTime approvedAt
     ) {
     }
 }

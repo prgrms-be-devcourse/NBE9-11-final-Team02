@@ -24,12 +24,14 @@ import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.infra.s3.S3Service;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +43,9 @@ import java.time.Month;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -57,6 +62,9 @@ class FacilityServiceTest {
 
     @Mock
     private ReservationRepository reservationRepository;
+
+    @Mock
+    private S3Service s3Service;
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -691,6 +699,49 @@ class FacilityServiceTest {
         );
     }
 
+    @Test
+    void 이미지_삭제_시_S3와_시설_엔티티에서_모두_제거된다() {
+        String imageUrl = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/uuid";
+        Facility facility = createFacilityWithImage("manager-id", imageUrl);
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        doNothing().when(s3Service).deleteFile(imageUrl);
+
+        facilityService.deleteImage("manager-id", facility.getId(), imageUrl);
+
+        verify(s3Service).deleteFile(imageUrl);
+        assertThat(facility.getImageUrls()).doesNotContain(imageUrl);
+    }
+
+    @Test
+    void 시설에_등록되지_않은_이미지_삭제_시_예외가_발생한다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.deleteImage("manager-id", facilityId, "https://other-url/img.jpg"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_IMAGE_NOT_FOUND);
+        verify(s3Service, never()).deleteFile(anyString());
+    }
+
+    @Test
+    void S3_삭제_실패_시_FACILITY_IMAGE_DELETE_FAILED_예외가_발생한다() {
+        String imageUrl = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/uuid";
+        Facility facility = createFacilityWithImage("manager-id", imageUrl);
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        doThrow(new RuntimeException("S3 error")).when(s3Service).deleteFile(imageUrl);
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.deleteImage("manager-id", facilityId, imageUrl))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_IMAGE_DELETE_FAILED);
+    }
+
     private Facility createFacility(String managerId) {
         return Facility.create(
                 managerId,
@@ -704,6 +755,26 @@ class FacilityServiceTest {
                         .defaultWeekdayPrice(50000)
                         .defaultWeekendPrice(70000)
                         .sportTypes(Set.of(SportType.FUTSAL))
+                        .build()
+        );
+    }
+
+    private Facility createFacilityWithImage(String managerId, String imageUrl) {
+        List<String> images = new ArrayList<>();
+        images.add(imageUrl);
+        return Facility.create(
+                managerId,
+                "테스트 풋살장",
+                "서울시 강남구",
+                FacilityDetails.builder()
+                        .phone("02-1234-5678")
+                        .description("테스트 시설입니다.")
+                        .capacity(20)
+                        .slotDurationMinutes(60)
+                        .defaultWeekdayPrice(50000)
+                        .defaultWeekendPrice(70000)
+                        .sportTypes(Set.of(SportType.FUTSAL))
+                        .imageUrls(images)
                         .build()
         );
     }

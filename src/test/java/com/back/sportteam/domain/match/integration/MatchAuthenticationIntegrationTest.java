@@ -17,9 +17,12 @@ import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
 import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
+import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.user.entity.UserRole;
+import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
@@ -48,7 +51,8 @@ import org.springframework.web.context.WebApplicationContext;
 class MatchAuthenticationIntegrationTest {
 
     private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime PARTICIPANT_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 9, 10, 0);
+    private static final LocalDateTime HOST_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 7, 10, 0);
 
     private MockMvc mockMvc;
 
@@ -69,6 +73,9 @@ class MatchAuthenticationIntegrationTest {
     @MockitoBean
     private StringRedisTemplate redisTemplate;
 
+    @MockitoBean
+    private UserSportStatRepository userSportStatRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
@@ -79,6 +86,9 @@ class MatchAuthenticationIntegrationTest {
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.hasKey(anyString())).thenReturn(false);
+
+        when(userSportStatRepository.findByUser_IdAndSportType(anyString(), org.mockito.ArgumentMatchers.any(SportType.class)))
+                .thenReturn(java.util.Optional.of(mock(UserSportStat.class)));
     }
 
     @Test
@@ -248,17 +258,18 @@ class MatchAuthenticationIntegrationTest {
     }
 
     private Map<String, Object> matchCreateBody(String reservationId, String title, String sportType) {
-        return Map.of(
-                "reservationId", reservationId,
-                "title", title,
-                "sportType", sportType,
-                "capacity", 10,
-                "feePerPerson", 10_000,
-                "minSkillLevel", "ANY",
-                "maxSkillLevel", "ANY",
-                "requiredGender", "ANY",
-                "recruitDeadline", RECRUIT_DEADLINE.toString(),
-                "cancelDeadline", CANCEL_DEADLINE.toString()
+        return Map.ofEntries(
+                Map.entry("reservationId", reservationId),
+                Map.entry("title", title),
+                Map.entry("sportType", sportType),
+                Map.entry("capacity", 10),
+                Map.entry("feePerPerson", 10_000),
+                Map.entry("minSkillLevel", "ANY"),
+                Map.entry("maxSkillLevel", "ANY"),
+                Map.entry("requiredGender", "ANY"),
+                Map.entry("recruitDeadline", RECRUIT_DEADLINE.toString()),
+                Map.entry("participantCancelDeadline", PARTICIPANT_CANCEL_DEADLINE.toString()),
+                Map.entry("hostCancelDeadline", HOST_CANCEL_DEADLINE.toString())
         );
     }
 

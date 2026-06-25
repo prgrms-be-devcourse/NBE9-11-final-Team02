@@ -178,7 +178,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);
@@ -220,7 +220,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);
@@ -272,7 +272,7 @@ class ReviewServiceTest {
         Match match = completedMatch();
         User reviewee = User.local("test@test.com", "닉네임", "hash", UserRole.USER);
         ReflectionTestUtils.setField(reviewee, "id", REVIEWEE_ID);
-        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, "FW", SelfReportedLevel.INTERMEDIATE);
+        UserSportStat stat = UserSportStat.create(reviewee, SportType.FUTSAL, SelfReportedLevel.INTERMEDIATE);
 
         MatchParticipant participant = mock(MatchParticipant.class);
         when(participant.getUserId()).thenReturn(REVIEWEE_ID);
@@ -331,7 +331,9 @@ class ReviewServiceTest {
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
                 .recruitDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
-                .cancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
+                .participantCancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
                 .build());
         ReflectionTestUtils.setField(match, "id", "match-1");
         ReflectionTestUtils.setField(match, "status", MatchStatus.COMPLETED);

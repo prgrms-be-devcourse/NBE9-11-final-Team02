@@ -4,6 +4,7 @@ import com.back.sportteam.domain.payment.dto.request.PaymentConfirmRequest;
 import com.back.sportteam.domain.payment.dto.response.PaymentConfirmResponse;
 import com.back.sportteam.domain.payment.entity.Payment;
 import com.back.sportteam.domain.payment.entity.PaymentStatus;
+import com.back.sportteam.domain.payment.entity.PaymentType;
 import com.back.sportteam.domain.payment.exception.PaymentErrorCode;
 import com.back.sportteam.domain.payment.repository.PaymentRepository;
 import com.back.sportteam.global.exception.BusinessException;
@@ -11,6 +12,7 @@ import com.back.sportteam.global.util.TimeUtils;
 import com.back.sportteam.infra.payment.toss.TossPaymentsClient;
 import com.back.sportteam.infra.payment.toss.TossPaymentsPaymentResponse;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -57,24 +59,28 @@ public class PaymentConfirmService {
             PaymentConfirmRequest request,
             TossPaymentsPaymentResponse tossResponse
     ) {
+        LocalDateTime approvedAt = toServiceLocalDateTime(tossResponse.approvedAt());
         return transactionTemplate.execute(status -> {
             Payment payment = getPaymentForUpdate(request.orderId());
             validateOwnership(payment, userId);
             validateAmount(payment, tossResponse.totalAmount());
-            payment.complete(tossResponse.paymentKey(), LocalDateTime.now(TimeUtils.SERVICE_ZONE));
-            paymentPostProcessor.processPaidPayment(payment);
+            payment.complete(tossResponse.paymentKey(), approvedAt);
+            paymentPostProcessor.processPaidPayment(payment, approvedAt);
             return PaymentConfirmResponse.from(payment);
         });
     }
 
     private void recordConfirmFailure(String userId, PaymentConfirmRequest request) {
+        LocalDateTime processedAt = LocalDateTime.now(TimeUtils.SERVICE_ZONE);
         transactionTemplate.executeWithoutResult(status -> {
             Payment payment = getPaymentForUpdate(request.orderId());
             validateOwnership(payment, userId);
             validateAmount(payment, request.amount());
             if (payment.getStatus() == PaymentStatus.PENDING) {
                 payment.fail(request.paymentKey());
-                paymentPostProcessor.processFailedPayment(payment, LocalDateTime.now(TimeUtils.SERVICE_ZONE));
+                if (payment.getPaymentType() == PaymentType.FACILITY) {
+                    paymentPostProcessor.processFailedPayment(payment, processedAt);
+                }
             }
         });
     }
@@ -84,9 +90,14 @@ public class PaymentConfirmService {
                 || !request.paymentKey().equals(response.paymentKey())
                 || !request.orderId().equals(response.orderId())
                 || !request.amount().equals(response.totalAmount())
-                || !TOSS_DONE_STATUS.equals(response.status())) {
+                || !TOSS_DONE_STATUS.equals(response.status())
+                || response.approvedAt() == null) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_PROVIDER_VERIFICATION_FAILED);
         }
+    }
+
+    private LocalDateTime toServiceLocalDateTime(OffsetDateTime approvedAt) {
+        return approvedAt.atZoneSameInstant(TimeUtils.SERVICE_ZONE).toLocalDateTime();
     }
 
     private Payment getPaymentForUpdate(String merchantUid) {

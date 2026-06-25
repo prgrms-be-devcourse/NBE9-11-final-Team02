@@ -20,18 +20,18 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
+import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -49,6 +49,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final MatchQueryRepository matchQueryRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
@@ -59,7 +60,11 @@ public class MatchService {
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
-        validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
+        validateDeadlineRange(
+                request.recruitDeadline(),
+                request.participantCancelDeadline(),
+                request.hostCancelDeadline()
+        );
         FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
         validateReservationAvailable(request.reservationId());
         facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
@@ -78,8 +83,11 @@ public class MatchService {
                 .startTime(facilitySlot.getStartTime())
                 .endTime(facilitySlot.getEndTime())
                 .recruitDeadline(request.recruitDeadline())
-                .cancelDeadline(request.cancelDeadline())
+                .participantCancelDeadline(request.participantCancelDeadline())
+                .hostCancelDeadline(request.hostCancelDeadline())
                 .build());
+
+        validateSportStatExists(hostId, match);
 
         Match savedMatch = matchRepository.save(match);
         matchParticipantRepository.save(MatchParticipant.host(savedMatch, hostId));
@@ -89,7 +97,7 @@ public class MatchService {
 
     @Transactional(readOnly = true)
     public Page<MatchSummaryResponse> getMatches(MatchSearchCondition condition) {
-        return matchRepository.findAll(toSpecification(condition), condition.toPageable())
+        return matchQueryRepository.findAll(condition)
                 .map(MatchSummaryResponse::from);
     }
 
@@ -101,18 +109,12 @@ public class MatchService {
 
         LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
         int size = request.recommendationSize();
-        MatchSearchCondition condition = new MatchSearchCondition(
-                request.sportType(),
-                MatchStatus.RECRUITING,
-                null,
-                null,
-                null,
-                null,
-                0,
-                size * 5
-        );
-
-        return matchRepository.findAll(toRecommendationSpecification(condition, now), PageRequest.of(0, size * 5))
+        return matchQueryRepository.findRecommendationCandidates(
+                        request.sportType(),
+                        MatchStatus.RECRUITING,
+                        now,
+                        size * 5
+                )
                 .stream()
                 .map(match -> recommend(match, userSkillScore, request.gender(), now))
                 .sorted(Comparator
@@ -154,6 +156,7 @@ public class MatchService {
         validateJoinable(match);
         validateNotHost(match, userId);
         validateNotParticipated(matchId, userId);
+        validateSportStatExists(userId, match);
 
         match.increaseCurrentCount();
         MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
@@ -219,6 +222,12 @@ public class MatchService {
         );
     }
 
+    private void validateSportStatExists(String userId, Match match) {
+        if (userSportStatRepository.findByUser_IdAndSportType(userId, match.getSportType()).isEmpty()) {
+            throw new BusinessException(UserErrorCode.SPORT_STAT_NOT_FOUND);
+        }
+    }
+
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
         boolean onlyOneSideAny = minSkillLevel.isAny() != maxSkillLevel.isAny();
         if (onlyOneSideAny || minSkillLevel.isHigherThan(maxSkillLevel)) {
@@ -247,8 +256,13 @@ public class MatchService {
         facilitySlot.release();
     }
 
-    private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
-        if (recruitDeadline.isAfter(cancelDeadline)) {
+    private void validateDeadlineRange(
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline
+    ) {
+        if (recruitDeadline.isBefore(participantCancelDeadline)
+                || participantCancelDeadline.isBefore(hostCancelDeadline)) {
             throw new BusinessException(MatchErrorCode.INVALID_DEADLINE_RANGE);
         }
     }
@@ -286,61 +300,6 @@ public class MatchService {
         if (match.isHostedBy(userId)) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_JOIN);
         }
-    }
-
-    private Specification<Match> toSpecification(MatchSearchCondition condition) {
-        return Specification
-                .where(equalSportType(condition))
-                .and(equalStatus(condition))
-                .and(equalMinSkillLevel(condition))
-                .and(equalMaxSkillLevel(condition))
-                .and(equalRequiredGender(condition));
-    }
-
-    private Specification<Match> toRecommendationSpecification(MatchSearchCondition condition, LocalDateTime now) {
-        return Specification
-                .where(equalSportType(condition))
-                .and(equalStatus(condition))
-                .and(notFull())
-                .and(recruitDeadlineAfter(now));
-    }
-
-    private Specification<Match> equalSportType(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.sportType() == null
-                ? null
-                : criteriaBuilder.equal(root.get("sportType"), condition.sportType());
-    }
-
-    private Specification<Match> equalStatus(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.status() == null
-                ? null
-                : criteriaBuilder.equal(root.get("status"), condition.status());
-    }
-
-    private Specification<Match> equalMinSkillLevel(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.minSkillLevel() == null
-                ? null
-                : criteriaBuilder.equal(root.get("minSkillLevel"), condition.minSkillLevel());
-    }
-
-    private Specification<Match> equalMaxSkillLevel(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.maxSkillLevel() == null
-                ? null
-                : criteriaBuilder.equal(root.get("maxSkillLevel"), condition.maxSkillLevel());
-    }
-
-    private Specification<Match> equalRequiredGender(MatchSearchCondition condition) {
-        return (root, query, criteriaBuilder) -> condition.requiredGender() == null
-                ? null
-                : criteriaBuilder.equal(root.get("requiredGender"), condition.requiredGender());
-    }
-
-    private Specification<Match> notFull() {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.lessThan(root.get("currentCount"), root.get("capacity"));
-    }
-
-    private Specification<Match> recruitDeadlineAfter(LocalDateTime now) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.greaterThan(root.get("recruitDeadline"), now);
     }
 
     private MatchRecommendationResponse recommend(
@@ -426,16 +385,9 @@ public class MatchService {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
-        LocalDateTime leaveDeadline = getMatchStartAt(match).minusHours(24);
-        if (!now.isBefore(leaveDeadline)) {
+        if (match.isParticipantCancelDeadlinePassed(now)) {
             throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
         }
-    }
-
-    private LocalDateTime getMatchStartAt(Match match) {
-        FacilitySlot slot = facilitySlotRepository.findById(match.getReservationId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
-        return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
     }
 
     private void validateConfirmable(Match match, String hostId) {
@@ -461,7 +413,7 @@ public class MatchService {
         if (!match.isCancellable()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
-        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+        if (match.isHostCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
             throw new BusinessException(MatchErrorCode.CANCEL_DEADLINE_PASSED);
         }
     }

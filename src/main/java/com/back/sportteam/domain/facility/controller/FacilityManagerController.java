@@ -82,6 +82,16 @@ public class FacilityManagerController {
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
+    @DeleteMapping("/{facilityId}/images")
+    public ResponseEntity<ApiResponse<Void>> deleteImage(
+            @RequestHeader("X-USER-ID") @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @RequestParam @NotBlank String imageUrl
+    ) {
+        facilityService.deleteImage(managerId, facilityId, imageUrl);
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
     @PostMapping("/{facilityId}/slots")
     public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> setupSlots(
             @RequestHeader("X-USER-ID") @NotBlank String managerId,
