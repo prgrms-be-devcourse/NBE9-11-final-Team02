@@ -2,6 +2,7 @@ package com.back.sportteam.domain.facility.dto.response;
 
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.match.entity.SportType;
+import java.io.Serializable;
 import java.util.Set;
 
 public record FacilityAvailableResponse(
@@ -14,7 +15,10 @@ public record FacilityAvailableResponse(
         String thumbnailUrl,
         double ratingAvg,
         int reviewCount
-) {
+) implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     public static FacilityAvailableResponse from(Facility facility) {
         String thumbnail = facility.getImageUrls().isEmpty()
                 ? null
@@ -25,7 +29,7 @@ public record FacilityAvailableResponse(
                 facility.getAddress(),
                 facility.getDefaultWeekdayPrice(),
                 facility.getDefaultWeekendPrice(),
-                facility.getSportTypes(),
+                Set.copyOf(facility.getSportTypes()),
                 thumbnail,
                 facility.getRatingAvg().doubleValue(),
                 facility.getReviewCount()
