@@ -31,6 +31,10 @@ management:
     tags:
       application: ${spring.application.name}
 
+logging:
+  file:
+    name: ${LOGGING_FILE_NAME:logs/sportteam.log}
+
 app:
   jwt:
     secret: ${JWT_SECRET:change-this-secret-key-in-production}

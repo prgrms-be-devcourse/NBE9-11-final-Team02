@@ -40,3 +40,4 @@ out/
 **/application-secret.yaml
 .env
 .claude/
+logs/
