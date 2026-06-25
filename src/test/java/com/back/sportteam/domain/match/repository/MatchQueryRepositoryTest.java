@@ -152,7 +152,9 @@ class MatchQueryRepositoryTest {
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(recruitDeadline.plusHours(1))
+                .participantCancelDeadline(recruitDeadline.plusHours(1))
+
+                .hostCancelDeadline(recruitDeadline.plusHours(1))
                 .build());
     }
 }

@@ -327,7 +327,9 @@ class PaymentWebhookProcessorTest {
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 10, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
+                .participantCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 12, 10, 0))
                 .build());
     }
 

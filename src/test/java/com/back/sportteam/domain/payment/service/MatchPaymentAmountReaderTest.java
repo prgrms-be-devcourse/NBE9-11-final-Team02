@@ -109,7 +109,9 @@ class MatchPaymentAmountReaderTest {
                 .maxSkillLevel(SkillLevel.ANY)
                 .requiredGender(RequiredGender.ANY)
                 .recruitDeadline(LocalDateTime.of(2026, Month.JUNE, 19, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2026, Month.JUNE, 19, 11, 0))
+                .participantCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 19, 11, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 19, 11, 0))
                 .build());
     }
 }

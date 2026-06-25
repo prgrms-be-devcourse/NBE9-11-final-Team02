@@ -259,7 +259,9 @@ class MatchParticipantQueryRepositoryImplTest {
                 .startTime(START_TIME)
                 .endTime(END_TIME)
                 .recruitDeadline(LocalDateTime.of(2099, Month.JUNE, 8, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2099, Month.JUNE, 9, 10, 0))
+                .participantCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 9, 10, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2099, Month.JUNE, 9, 10, 0))
                 .build());
         em.persist(match);
         return match;

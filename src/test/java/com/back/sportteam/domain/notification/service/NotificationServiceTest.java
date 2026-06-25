@@ -141,7 +141,9 @@ class NotificationServiceTest {
                 .startTime(MATCH_START_TIME)
                 .endTime(MATCH_END_TIME)
                 .recruitDeadline(OCCURRED_AT.plusDays(1))
-                .cancelDeadline(OCCURRED_AT.plusDays(2))
+                .participantCancelDeadline(OCCURRED_AT.plusDays(2))
+
+                .hostCancelDeadline(OCCURRED_AT.plusDays(2))
                 .build());
     }
 }
