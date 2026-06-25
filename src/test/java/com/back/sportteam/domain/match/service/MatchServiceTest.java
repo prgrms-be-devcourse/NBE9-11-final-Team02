@@ -800,13 +800,4 @@ class MatchServiceTest {
         );
     }
 
-    private FacilitySlot createPastSlot() {
-        return FacilitySlot.create(
-                "facility-id",
-                LocalDate.of(2026, Month.JUNE, 1),
-                LocalTime.of(10, 0),
-                LocalTime.of(12, 0),
-                10000
-        );
-    }
 }
