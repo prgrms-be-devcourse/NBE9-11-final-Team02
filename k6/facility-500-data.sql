@@ -1,13 +1,16 @@
 -- ============================================================
--- FAC-01 캐싱 효과 측정용 대량 더미 데이터 (시설 10,000건)
--- 각 시설에 종목 1개 + AVAILABLE 슬롯 1개를 함께 생성
--- 조회 조건(ACTIVE / sport_type / address LIKE / AVAILABLE 슬롯)을 모두 만족
---
--- 실행:
---   Get-Content bulk-facility-data.sql -Encoding UTF8 | docker exec -i mysql_1 mysql --default-character-set=utf8mb4 -uroot -p"devpassword" team02_dev
+-- FAC-01 재설계: 현실적 규모 시설 500건
+-- 목적: "인기 조건 트래픽 쏠림 시 캐시가 DB 부하를 줄이는가" 검증
+-- 조건 분포를 소수 인기 조합에 집중시켜 캐시 히트를 유도
 -- ============================================================
 
 USE team02_dev;
+
+-- 기존 더미 데이터 정리 (이전 1만 건 + 초기 3건)
+DELETE FROM facility_images   WHERE facility_id IN (SELECT id FROM facilities WHERE manager_id = '11111111-1111-1111-1111-111111111111');
+DELETE FROM facility_slots    WHERE facility_id IN (SELECT id FROM facilities WHERE manager_id = '11111111-1111-1111-1111-111111111111');
+DELETE FROM facilities_sports WHERE facility_id IN (SELECT id FROM facilities WHERE manager_id = '11111111-1111-1111-1111-111111111111');
+DELETE FROM facilities        WHERE manager_id = '11111111-1111-1111-1111-111111111111';
 
 -- 매니저 유저 (FK)
 INSERT IGNORE INTO users (
@@ -20,10 +23,10 @@ INSERT IGNORE INTO users (
     0.0, 0.0, 0.0, 0, NOW(), NOW()
 );
 
-DROP PROCEDURE IF EXISTS seed_facilities;
+DROP PROCEDURE IF EXISTS seed_facilities_500;
 
 DELIMITER $$
-CREATE PROCEDURE seed_facilities(IN total INT)
+CREATE PROCEDURE seed_facilities_500(IN total INT)
 BEGIN
     DECLARE i INT DEFAULT 0;
     DECLARE fid CHAR(36);
@@ -33,25 +36,22 @@ BEGIN
     DECLARE sdate DATE;
 
     WHILE i < total DO
-        -- 36자 UUID 생성
         SET fid = UUID();
         SET sid = UUID();
 
-        -- 종목/지역/날짜를 인기 조건 위주로 분포시킴 (캐시 히트 유도)
-        SET sport = ELT(1 + (i MOD 3), 'FUTSAL', 'TENNIS', 'BASKETBALL');
-        SET region = ELT(1 + (i MOD 2), '서울특별시', '경기도');
-        SET sdate = ELT(1 + (i MOD 2), '2026-07-01', '2026-07-02');
+        -- 인기 조합에 쏠리도록 분포 (서울/풋살 비중을 높임)
+        SET sport  = ELT(1 + (i MOD 3), 'FUTSAL', 'TENNIS', 'BASKETBALL');
+        SET region = IF(i MOD 10 < 7, '서울특별시', '경기도');   -- 70% 서울
+        SET sdate  = ELT(1 + (i MOD 2), '2026-07-01', '2026-07-02');
 
         INSERT INTO facilities (
             id, manager_id, name, address, phone, description,
             capacity, slot_duration_minutes, default_weekday_price, default_weekend_price,
             rating_avg, rating_sum, review_count, status, created_at, updated_at
         ) VALUES (
-            fid,
-            '11111111-1111-1111-1111-111111111111',
-            CONCAT('더미시설_', i),
-            CONCAT(region, ' 어딘가 ', i, '번지'),
-            '02-0000-0000', '부하테스트용 더미 시설',
+            fid, '11111111-1111-1111-1111-111111111111',
+            CONCAT('시설_', i), CONCAT(region, ' 일대 ', i, '번지'),
+            '02-0000-0000', '테스트 시설',
             20, 60, 100000, 120000,
             0.00, 0.0, 0, 'ACTIVE', NOW(), NOW()
         );
@@ -69,10 +69,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- 1만 건 생성
-CALL seed_facilities(10000);
-
-DROP PROCEDURE seed_facilities;
+CALL seed_facilities_500(500);
+DROP PROCEDURE seed_facilities_500;
 
 -- 확인
 SELECT COUNT(*) AS total_facilities FROM facilities;
