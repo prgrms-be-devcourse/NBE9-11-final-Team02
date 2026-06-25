@@ -64,7 +64,8 @@ class MatchServiceTest {
     private static final LocalDateTime CLOSED_RECRUIT_DEADLINE = LocalDateTime.of(2026, Month.JUNE, 1, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
     private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime PARTICIPANT_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 9, 10, 0);
+    private static final LocalDateTime HOST_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 7, 10, 0);
     private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
     private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
     private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
@@ -169,7 +170,8 @@ class MatchServiceTest {
                 SkillLevel.ANY,
                 RequiredGender.ANY,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE
         );
         when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
                 .thenReturn(Optional.of(createFutureSlot()));
@@ -211,7 +213,7 @@ class MatchServiceTest {
     }
 
     @Test
-    void 모집_마감이_취소_마감보다_늦으면_매칭방을_생성하지_않는다() {
+    void 마감_시간_순서가_올바르지_않으면_매칭방을_생성하지_않는다() {
         MatchCreateRequest request = new MatchCreateRequest(
                 "reservation-id",
                 "풋살 매칭",
@@ -221,8 +223,9 @@ class MatchServiceTest {
                 SkillLevel.LEVEL_2,
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
-                CANCEL_DEADLINE.plusDays(1),
-                CANCEL_DEADLINE
+                RECRUIT_DEADLINE.minusDays(1),
+                RECRUIT_DEADLINE.minusDays(3),
+                RECRUIT_DEADLINE.minusDays(2)
         );
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
@@ -485,8 +488,6 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
-        when(facilitySlotRepository.findById(match.getReservationId()))
-                .thenReturn(Optional.of(createFutureSlot()));
 
         matchService.leaveMatch(match.getId(), "participant-id");
 
@@ -546,7 +547,7 @@ class MatchServiceTest {
 
     @Test
     void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
-        Match match = createMatch();
+        Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
         String matchId = match.getId();
         MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
         participant.activate();
@@ -556,8 +557,6 @@ class MatchServiceTest {
                 "participant-id",
                 MatchParticipantStatus.ACTIVE
         )).thenReturn(Optional.of(participant));
-        when(facilitySlotRepository.findById(match.getReservationId()))
-                .thenReturn(Optional.of(createPastSlot()));
 
         assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
@@ -746,7 +745,8 @@ class MatchServiceTest {
                 maxSkillLevel,
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE
         );
     }
 
@@ -759,21 +759,56 @@ class MatchServiceTest {
     }
 
     private Match createMatch(int capacity, SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
-        return createMatch(capacity, RECRUIT_DEADLINE, CANCEL_DEADLINE, minSkillLevel, maxSkillLevel);
+        return createMatch(
+                capacity,
+                RECRUIT_DEADLINE,
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE,
+                minSkillLevel,
+                maxSkillLevel
+        );
     }
 
     private Match createMatch(int capacity, LocalDateTime recruitDeadline) {
-        return createMatch(capacity, recruitDeadline, CANCEL_DEADLINE);
-    }
-
-    private Match createMatch(int capacity, LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
-        return createMatch(capacity, recruitDeadline, cancelDeadline, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        return createMatch(capacity, recruitDeadline, PARTICIPANT_CANCEL_DEADLINE, HOST_CANCEL_DEADLINE);
     }
 
     private Match createMatch(
             int capacity,
             LocalDateTime recruitDeadline,
-            LocalDateTime cancelDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline
+    ) {
+        return createMatch(
+                capacity,
+                recruitDeadline,
+                participantCancelDeadline,
+                hostCancelDeadline,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4
+        );
+    }
+
+    private Match createMatch(
+            int capacity,
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline
+    ) {
+        return createMatch(
+                capacity,
+                recruitDeadline,
+                participantCancelDeadline,
+                participantCancelDeadline,
+                SkillLevel.LEVEL_2,
+                SkillLevel.LEVEL_4
+        );
+    }
+
+    private Match createMatch(
+            int capacity,
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline,
             SkillLevel minSkillLevel,
             SkillLevel maxSkillLevel
     ) {
@@ -791,7 +826,8 @@ class MatchServiceTest {
                 .startTime(MATCH_START_TIME)
                 .endTime(MATCH_END_TIME)
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(cancelDeadline)
+                .participantCancelDeadline(participantCancelDeadline)
+                .hostCancelDeadline(hostCancelDeadline)
                 .build());
     }
 
@@ -805,13 +841,4 @@ class MatchServiceTest {
         );
     }
 
-    private FacilitySlot createPastSlot() {
-        return FacilitySlot.create(
-                "facility-id",
-                LocalDate.of(2026, Month.JUNE, 1),
-                LocalTime.of(10, 0),
-                LocalTime.of(12, 0),
-                10000
-        );
-    }
 }

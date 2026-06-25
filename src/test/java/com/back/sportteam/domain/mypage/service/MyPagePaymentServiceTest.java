@@ -339,7 +339,9 @@ class MyPagePaymentServiceTest {
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
                 .recruitDeadline(LocalDateTime.of(2026, Month.JUNE, 29, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
+                .participantCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 28, 10, 0))
                 .build());
     }
 

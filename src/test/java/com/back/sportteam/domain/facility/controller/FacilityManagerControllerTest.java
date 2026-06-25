@@ -116,4 +116,19 @@ class FacilityManagerControllerTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void imageUrl_없이_이미지_삭제_요청하면_400_응답을_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/manager/facilities/facility-id/images")
+                        .header("X-USER-ID", "manager-id"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 이미지_삭제_요청이_정상이면_200_응답을_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/manager/facilities/facility-id/images")
+                        .header("X-USER-ID", "manager-id")
+                        .param("imageUrl", "https://bucket.s3.ap-northeast-2.amazonaws.com/facilities/uuid"))
+                .andExpect(status().isOk());
+    }
 }

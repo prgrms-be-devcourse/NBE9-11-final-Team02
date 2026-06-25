@@ -144,6 +144,10 @@ public class Facility {
                 .divide(BigDecimal.valueOf(this.reviewCount), 2, RoundingMode.HALF_UP);
     }
 
+    public void removeImage(String imageUrl) {
+        this.imageUrls.remove(imageUrl);
+    }
+
     public void close() {
         this.status = FacilityStatus.CLOSED;
     }
