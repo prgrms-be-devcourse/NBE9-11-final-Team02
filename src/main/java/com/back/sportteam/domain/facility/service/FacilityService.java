@@ -125,7 +125,7 @@ public class FacilityService {
 
         try {
             s3Service.deleteFile(imageUrl);
-        } catch (Exception e) {
+        } catch (Exception _) {
             throw new BusinessException(FacilityErrorCode.FACILITY_IMAGE_DELETE_FAILED);
         }
         facility.removeImage(imageUrl);

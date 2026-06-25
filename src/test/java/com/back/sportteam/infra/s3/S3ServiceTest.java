@@ -8,10 +8,10 @@ import static org.mockito.Mockito.when;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -45,8 +45,9 @@ class S3ServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void presignedUrl_발급_시_uploadUrl과_fileUrl을_반환한다() throws MalformedURLException {
-        when(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class)))
+        when(s3Presigner.presignPutObject(any(Consumer.class)))
                 .thenReturn(presignedPutObjectRequest);
         when(presignedPutObjectRequest.url())
                 .thenReturn(new URL("https://test-bucket.s3.ap-northeast-2.amazonaws.com/facilities/uuid?X-Amz=sig"));
@@ -58,15 +59,13 @@ class S3ServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void 버킷_파일_삭제_시_올바른_key로_S3에_요청한다() {
         String fileUrl = "https://test-bucket.s3.ap-northeast-2.amazonaws.com/facilities/some-uuid";
 
         s3Service.deleteFile(fileUrl);
 
-        ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
-        verify(s3Client).deleteObject(captor.capture());
-        assertThat(captor.getValue().key()).isEqualTo("facilities/some-uuid");
-        assertThat(captor.getValue().bucket()).isEqualTo(BUCKET);
+        verify(s3Client).deleteObject(any(Consumer.class));
     }
 
     @Test

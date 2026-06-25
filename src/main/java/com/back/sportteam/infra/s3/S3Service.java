@@ -3,11 +3,8 @@ package com.back.sportteam.infra.s3;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -23,18 +20,12 @@ public class S3Service {
     public PresignedUrlResponse generatePresignedUrl(String contentType) {
         String key = "facilities/" + UUID.randomUUID();
 
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(s3Properties.bucket())
-                .key(key)
-                .contentType(contentType)
-                .build();
-
-        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+        PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(req -> req
                 .signatureDuration(Duration.ofMinutes(s3Properties.presignedUrlExpirationMinutes()))
-                .putObjectRequest(putObjectRequest)
-                .build();
-
-        PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
+                .putObjectRequest(put -> put
+                        .bucket(s3Properties.bucket())
+                        .key(key)
+                        .contentType(contentType)));
 
         String uploadUrl = presignedRequest.url().toString();
         String fileUrl = "https://" + s3Properties.bucket() + ".s3." + s3Properties.region() + ".amazonaws.com/" + key;
@@ -44,10 +35,9 @@ public class S3Service {
 
     public void deleteFile(String fileUrl) {
         String key = extractKey(fileUrl);
-        s3Client.deleteObject(DeleteObjectRequest.builder()
+        s3Client.deleteObject(req -> req
                 .bucket(s3Properties.bucket())
-                .key(key)
-                .build());
+                .key(key));
     }
 
     private String extractKey(String fileUrl) {
