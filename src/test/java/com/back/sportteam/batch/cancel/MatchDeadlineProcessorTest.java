@@ -128,7 +128,9 @@ class MatchDeadlineProcessorTest {
                 .startTime(MATCH_START_TIME)
                 .endTime(MATCH_END_TIME)
                 .recruitDeadline(recruitDeadline)
-                .cancelDeadline(recruitDeadline.plusHours(1))
+                .participantCancelDeadline(recruitDeadline.plusHours(1))
+
+                .hostCancelDeadline(recruitDeadline.plusHours(1))
                 .build());
     }
 

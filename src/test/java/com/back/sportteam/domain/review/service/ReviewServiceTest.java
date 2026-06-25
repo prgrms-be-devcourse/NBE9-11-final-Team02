@@ -331,7 +331,9 @@ class ReviewServiceTest {
                 .maxSkillLevel(SkillLevel.LEVEL_5)
                 .requiredGender(RequiredGender.ANY)
                 .recruitDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
-                .cancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
+                .participantCancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0))
                 .build());
         ReflectionTestUtils.setField(match, "id", "match-1");
         ReflectionTestUtils.setField(match, "status", MatchStatus.COMPLETED);

@@ -59,7 +59,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MatchControllerTest {
 
     private static final LocalDateTime RECRUIT_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 10, 10, 0);
-    private static final LocalDateTime CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 12, 10, 0);
+    private static final LocalDateTime PARTICIPANT_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 9, 10, 0);
+    private static final LocalDateTime HOST_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 7, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
 
     private MatchService matchService;
@@ -405,7 +406,8 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE
         );
     }
 
@@ -423,7 +425,8 @@ class MatchControllerTest {
                 request.maxSkillLevel(),
                 request.requiredGender(),
                 request.recruitDeadline(),
-                request.cancelDeadline(),
+                request.participantCancelDeadline(),
+                request.hostCancelDeadline(),
                 null,
                 null,
                 MatchStatus.RECRUITING,
@@ -479,7 +482,8 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE,
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE,
                 null,
                 null,
                 MatchStatus.RECRUITING,
@@ -502,7 +506,8 @@ class MatchControllerTest {
                 SkillLevel.LEVEL_4,
                 RequiredGender.MIXED,
                 RECRUIT_DEADLINE,
-                CANCEL_DEADLINE,
+                PARTICIPANT_CANCEL_DEADLINE,
+                HOST_CANCEL_DEADLINE,
                 CREATED_AT,
                 null,
                 MatchStatus.CONFIRMED,
@@ -559,7 +564,8 @@ class MatchControllerTest {
                   "maxSkillLevel": "%s",
                   "requiredGender": "%s",
                   "recruitDeadline": "%s",
-                  "cancelDeadline": "%s"
+                  "participantCancelDeadline": "%s",
+                  "hostCancelDeadline": "%s"
                 }
                 """.formatted(
                 request.reservationId(),
@@ -571,7 +577,8 @@ class MatchControllerTest {
                 request.maxSkillLevel(),
                 request.requiredGender(),
                 request.recruitDeadline(),
-                request.cancelDeadline()
+                request.participantCancelDeadline(),
+                request.hostCancelDeadline()
         );
     }
 }

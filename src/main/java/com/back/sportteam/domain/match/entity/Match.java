@@ -81,8 +81,11 @@ public class Match {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(name = "cancel_deadline", nullable = false)
-    private LocalDateTime cancelDeadline;
+    @Column(name = "participant_cancel_deadline", nullable = false)
+    private LocalDateTime participantCancelDeadline;
+
+    @Column(name = "host_cancel_deadline", nullable = false)
+    private LocalDateTime hostCancelDeadline;
 
     @Column(name = "recruit_deadline", nullable = false)
     private LocalDateTime recruitDeadline;
@@ -120,7 +123,8 @@ public class Match {
         this.startTime = command.getStartTime();
         this.endTime = command.getEndTime();
         this.recruitDeadline = command.getRecruitDeadline();
-        this.cancelDeadline = command.getCancelDeadline();
+        this.participantCancelDeadline = command.getParticipantCancelDeadline();
+        this.hostCancelDeadline = command.getHostCancelDeadline();
         this.status = MatchStatus.RECRUITING;
         this.createdAt = now;
         this.updatedAt = now;
@@ -146,8 +150,12 @@ public class Match {
         return !now.isBefore(recruitDeadline);
     }
 
-    public boolean isCancelDeadlinePassed(LocalDateTime now) {
-        return !now.isBefore(cancelDeadline);
+    public boolean isParticipantCancelDeadlinePassed(LocalDateTime now) {
+        return !now.isBefore(participantCancelDeadline);
+    }
+
+    public boolean isHostCancelDeadlinePassed(LocalDateTime now) {
+        return !now.isBefore(hostCancelDeadline);
     }
 
     public boolean isHostedBy(String userId) {

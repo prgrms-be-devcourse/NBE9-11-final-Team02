@@ -110,7 +110,9 @@ class MatchReminderSchedulerTest {
                 .maxSkillLevel(SkillLevel.LEVEL_4)
                 .requiredGender(RequiredGender.MIXED)
                 .recruitDeadline(LocalDateTime.of(2026, Month.JUNE, 17, 10, 0))
-                .cancelDeadline(LocalDateTime.of(2026, Month.JUNE, 17, 11, 0))
+                .participantCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 17, 11, 0))
+
+                .hostCancelDeadline(LocalDateTime.of(2026, Month.JUNE, 17, 11, 0))
                 .build());
         match.confirm(LocalDateTime.of(2026, Month.JUNE, 17, 12, 0));
         return match;

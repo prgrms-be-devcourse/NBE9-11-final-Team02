@@ -59,7 +59,11 @@ public class MatchService {
     @Transactional
     public MatchCreateResponse createMatch(String hostId, MatchCreateRequest request) {
         validateSkillLevelRange(request.minSkillLevel(), request.maxSkillLevel());
-        validateDeadlineRange(request.recruitDeadline(), request.cancelDeadline());
+        validateDeadlineRange(
+                request.recruitDeadline(),
+                request.participantCancelDeadline(),
+                request.hostCancelDeadline()
+        );
         FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
         validateReservationAvailable(request.reservationId());
         facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
@@ -78,7 +82,8 @@ public class MatchService {
                 .startTime(facilitySlot.getStartTime())
                 .endTime(facilitySlot.getEndTime())
                 .recruitDeadline(request.recruitDeadline())
-                .cancelDeadline(request.cancelDeadline())
+                .participantCancelDeadline(request.participantCancelDeadline())
+                .hostCancelDeadline(request.hostCancelDeadline())
                 .build());
 
         Match savedMatch = matchRepository.save(match);
@@ -241,8 +246,13 @@ public class MatchService {
         facilitySlot.release();
     }
 
-    private void validateDeadlineRange(LocalDateTime recruitDeadline, LocalDateTime cancelDeadline) {
-        if (recruitDeadline.isAfter(cancelDeadline)) {
+    private void validateDeadlineRange(
+            LocalDateTime recruitDeadline,
+            LocalDateTime participantCancelDeadline,
+            LocalDateTime hostCancelDeadline
+    ) {
+        if (recruitDeadline.isBefore(participantCancelDeadline)
+                || participantCancelDeadline.isBefore(hostCancelDeadline)) {
             throw new BusinessException(MatchErrorCode.INVALID_DEADLINE_RANGE);
         }
     }
@@ -365,16 +375,9 @@ public class MatchService {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
-        LocalDateTime leaveDeadline = getMatchStartAt(match).minusHours(24);
-        if (!now.isBefore(leaveDeadline)) {
+        if (match.isParticipantCancelDeadlinePassed(now)) {
             throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
         }
-    }
-
-    private LocalDateTime getMatchStartAt(Match match) {
-        FacilitySlot slot = facilitySlotRepository.findById(match.getReservationId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
-        return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
     }
 
     private void validateConfirmable(Match match, String hostId) {
@@ -400,7 +403,7 @@ public class MatchService {
         if (!match.isCancellable()) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_CANCELLABLE);
         }
-        if (match.isCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
+        if (match.isHostCancelDeadlinePassed(LocalDateTime.now(SERVICE_ZONE))) {
             throw new BusinessException(MatchErrorCode.CANCEL_DEADLINE_PASSED);
         }
     }
