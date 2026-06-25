@@ -42,11 +42,9 @@ public record MatchCreateRequest(
         LocalDateTime recruitDeadline,
 
         @NotNull(message = "참가자 취소 마감 시간은 필수입니다.")
-        @Future(message = "참가자 취소 마감 시간은 현재 시간 이후여야 합니다.")
         LocalDateTime participantCancelDeadline,
 
         @NotNull(message = "방장 취소 마감 시간은 필수입니다.")
-        @Future(message = "방장 취소 마감 시간은 현재 시간 이후여야 합니다.")
         LocalDateTime hostCancelDeadline
 ) {
 }

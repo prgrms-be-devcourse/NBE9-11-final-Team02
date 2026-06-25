@@ -25,5 +25,5 @@ public class MatchCreateCommand {
     private LocalTime endTime;
     private LocalDateTime recruitDeadline;
     private LocalDateTime participantCancelDeadline;
-    private LocalDateTime hostCancelDeadline;   
+    private LocalDateTime hostCancelDeadline;
 }
