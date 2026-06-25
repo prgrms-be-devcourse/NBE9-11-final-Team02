@@ -41,6 +41,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -93,8 +94,10 @@ class MatchServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUpStatMock() {
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(BigDecimal.valueOf(3));
         when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any()))
-                .thenReturn(Optional.of(org.mockito.Mockito.mock(UserSportStat.class)));
+                .thenReturn(Optional.of(sportStat));
     }
 
     @Test
@@ -282,10 +285,8 @@ class MatchServiceTest {
 
         List<MatchRecommendationResponse> response = matchService.recommendMatches("user-id", request);
 
-        assertThat(response).hasSize(2);
+        assertThat(response).hasSize(1);
         assertThat(response.getFirst().matchId()).isEqualTo(recommendedMatch.getId());
-        assertThat(response.getFirst().recommendationScore())
-                .isGreaterThan(response.get(1).recommendationScore());
         assertThat(response.getFirst().reasons()).contains("실력 조건이 일치합니다.");
     }
 
@@ -461,6 +462,48 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가시_실력_조건에_맞지_않으면_예외를_던진다() {
+        Match match = createMatch(10, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        String matchId = match.getId();
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(BigDecimal.valueOf(1));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", List.of(MatchParticipantStatus.ACTIVE)
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType("participant-id", SportType.FUTSAL))
+                .thenReturn(Optional.of(sportStat));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.SKILL_LEVEL_NOT_MATCHED);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
+    }
+
+    @Test
+    void 매칭방_참가시_최대_실력_조건보다_높으면_예외를_던진다() {
+        Match match = createMatch(10, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        String matchId = match.getId();
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(new BigDecimal("4.5"));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", List.of(MatchParticipantStatus.ACTIVE)
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType("participant-id", SportType.FUTSAL))
+                .thenReturn(Optional.of(sportStat));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.SKILL_LEVEL_NOT_MATCHED);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
     }
 
     @Test

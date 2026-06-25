@@ -116,6 +116,7 @@ public class MatchService {
                         size * 5
                 )
                 .stream()
+                .filter(match -> isSkillLevelMatched(userSkillScore, match))
                 .map(match -> recommend(match, userSkillScore, request.gender(), now))
                 .sorted(Comparator
                         .comparingInt(MatchRecommendationResponse::recommendationScore)
@@ -223,9 +224,25 @@ public class MatchService {
     }
 
     private void validateSportStatExists(String userId, Match match) {
-        if (userSportStatRepository.findByUser_IdAndSportType(userId, match.getSportType()).isEmpty()) {
-            throw new BusinessException(UserErrorCode.SPORT_STAT_NOT_FOUND);
+        UserSportStat sportStat = userSportStatRepository.findByUser_IdAndSportType(userId, match.getSportType())
+                .orElseThrow(() -> new BusinessException(UserErrorCode.SPORT_STAT_NOT_FOUND));
+
+        validateSkillLevelMatched(sportStat.getSkillRating(), match);
+    }
+
+    private void validateSkillLevelMatched(BigDecimal skillRating, Match match) {
+        if (!isSkillLevelMatched(skillRating, match)) {
+            throw new BusinessException(MatchErrorCode.SKILL_LEVEL_NOT_MATCHED);
         }
+    }
+
+    private boolean isSkillLevelMatched(BigDecimal skillRating, Match match) {
+        if (match.getMinSkillLevel().isAny() && match.getMaxSkillLevel().isAny()) {
+            return true;
+        }
+        BigDecimal minScore = BigDecimal.valueOf(match.getMinSkillLevel().getScore());
+        BigDecimal maxScore = BigDecimal.valueOf(match.getMaxSkillLevel().getScore());
+        return skillRating.compareTo(minScore) >= 0 && skillRating.compareTo(maxScore) <= 0;
     }
 
     private void validateSkillLevelRange(SkillLevel minSkillLevel, SkillLevel maxSkillLevel) {
@@ -323,7 +340,7 @@ public class MatchService {
         }
         BigDecimal minScore = BigDecimal.valueOf(match.getMinSkillLevel().getScore());
         BigDecimal maxScore = BigDecimal.valueOf(match.getMaxSkillLevel().getScore());
-        if (userSkillScore.compareTo(minScore) >= 0 && userSkillScore.compareTo(maxScore) <= 0) {
+        if (isSkillLevelMatched(userSkillScore, match)) {
             score.add(40, "실력 조건이 일치합니다.");
             return;
         }
