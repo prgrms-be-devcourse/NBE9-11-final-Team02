@@ -46,8 +46,10 @@ services:
     environment:
       TZ: Asia/Seoul
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml
+      LOGGING_FILE_NAME: /app/logs/app1_1.log
     volumes:
       - /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro
+      - ./logs:/app/logs
     mem_limit: 600m
     profiles:
       - prod
@@ -61,8 +63,10 @@ services:
     environment:
       TZ: Asia/Seoul
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml
+      LOGGING_FILE_NAME: /app/logs/app1_2.log
     volumes:
       - /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro
+      - ./logs:/app/logs
     mem_limit: 600m
     profiles:
       - prod
@@ -104,6 +108,32 @@ services:
     networks:
       - common
 
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki_1
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - common
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail_1
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ./logs:/var/log/sportteam:ro
+    depends_on:
+      - loki
+    networks:
+      - common
+
   grafana:
     image: grafana/grafana:11.4.0
     container_name: grafana_1
@@ -114,10 +144,12 @@ services:
       TZ: Asia/Seoul
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
+      - loki
     networks:
       - common
 
@@ -128,4 +160,5 @@ networks:
 volumes:
   mysql_data:
   prometheus_data:
+  loki_data:
   grafana_data:
