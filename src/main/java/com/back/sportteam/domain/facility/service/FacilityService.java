@@ -51,6 +51,7 @@ public class FacilityService {
     private final FacilitySlotRepository facilitySlotRepository;
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
+    private final com.back.sportteam.infra.s3.S3Service s3Service;
 
     @Transactional
     public FacilityResponse createFacility(String managerId, FacilityCreateRequest request) {
@@ -114,6 +115,22 @@ public class FacilityService {
     }
 
     @Transactional
+    public void deleteImage(String managerId, String facilityId, String imageUrl) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+
+        if (!facility.getImageUrls().contains(imageUrl)) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_IMAGE_NOT_FOUND);
+        }
+
+        try {
+            s3Service.deleteFile(imageUrl);
+        } catch (Exception e) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_IMAGE_DELETE_FAILED);
+        }
+        facility.removeImage(imageUrl);
+    }
+
     public void deleteFacility(String managerId, String facilityId) {
         Facility facility = getFacilityOrThrow(facilityId);
         validateOwnership(facility, managerId);

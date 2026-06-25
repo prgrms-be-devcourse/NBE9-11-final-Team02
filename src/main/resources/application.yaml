@@ -75,6 +75,10 @@ app:
         match: ${NOTIFICATION_MATCH_TOPIC:notification.match}
   settlement:
     platform-fee-rate: ${PLATFORM_FEE_RATE:0.07}
+  s3:
+    bucket: ${S3_BUCKET_NAME:team02-bucket-8282}
+    region: ${S3_REGION:ap-northeast-2}
+    presigned-url-expiration-minutes: ${S3_PRESIGNED_URL_EXPIRATION_MINUTES:10}
 
 match:
   payment-hold:
