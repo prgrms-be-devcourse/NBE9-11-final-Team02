@@ -21,7 +21,7 @@ public class FacilityAvailableService {
     @Cacheable(
             cacheNames = "facilities:available",
             key = "#sportType + ':' + #region + ':' + #date + ':' + #pageable.pageNumber + ':' + #pageable.pageSize",
-            unless = "#result.isEmpty()"
+            unless = "#result == null || !#result.hasContent()"
     )
     public Page<FacilityAvailableResponse> getAvailableFacilities(
             SportType sportType,
