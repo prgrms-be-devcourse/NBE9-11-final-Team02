@@ -37,7 +37,9 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
 
@@ -62,6 +64,9 @@ class MatchControllerTest {
     private static final LocalDateTime PARTICIPANT_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 9, 10, 0);
     private static final LocalDateTime HOST_CANCEL_DEADLINE = LocalDateTime.of(2099, Month.JUNE, 7, 10, 0);
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, Month.JUNE, 11, 10, 0);
+    private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
+    private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
+    private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
 
     private MatchService matchService;
     private MatchJoinFacade matchJoinFacade;
@@ -438,6 +443,11 @@ class MatchControllerTest {
         return new MatchSummaryResponse(
                 "match-id",
                 "풋살 매칭",
+                "강남 풋살장",
+                "서울시 강남구",
+                MATCH_DATE,
+                MATCH_START_TIME,
+                MATCH_END_TIME,
                 SportType.FUTSAL,
                 1,
                 10,
@@ -454,6 +464,11 @@ class MatchControllerTest {
         return new MatchRecommendationResponse(
                 "match-id",
                 "풋살 매칭",
+                "강남 풋살장",
+                "서울시 강남구",
+                MATCH_DATE,
+                MATCH_START_TIME,
+                MATCH_END_TIME,
                 SportType.FUTSAL,
                 8,
                 10,
@@ -474,6 +489,11 @@ class MatchControllerTest {
                 "reservation-id",
                 "host-id",
                 "풋살 매칭",
+                "강남 풋살장",
+                "서울시 강남구",
+                MATCH_DATE,
+                MATCH_START_TIME,
+                MATCH_END_TIME,
                 SportType.FUTSAL,
                 10,
                 1,
@@ -498,6 +518,11 @@ class MatchControllerTest {
                 "reservation-id",
                 "host-id",
                 "풋살 매칭",
+                "강남 풋살장",
+                "서울시 강남구",
+                MATCH_DATE,
+                MATCH_START_TIME,
+                MATCH_END_TIME,
                 SportType.FUTSAL,
                 10,
                 1,

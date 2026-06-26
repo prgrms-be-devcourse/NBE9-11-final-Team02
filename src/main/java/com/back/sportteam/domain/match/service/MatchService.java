@@ -1,7 +1,9 @@
 package com.back.sportteam.domain.match.service;
 
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
@@ -46,11 +48,16 @@ import java.util.List;
 public class MatchService {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final List<MatchParticipantStatus> PARTICIPATION_OCCUPYING_STATUSES = List.of(
+            MatchParticipantStatus.ACTIVE,
+            MatchParticipantStatus.PAYMENT_PENDING
+    );
 
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
     private final MatchQueryRepository matchQueryRepository;
     private final FacilitySlotRepository facilitySlotRepository;
+    private final FacilityRepository facilityRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
 
@@ -98,7 +105,7 @@ public class MatchService {
     @Transactional(readOnly = true)
     public Page<MatchSummaryResponse> getMatches(MatchSearchCondition condition) {
         return matchQueryRepository.findAll(condition)
-                .map(MatchSummaryResponse::from);
+                .map(this::toSummaryResponse);
     }
 
     @Transactional(readOnly = true)
@@ -117,7 +124,7 @@ public class MatchService {
                 )
                 .stream()
                 .filter(match -> isSkillLevelMatched(userSkillScore, match))
-                .map(match -> recommend(match, userSkillScore, request.gender(), now))
+                .map(match -> recommend(match, getFacility(match), userSkillScore, request.gender(), now))
                 .sorted(Comparator
                         .comparingInt(MatchRecommendationResponse::recommendationScore)
                         .reversed()
@@ -132,7 +139,7 @@ public class MatchService {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
-        return MatchDetailResponse.from(match);
+        return toDetailResponse(match);
     }
 
     @Transactional(readOnly = true)
@@ -197,7 +204,24 @@ public class MatchService {
 
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
 
-        return MatchDetailResponse.from(match);
+        return toDetailResponse(match);
+    }
+
+    private MatchSummaryResponse toSummaryResponse(Match match) {
+        Facility facility = getFacility(match);
+        return MatchSummaryResponse.from(match, facility.getName(), facility.getAddress());
+    }
+
+    private MatchDetailResponse toDetailResponse(Match match) {
+        Facility facility = getFacility(match);
+        return MatchDetailResponse.from(match, facility.getName(), facility.getAddress());
+    }
+
+    private Facility getFacility(Match match) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return facilityRepository.findById(facilitySlot.getFacilityId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
 
     @Transactional
@@ -211,7 +235,7 @@ public class MatchService {
         match.cancel(cancelledAt);
         matchParticipantRepository.findByMatchIdAndStatusIn(
                         matchId,
-                        List.of(MatchParticipantStatus.ACTIVE)
+                        PARTICIPATION_OCCUPYING_STATUSES
                 )
                 .forEach(MatchParticipant::cancel);
         releaseFacilitySlot(match.getReservationId());
@@ -306,7 +330,7 @@ public class MatchService {
         boolean alreadyParticipated = matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 userId,
-                List.of(MatchParticipantStatus.ACTIVE)
+                PARTICIPATION_OCCUPYING_STATUSES
         );
         if (alreadyParticipated) {
             throw new BusinessException(MatchErrorCode.ALREADY_PARTICIPATED);
@@ -321,6 +345,7 @@ public class MatchService {
 
     private MatchRecommendationResponse recommend(
             Match match,
+            Facility facility,
             BigDecimal userSkillScore,
             RequiredGender gender,
             LocalDateTime now
@@ -330,7 +355,7 @@ public class MatchService {
         applyGenderScore(match, gender, score);
         applySeatScore(match, score);
         applyDeadlineScore(match, now, score);
-        return MatchRecommendationResponse.of(match, score.value, score.reasons);
+        return MatchRecommendationResponse.of(match, facility.getName(), facility.getAddress(), score.value, score.reasons);
     }
 
     private void applySkillScore(Match match, BigDecimal userSkillScore, RecommendationScore score) {

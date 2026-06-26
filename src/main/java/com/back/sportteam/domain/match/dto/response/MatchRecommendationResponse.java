@@ -6,12 +6,19 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 public record MatchRecommendationResponse(
         String matchId,
         String title,
+        String facilityName,
+        String facilityAddress,
+        LocalDate matchDate,
+        LocalTime startTime,
+        LocalTime endTime,
         SportType sportType,
         int currentCount,
         int capacity,
@@ -25,10 +32,21 @@ public record MatchRecommendationResponse(
         List<String> reasons
 ) {
 
-    public static MatchRecommendationResponse of(Match match, int recommendationScore, List<String> reasons) {
+    public static MatchRecommendationResponse of(
+            Match match,
+            String facilityName,
+            String facilityAddress,
+            int recommendationScore,
+            List<String> reasons
+    ) {
         return new MatchRecommendationResponse(
                 match.getId(),
                 match.getTitle(),
+                facilityName,
+                facilityAddress,
+                match.getMatchDate(),
+                match.getStartTime(),
+                match.getEndTime(),
                 match.getSportType(),
                 match.getCurrentCount(),
                 match.getCapacity(),
