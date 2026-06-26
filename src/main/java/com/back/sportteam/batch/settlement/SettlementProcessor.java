@@ -10,9 +10,15 @@ import com.back.sportteam.domain.settlement.entity.Settlement;
 import com.back.sportteam.domain.settlement.policy.SettlementPolicy;
 import com.back.sportteam.domain.settlement.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SettlementProcessor {
@@ -23,28 +29,26 @@ public class SettlementProcessor {
     private final SettlementPolicy settlementPolicy;
 
     @Transactional
-    public void process(String matchId) {
-        Match match = matchRepository.findById(matchId).orElse(null);
-        if (match == null || match.getStatus() != MatchStatus.COMPLETED) {
-            return;
-        }
+    public void processBatch(List<String> matchIds) {
+        List<Match> matches = matchRepository.findAllById(matchIds);
+        Map<String, Long> feeMap = paymentRepository.sumAmountMapByMatchIds(
+                matchIds, PaymentType.PARTICIPATION, PaymentStatus.PAID);
 
-        Long totalParticipantFee = paymentRepository.sumAmountByMatchId(
-                matchId,
-                PaymentType.PARTICIPATION,
-                PaymentStatus.PAID
-        );
-        if (totalParticipantFee == null) {
-            throw new IllegalStateException("COMPLETED 경기에 PAID 참가비가 없습니다. matchId=" + matchId);
+        List<Settlement> results = new ArrayList<>();
+        for (Match match : matches) {
+            if (match.getStatus() != MatchStatus.COMPLETED) {
+                log.error("[Settlement] 데이터 정합성 오류 - 완료 상태가 아닌 경기가 배치에 포함됨. matchId={}, status={}", match.getId(), match.getStatus());
+                continue;
+            }
+            long fee = feeMap.getOrDefault(match.getId(), 0L);
+            if (match.getFeePerPerson() > 0 && fee == 0) {
+                log.error("[Settlement] 유료 경기인데 PAID 없음 - 운영자 확인 필요. matchId={}", match.getId());
+                continue;
+            }
+            results.add(Settlement.create(
+                    match.getId(), match.getHostId(), match.getSportType(),
+                    Math.toIntExact(fee), settlementPolicy.getPlatformFeeRate()));
         }
-
-        Settlement settlement = Settlement.create(
-                matchId,
-                match.getHostId(),
-                match.getSportType(),
-                Math.toIntExact(totalParticipantFee.longValue()),
-                settlementPolicy.getPlatformFeeRate()
-        );
-        settlementRepository.save(settlement);
+        settlementRepository.saveAll(results);
     }
 }

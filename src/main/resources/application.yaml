@@ -5,6 +5,12 @@ server:
 spring:
   application:
     name: NBE9-11-final-Team02
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -72,6 +78,7 @@ app:
     settlement:
       cron: ${SETTLEMENT_CRON:0 0 2 * * *}
       batch-size: ${SETTLEMENT_BATCH_SIZE:1000}
+      chunk-size: ${SETTLEMENT_CHUNK_SIZE:50}
   queue:
     reservation:
       token-ttl-seconds: ${RESERVATION_QUEUE_TOKEN_TTL_SECONDS:300}
