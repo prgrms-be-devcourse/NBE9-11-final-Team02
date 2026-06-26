@@ -12,7 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
+import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
+import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.entity.Match;
 import com.back.sportteam.domain.match.entity.MatchParticipantRole;
@@ -31,6 +34,7 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,9 @@ class MatchAuthenticationIntegrationTest {
 
     @Autowired
     private FacilitySlotRepository facilitySlotRepository;
+
+    @Autowired
+    private FacilityRepository facilityRepository;
 
     @Autowired
     private MatchRepository matchRepository;
@@ -244,8 +251,20 @@ class MatchAuthenticationIntegrationTest {
     }
 
     private FacilitySlot createSlot() {
+        Facility facility = facilityRepository.save(Facility.create(
+                "manager-id",
+                "인증 테스트 풋살장",
+                "서울시 강남구",
+                FacilityDetails.builder()
+                        .capacity(10)
+                        .slotDurationMinutes(120)
+                        .defaultWeekdayPrice(100_000)
+                        .defaultWeekendPrice(120_000)
+                        .sportTypes(Set.of(SportType.FUTSAL, SportType.TENNIS))
+                        .build()
+        ));
         return FacilitySlot.create(
-                "facility-id",
+                facility.getId(),
                 LocalDate.of(2099, Month.JUNE, 13),
                 LocalTime.of(10, 0),
                 LocalTime.of(12, 0),
