@@ -123,7 +123,7 @@ class SettlementProcessorTest {
 
         List<Settlement> saved = captureSaved();
         assertThat(saved).hasSize(1);
-        assertThat(saved.get(0).getTotalParticipantFee()).isEqualTo(0);
+        assertThat(saved.get(0).getTotalParticipantFee()).isZero();
         assertThat(saved.get(0).getStatus()).isEqualTo(SettlementStatus.SETTLED);
     }
 

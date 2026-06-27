@@ -38,16 +38,16 @@ public class SettlementProcessor {
         for (Match match : matches) {
             if (match.getStatus() != MatchStatus.COMPLETED) {
                 log.error("[Settlement] 데이터 정합성 오류 - 완료 상태가 아닌 경기가 배치에 포함됨. matchId={}, status={}", match.getId(), match.getStatus());
-                continue;
+            } else {
+                long fee = feeMap.getOrDefault(match.getId(), 0L);
+                if (match.getFeePerPerson() > 0 && fee == 0) {
+                    log.error("[Settlement] 유료 경기인데 PAID 없음 - 운영자 확인 필요. matchId={}", match.getId());
+                } else {
+                    results.add(Settlement.create(
+                            match.getId(), match.getHostId(), match.getSportType(),
+                            Math.toIntExact(fee), settlementPolicy.getPlatformFeeRate()));
+                }
             }
-            long fee = feeMap.getOrDefault(match.getId(), 0L);
-            if (match.getFeePerPerson() > 0 && fee == 0) {
-                log.error("[Settlement] 유료 경기인데 PAID 없음 - 운영자 확인 필요. matchId={}", match.getId());
-                continue;
-            }
-            results.add(Settlement.create(
-                    match.getId(), match.getHostId(), match.getSportType(),
-                    Math.toIntExact(fee), settlementPolicy.getPlatformFeeRate()));
         }
         settlementRepository.saveAll(results);
     }

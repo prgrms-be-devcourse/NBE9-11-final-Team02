@@ -111,6 +111,10 @@ class SettlementBatchPerformanceTest {
         System.out.println("엔티티 로드 수         : " + stats.getEntityLoadCount());
         System.out.println("소요 시간(ms)          : " + elapsedMs);
         System.out.println("=========================================");
+
+        org.assertj.core.api.Assertions.assertThat(stats.getEntityInsertCount())
+                .as("경기 수만큼 Settlement 행이 생성되어야 한다")
+                .isEqualTo(MATCH_COUNT);
     }
 
     private Match saveCompleted(LocalDate matchDate) {

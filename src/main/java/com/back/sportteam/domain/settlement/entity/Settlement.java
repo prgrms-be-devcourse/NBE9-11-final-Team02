@@ -92,7 +92,7 @@ public class Settlement implements Persistable<String> {
         this.platformFee = calculatePlatformFee(totalParticipantFee, appliedFeeRate);
         this.hostSettlementAmount = totalParticipantFee - this.platformFee;
         this.status = SettlementStatus.SETTLED;
-        this.settledAt = LocalDateTime.now();
+        this.settledAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
     }
 
     public static Settlement create(
