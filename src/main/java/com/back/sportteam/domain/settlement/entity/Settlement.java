@@ -7,11 +7,13 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.domain.Persistable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,7 +27,7 @@ import java.util.UUID;
         uniqueConstraints = @UniqueConstraint(name = "uk_settlements_match_id", columnNames = "match_id")
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Settlement {
+public class Settlement implements Persistable<String> {
 
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
@@ -64,6 +66,14 @@ public class Settlement {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
     private Settlement(
             String matchId,
             String hostId,
@@ -81,7 +91,8 @@ public class Settlement {
         this.appliedFeeRate = appliedFeeRate;
         this.platformFee = calculatePlatformFee(totalParticipantFee, appliedFeeRate);
         this.hostSettlementAmount = totalParticipantFee - this.platformFee;
-        this.status = SettlementStatus.HOLDING;
+        this.status = SettlementStatus.SETTLED;
+        this.settledAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
     }
 
     public static Settlement create(
@@ -92,18 +103,6 @@ public class Settlement {
             BigDecimal appliedFeeRate
     ) {
         return new Settlement(matchId, hostId, sportType, totalParticipantFee, appliedFeeRate);
-    }
-
-    public void markSettled(LocalDateTime settledAt) {
-        if (status == SettlementStatus.SETTLED) {
-            return;
-        }
-        this.status = SettlementStatus.SETTLED;
-        this.settledAt = settledAt;
-    }
-
-    public void markFailed() {
-        this.status = SettlementStatus.FAILED;
     }
 
     /*

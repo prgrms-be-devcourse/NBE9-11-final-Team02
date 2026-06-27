@@ -10,13 +10,13 @@ import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.settlement.repository.SettlementRepository;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class SettlementSchedulerTest {
@@ -31,23 +31,24 @@ class SettlementSchedulerTest {
 
     @BeforeEach
     void setUp() {
-        settlementScheduler = new SettlementScheduler(settlementRepository, settlementProcessor);
-        ReflectionTestUtils.setField(settlementScheduler, "batchSize", 1000);
+        SettlementSchedulerProperties properties = new SettlementSchedulerProperties("0 0 2 * * *", 1000, 50);
+        settlementScheduler = new SettlementScheduler(settlementRepository, settlementProcessor, properties);
     }
 
     @Test
-    void 한_경기_정산이_실패해도_다음_경기_정산을_계속_처리한다() {
+    void 일부_경기_정산이_실패해도_나머지_경기를_계속_정산한다() {
+        List<String> matchIds = IntStream.range(0, 60)
+                .mapToObj(i -> "match-" + i)
+                .toList();
         when(settlementRepository.findUnsettledCompletedMatchIds(
-                eq(MatchStatus.COMPLETED),
-                any(LocalDate.class),
-                any(Pageable.class)
-        )).thenReturn(List.of("match-1", "match-2"));
+                eq(MatchStatus.COMPLETED), any(LocalDate.class), any(Pageable.class)
+        )).thenReturn(matchIds);
         doThrow(new IllegalStateException("processing failed"))
                 .when(settlementProcessor)
-                .process("match-1");
+                .processBatch(matchIds.subList(0, 50));
 
         settlementScheduler.settleCompletedMatches();
 
-        verify(settlementProcessor).process("match-2");
+        verify(settlementProcessor).processBatch(matchIds.subList(50, 60));
     }
 }

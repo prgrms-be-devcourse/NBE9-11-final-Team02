@@ -6,7 +6,9 @@ import com.back.sportteam.domain.payment.entity.PaymentType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -68,6 +70,32 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             @Param("paymentType") PaymentType paymentType,
             @Param("status") PaymentStatus status
     );
+
+    @Query("""
+            select payment.matchId as matchId, sum(payment.amount) as total
+            from Payment payment
+            where payment.matchId in :matchIds
+              and payment.paymentType = :paymentType
+              and payment.status = :status
+            group by payment.matchId
+            """)
+    List<Object[]> sumAmountByMatchIds(
+            @Param("matchIds") List<String> matchIds,
+            @Param("paymentType") PaymentType paymentType,
+            @Param("status") PaymentStatus status
+    );
+
+    default Map<String, Long> sumAmountMapByMatchIds(
+            List<String> matchIds,
+            PaymentType paymentType,
+            PaymentStatus status
+    ) {
+        return sumAmountByMatchIds(matchIds, paymentType, status).stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> ((Number) row[1]).longValue()
+                ));
+    }
 
     @Query("""
             select payment.facilitySlotId as facilitySlotId,
