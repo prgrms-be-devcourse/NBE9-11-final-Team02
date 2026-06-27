@@ -20,7 +20,6 @@ import com.back.sportteam.domain.payment.repository.RefundRepository;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.settlement.entity.Settlement;
-import com.back.sportteam.domain.settlement.entity.SettlementStatus;
 import com.back.sportteam.domain.settlement.repository.SettlementRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -85,8 +84,7 @@ public class MyPagePaymentService {
         }
 
         Settlement settlement = settlementRepository.findByMatchId(match.getId()).orElse(null);
-        boolean settlementVisible = settlement != null
-                && settlement.getStatus() != SettlementStatus.FAILED;
+        boolean settlementVisible = settlement != null;
 
         return MatchPaymentResponse.ofHost(
                 facilityPayment.getAmount(),

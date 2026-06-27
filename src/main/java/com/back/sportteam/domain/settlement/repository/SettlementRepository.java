@@ -24,7 +24,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, String> 
                   from Settlement settlement
                   where settlement.matchId = match.id
               )
-            order by match.matchDate asc
+            order by match.matchDate asc, match.endTime asc
             """)
     List<String> findUnsettledCompletedMatchIds(
             @Param("status") MatchStatus status,
