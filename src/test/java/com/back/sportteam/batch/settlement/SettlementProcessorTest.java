@@ -190,7 +190,8 @@ class SettlementProcessorTest {
                 .startTime(MATCH_START_TIME)
                 .endTime(MATCH_END_TIME)
                 .recruitDeadline(LocalDateTime.of(MATCH_DATE, MATCH_START_TIME).minusHours(1))
-                .cancelDeadline(LocalDateTime.of(MATCH_DATE, MATCH_START_TIME).minusHours(1))
+                .participantCancelDeadline(LocalDateTime.of(MATCH_DATE, MATCH_START_TIME).minusHours(1))
+                .hostCancelDeadline(LocalDateTime.of(MATCH_DATE, MATCH_START_TIME).minusHours(1))
                 .build());
         match.confirm(LocalDateTime.now());
         match.complete();

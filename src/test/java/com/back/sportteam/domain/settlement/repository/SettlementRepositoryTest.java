@@ -104,7 +104,8 @@ class SettlementRepositoryTest {
                 .startTime(LocalTime.of(10, 0))
                 .endTime(LocalTime.of(12, 0))
                 .recruitDeadline(LocalDateTime.of(matchDate, LocalTime.of(10, 0)).minusDays(2))
-                .cancelDeadline(LocalDateTime.of(matchDate, LocalTime.of(10, 0)).minusDays(1))
+                .participantCancelDeadline(LocalDateTime.of(matchDate, LocalTime.of(10, 0)).minusDays(1))
+                .hostCancelDeadline(LocalDateTime.of(matchDate, LocalTime.of(10, 0)).minusDays(1))
                 .build());
         if (status == MatchStatus.CONFIRMED || status == MatchStatus.COMPLETED) {
             match.confirm(LocalDateTime.of(matchDate, LocalTime.of(9, 0)));
