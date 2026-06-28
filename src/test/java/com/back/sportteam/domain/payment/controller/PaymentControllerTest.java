@@ -23,9 +23,17 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
 class PaymentControllerTest {
 
@@ -39,8 +47,31 @@ class PaymentControllerTest {
         paymentConfirmService = mock(PaymentConfirmService.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new PaymentController(paymentService, paymentConfirmService))
+                .setCustomArgumentResolvers(authenticationPrincipalResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    private HandlerMethodArgumentResolver authenticationPrincipalResolver() {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(
+                    MethodParameter parameter,
+                    ModelAndViewContainer mavContainer,
+                    NativeWebRequest webRequest,
+                    WebDataBinderFactory binderFactory
+            ) {
+                if (webRequest.getUserPrincipal() instanceof Authentication authentication) {
+                    return authentication.getPrincipal();
+                }
+                return null;
+            }
+        };
     }
 
     @Test
@@ -50,7 +81,7 @@ class PaymentControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/prepare")
-                        .header("X-USER-ID", "user-id")
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
                 .andExpect(status().isOk())
@@ -69,7 +100,7 @@ class PaymentControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/payments/confirm")
-                        .header("X-USER-ID", "user-id")
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -92,7 +123,7 @@ class PaymentControllerTest {
     @Test
     void 결제_금액이_0원이면_400_응답을_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/payments/prepare")
-                        .header("X-USER-ID", "user-id")
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -114,7 +145,7 @@ class PaymentControllerTest {
                 .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_AMOUNT_MISMATCH));
 
         mockMvc.perform(post("/api/v1/payments/prepare")
-                        .header("X-USER-ID", "user-id")
+                        .principal(new UsernamePasswordAuthenticationToken("user-id", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
                 .andExpect(status().isBadRequest())
@@ -125,7 +156,7 @@ class PaymentControllerTest {
     }
 
     @Test
-    void 사용자_ID_헤더가_없으면_400_응답을_반환한다() throws Exception {
+    void 인증_사용자가_없으면_400_응답을_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/payments/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
