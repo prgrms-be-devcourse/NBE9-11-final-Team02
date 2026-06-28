@@ -1,8 +1,11 @@
 package com.back.sportteam.domain.match.service;
 
+import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.entity.SlotStatus;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
+import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
@@ -41,12 +44,14 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +74,13 @@ class MatchServiceTest {
     private static final LocalDate MATCH_DATE = LocalDate.of(2099, Month.JUNE, 10);
     private static final LocalTime MATCH_START_TIME = LocalTime.of(10, 0);
     private static final LocalTime MATCH_END_TIME = LocalTime.of(12, 0);
+    private static final String FACILITY_ID = "facility-id";
+    private static final String FACILITY_NAME = "강남 풋살장";
+    private static final String FACILITY_ADDRESS = "서울시 강남구";
+    private static final List<MatchParticipantStatus> JOIN_BLOCKING_STATUSES = List.of(
+            MatchParticipantStatus.ACTIVE,
+            MatchParticipantStatus.PAYMENT_PENDING
+    );
 
     @Mock
     private MatchRepository matchRepository;
@@ -83,6 +95,9 @@ class MatchServiceTest {
     private FacilitySlotRepository facilitySlotRepository;
 
     @Mock
+    private FacilityRepository facilityRepository;
+
+    @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
 
     @Mock
@@ -93,8 +108,12 @@ class MatchServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUpStatMock() {
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(BigDecimal.valueOf(3));
         when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any()))
-                .thenReturn(Optional.of(org.mockito.Mockito.mock(UserSportStat.class)));
+                .thenReturn(Optional.of(sportStat));
+        when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(createFutureSlot()));
+        when(facilityRepository.findById(FACILITY_ID)).thenReturn(Optional.of(createFacility()));
     }
 
     @Test
@@ -257,6 +276,11 @@ class MatchServiceTest {
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getContent().getFirst().matchId()).isNotBlank();
         assertThat(response.getContent().getFirst().title()).isEqualTo("풋살 매칭");
+        assertThat(response.getContent().getFirst().facilityName()).isEqualTo(FACILITY_NAME);
+        assertThat(response.getContent().getFirst().facilityAddress()).isEqualTo(FACILITY_ADDRESS);
+        assertThat(response.getContent().getFirst().matchDate()).isEqualTo(MATCH_DATE);
+        assertThat(response.getContent().getFirst().startTime()).isEqualTo(MATCH_START_TIME);
+        assertThat(response.getContent().getFirst().endTime()).isEqualTo(MATCH_END_TIME);
         assertThat(response.getContent().getFirst().feePerPerson()).isEqualTo(10000);
         assertThat(response.getContent().getFirst().status()).isEqualTo(MatchStatus.RECRUITING);
     }
@@ -282,10 +306,13 @@ class MatchServiceTest {
 
         List<MatchRecommendationResponse> response = matchService.recommendMatches("user-id", request);
 
-        assertThat(response).hasSize(2);
+        assertThat(response).hasSize(1);
         assertThat(response.getFirst().matchId()).isEqualTo(recommendedMatch.getId());
-        assertThat(response.getFirst().recommendationScore())
-                .isGreaterThan(response.get(1).recommendationScore());
+        assertThat(response.getFirst().facilityName()).isEqualTo(FACILITY_NAME);
+        assertThat(response.getFirst().facilityAddress()).isEqualTo(FACILITY_ADDRESS);
+        assertThat(response.getFirst().matchDate()).isEqualTo(MATCH_DATE);
+        assertThat(response.getFirst().startTime()).isEqualTo(MATCH_START_TIME);
+        assertThat(response.getFirst().endTime()).isEqualTo(MATCH_END_TIME);
         assertThat(response.getFirst().reasons()).contains("실력 조건이 일치합니다.");
     }
 
@@ -300,6 +327,11 @@ class MatchServiceTest {
         assertThat(response.reservationId()).isEqualTo("reservation-id");
         assertThat(response.hostId()).isEqualTo("host-id");
         assertThat(response.title()).isEqualTo("풋살 매칭");
+        assertThat(response.facilityName()).isEqualTo(FACILITY_NAME);
+        assertThat(response.facilityAddress()).isEqualTo(FACILITY_ADDRESS);
+        assertThat(response.matchDate()).isEqualTo(MATCH_DATE);
+        assertThat(response.startTime()).isEqualTo(MATCH_START_TIME);
+        assertThat(response.endTime()).isEqualTo(MATCH_END_TIME);
         assertThat(response.status()).isEqualTo(MatchStatus.RECRUITING);
     }
 
@@ -348,7 +380,7 @@ class MatchServiceTest {
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 match.getId(),
                 "participant-id",
-                List.of(MatchParticipantStatus.ACTIVE)
+                JOIN_BLOCKING_STATUSES
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -369,7 +401,7 @@ class MatchServiceTest {
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                List.of(MatchParticipantStatus.ACTIVE)
+                JOIN_BLOCKING_STATUSES
         )).thenReturn(false);
         when(matchParticipantRepository.save(any(MatchParticipant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -424,13 +456,32 @@ class MatchServiceTest {
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
                 matchId,
                 "participant-id",
-                List.of(MatchParticipantStatus.ACTIVE)
+                JOIN_BLOCKING_STATUSES
         )).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MatchErrorCode.ALREADY_PARTICIPATED);
+    }
+
+    @Test
+    void 매칭방_참가시_결제_대기중인_유저면_예외를_던진다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId,
+                "participant-id",
+                JOIN_BLOCKING_STATUSES
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.ALREADY_PARTICIPATED);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
     }
 
     @Test
@@ -453,7 +504,7 @@ class MatchServiceTest {
         String matchId = match.getId();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
-                matchId, "participant-id", List.of(MatchParticipantStatus.ACTIVE)
+                matchId, "participant-id", JOIN_BLOCKING_STATUSES
         )).thenReturn(false);
         when(userSportStatRepository.findByUser_IdAndSportType(anyString(), any())).thenReturn(Optional.empty());
 
@@ -461,6 +512,48 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(com.back.sportteam.domain.user.exception.UserErrorCode.SPORT_STAT_NOT_FOUND);
+    }
+
+    @Test
+    void 매칭방_참가시_실력_조건에_맞지_않으면_예외를_던진다() {
+        Match match = createMatch(10, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        String matchId = match.getId();
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(BigDecimal.valueOf(1));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", JOIN_BLOCKING_STATUSES
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType("participant-id", SportType.FUTSAL))
+                .thenReturn(Optional.of(sportStat));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.SKILL_LEVEL_NOT_MATCHED);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
+    }
+
+    @Test
+    void 매칭방_참가시_최대_실력_조건보다_높으면_예외를_던진다() {
+        Match match = createMatch(10, SkillLevel.LEVEL_2, SkillLevel.LEVEL_4);
+        String matchId = match.getId();
+        UserSportStat sportStat = org.mockito.Mockito.mock(UserSportStat.class);
+        when(sportStat.getSkillRating()).thenReturn(new BigDecimal("4.5"));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.existsByMatchIdAndUserIdAndStatusIn(
+                matchId, "participant-id", JOIN_BLOCKING_STATUSES
+        )).thenReturn(false);
+        when(userSportStatRepository.findByUser_IdAndSportType("participant-id", SportType.FUTSAL))
+                .thenReturn(Optional.of(sportStat));
+
+        assertThatThrownBy(() -> matchService.joinMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.SKILL_LEVEL_NOT_MATCHED);
+
+        verify(matchParticipantRepository, never()).save(any(MatchParticipant.class));
     }
 
     @Test
@@ -658,7 +751,7 @@ class MatchServiceTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchParticipantRepository.findByMatchIdAndStatusIn(
                 matchId,
-                List.of(MatchParticipantStatus.ACTIVE)
+                JOIN_BLOCKING_STATUSES
         )).thenReturn(List.of(host, participant, pendingParticipant));
         when(facilitySlotRepository.findById(match.getReservationId())).thenReturn(Optional.of(facilitySlot));
 
@@ -833,11 +926,26 @@ class MatchServiceTest {
 
     private FacilitySlot createFutureSlot() {
         return FacilitySlot.create(
-                "facility-id",
+                FACILITY_ID,
                 LocalDate.of(2099, Month.JUNE, 12),
                 LocalTime.of(10, 0),
                 LocalTime.of(12, 0),
                 10000
+        );
+    }
+
+    private Facility createFacility() {
+        return Facility.create(
+                "manager-id",
+                FACILITY_NAME,
+                FACILITY_ADDRESS,
+                FacilityDetails.builder()
+                        .capacity(10)
+                        .slotDurationMinutes(120)
+                        .defaultWeekdayPrice(10000)
+                        .defaultWeekendPrice(12000)
+                        .sportTypes(Set.of(SportType.FUTSAL))
+                        .build()
         );
     }
 

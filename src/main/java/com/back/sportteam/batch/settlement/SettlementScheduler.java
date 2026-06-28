@@ -5,7 +5,6 @@ import com.back.sportteam.domain.settlement.repository.SettlementRepository;
 import com.back.sportteam.global.util.TimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,29 +19,27 @@ public class SettlementScheduler {
 
     private final SettlementRepository settlementRepository;
     private final SettlementProcessor settlementProcessor;
-
-    @Value("${app.scheduler.settlement.batch-size:100}")
-    private int batchSize;
+    private final SettlementSchedulerProperties properties;
 
     @Scheduled(cron = "${app.scheduler.settlement.cron:0 0 2 * * *}", zone = "Asia/Seoul")
     public void settleCompletedMatches() {
         LocalDate today = LocalDate.now(TimeUtils.SERVICE_ZONE);
+
         List<String> matchIds = settlementRepository.findUnsettledCompletedMatchIds(
-                MatchStatus.COMPLETED,
-                today,
-                PageRequest.of(0, batchSize)
-        );
-
-        for (String matchId : matchIds) {
-            settle(matchId);
+                MatchStatus.COMPLETED, today, PageRequest.of(0, properties.batchSize()));
+        int processed = 0;
+        for (int from = 0; from < matchIds.size(); from += properties.chunkSize()) {
+            List<String> chunk = matchIds.subList(from, Math.min(from + properties.chunkSize(), matchIds.size()));
+            try {
+                settlementProcessor.processBatch(chunk);
+                processed += chunk.size();
+            } catch (RuntimeException e) {
+                log.error("[Settlement] 청크 처리 실패. matchIds={}", chunk, e);
+            }
         }
-    }
 
-    private void settle(String matchId) {
-        try {
-            settlementProcessor.process(matchId);
-        } catch (RuntimeException e) {
-            log.error("Failed to settle match. matchId={}", matchId, e);
+        if (!matchIds.isEmpty()) {
+            log.info("[Settlement] 배치 완료. processed={}건", processed);
         }
     }
 }

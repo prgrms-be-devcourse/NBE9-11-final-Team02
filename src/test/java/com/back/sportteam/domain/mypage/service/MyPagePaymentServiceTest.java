@@ -74,11 +74,11 @@ class MyPagePaymentServiceTest {
     }
 
     @Test
-    void 방장_시설결제_PAID_정산_HOLDING_정상_조회() {
+    void 방장_시설결제_PAID와_정산_SETTLED_상태를_응답에서_확인할_수_있다() {
         Match match = hostMatch();
         String matchId = match.getId();
         Payment payment = paidFacilityPayment();
-        Settlement settlement = holdingSettlement(matchId);
+        Settlement settlement = settledSettlement(matchId);
 
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(reservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.of(reservation()));
@@ -91,7 +91,9 @@ class MyPagePaymentServiceTest {
 
         assertThat(response.role()).isEqualTo("HOST");
         assertThat(response.hostDetail().facilityPaymentStatus()).isEqualTo(PaymentStatus.PAID);
-        assertThat(response.hostDetail().settlementStatus()).isEqualTo(SettlementStatus.HOLDING);
+        assertThat(response.hostDetail().settlementStatus()).isEqualTo(SettlementStatus.SETTLED);
+        assertThat(response.hostDetail().hostSettlementAmount()).isNotNull();
+        assertThat(response.hostDetail().platformFee()).isNotNull();
         assertThat(response.hostDetail().refundedAt()).isNull();
         assertThat(response.participantDetail()).isNull();
     }
@@ -108,27 +110,6 @@ class MyPagePaymentServiceTest {
                 HOST_ID, SLOT_ID, PaymentType.FACILITY, PaymentStatus.PAID))
                 .thenReturn(Optional.of(payment));
         when(settlementRepository.findByMatchId(matchId)).thenReturn(Optional.empty());
-
-        MatchPaymentResponse response = myPagePaymentService.getMatchPayment(HOST_ID, matchId);
-
-        assertThat(response.hostDetail().settlementStatus()).isNull();
-        assertThat(response.hostDetail().hostSettlementAmount()).isNull();
-        assertThat(response.hostDetail().platformFee()).isNull();
-    }
-
-    @Test
-    void 방장_정산_FAILED_상태는_노출되지_않는다() {
-        Match match = hostMatch();
-        String matchId = match.getId();
-        Payment payment = paidFacilityPayment();
-        Settlement settlement = failedSettlement(matchId);
-
-        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(reservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.of(reservation()));
-        when(paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-                HOST_ID, SLOT_ID, PaymentType.FACILITY, PaymentStatus.PAID))
-                .thenReturn(Optional.of(payment));
-        when(settlementRepository.findByMatchId(matchId)).thenReturn(Optional.of(settlement));
 
         MatchPaymentResponse response = myPagePaymentService.getMatchPayment(HOST_ID, matchId);
 
@@ -161,28 +142,6 @@ class MyPagePaymentServiceTest {
         assertThat(response.hostDetail().facilityPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
         assertThat(response.hostDetail().refundedAt()).isEqualTo(REFUNDED_AT);
         assertThat(response.hostDetail().refundReason()).isEqualTo("경기 취소");
-    }
-
-    @Test
-    void 방장_정산_SETTLED_상태_금액과_상태가_정상_반환된다() {
-        Match match = hostMatch();
-        String matchId = match.getId();
-        Payment payment = paidFacilityPayment();
-        Settlement settlement = holdingSettlement(matchId);
-        settlement.markSettled(LocalDateTime.of(2026, Month.JUNE, 20, 12, 0));
-
-        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(reservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.of(reservation()));
-        when(paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-                HOST_ID, SLOT_ID, PaymentType.FACILITY, PaymentStatus.PAID))
-                .thenReturn(Optional.of(payment));
-        when(settlementRepository.findByMatchId(matchId)).thenReturn(Optional.of(settlement));
-
-        MatchPaymentResponse response = myPagePaymentService.getMatchPayment(HOST_ID, matchId);
-
-        assertThat(response.hostDetail().settlementStatus()).isEqualTo(SettlementStatus.SETTLED);
-        assertThat(response.hostDetail().hostSettlementAmount()).isNotNull();
-        assertThat(response.hostDetail().platformFee()).isNotNull();
     }
 
     @Test
@@ -375,14 +334,8 @@ class MyPagePaymentServiceTest {
         return p;
     }
 
-    private Settlement holdingSettlement(String matchId) {
+    private Settlement settledSettlement(String matchId) {
         return Settlement.create(matchId, HOST_ID, SportType.FUTSAL, 60000, BigDecimal.valueOf(0.1));
-    }
-
-    private Settlement failedSettlement(String matchId) {
-        Settlement s = Settlement.create(matchId, HOST_ID, SportType.FUTSAL, 60000, BigDecimal.valueOf(0.1));
-        s.markFailed();
-        return s;
     }
 
     private Refund completedRefund() {
