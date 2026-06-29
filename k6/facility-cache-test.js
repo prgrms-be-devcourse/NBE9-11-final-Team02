@@ -2,16 +2,11 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
-// 커스텀 지표
 const latency = new Trend('facility_query_latency', true);
 const failRate = new Rate('facility_query_failed');
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8090';
 
-// 재설계 의도:
-//   - 시설 500건(현실적 규모)에 트래픽 300 VUs 집중
-//   - 사용자 조회는 소수 인기 조합에 쏠린다(서울/풋살 등)
-//   - 캐시가 이 쏠린 요청을 받아내 DB 쿼리 수를 줄이는지 검증
 export const options = {
   stages: [
     { duration: '10s', target: 50 },   // 워밍업: 캐시 채우기
@@ -24,7 +19,6 @@ export const options = {
   },
 };
 
-// 인기 조건 5개 조합에 95% 집중 (캐시 히트 유도)
 const POPULAR_QUERIES = [
   { sportType: 'FUTSAL',     region: '서울', date: '2026-07-01' },
   { sportType: 'FUTSAL',     region: '서울', date: '2026-07-02' },
