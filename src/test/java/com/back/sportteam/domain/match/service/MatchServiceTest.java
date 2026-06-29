@@ -123,6 +123,8 @@ class MatchServiceTest {
         when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(createFutureSlot()));
         when(facilityRepository.findById(FACILITY_ID)).thenReturn(Optional.of(createFacility()));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        Reservation defaultReservation = Reservation.pending("reservation-id", CREATED_AT);
+        when(reservationRepository.findById("reservation-id")).thenReturn(Optional.of(defaultReservation));
     }
 
     @Test
