@@ -45,6 +45,8 @@ logging:
     name: ${LOGGING_FILE_NAME:logs/sportteam.log}
 
 app:
+  swagger:
+    aws-url: ${SWAGGER_AWS_URL:}
   jwt:
     secret: ${JWT_SECRET:change-this-secret-key-in-production}
     access-token-validity-seconds: ${JWT_ACCESS_TOKEN_VALIDITY_SECONDS:1800}
