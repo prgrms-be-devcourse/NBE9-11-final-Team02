@@ -96,7 +96,7 @@ services:
     profiles:
       - prod
 
-  frontend:
+  frontend_1:
     image: ${FRONTEND_IMAGE:-ghcr.io/prgrms-be-devcourse/nbe9-11-team02-frontend:latest}
     container_name: frontend_1
     restart: unless-stopped

@@ -155,9 +155,8 @@ jobs:
             echo "${{ steps.compose.outputs.b64 }}" | base64 -d > /home/ec2-user/app/docker-compose.yaml
             echo "✅ docker-compose.yaml 최신화 완료"
 
-            # nginx 설정 최신화 (레포의 nginx/conf.d/sportteam.conf을 base64로 전달)
-            # set $backend는 레포 기본값(app1_1)으로 덮이지만, 아래 블루-그린 단계에서
-            # 활성 컨테이너로 교체 후 reload 하므로 중간에 트래픽이 잘못 가지 않는다.
+            # nginx 설정 최신화. $backend는 레포 기본값(app1_1)으로 덮이지만 아래
+            # 블루-그린 단계에서 활성 컨테이너로 교체 후 reload 하므로 오라우팅 없다.
             mkdir -p /home/ec2-user/nginx/conf.d
             echo "${{ steps.nginx.outputs.b64 }}" | base64 -d > /home/ec2-user/nginx/conf.d/sportteam.conf
             echo "✅ nginx 설정 최신화 완료"
