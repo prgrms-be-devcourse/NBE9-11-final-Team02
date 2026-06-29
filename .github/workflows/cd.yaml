@@ -144,10 +144,11 @@ jobs:
             echo "${{ steps.compose.outputs.b64 }}" | base64 -d > /home/ec2-user/app/docker-compose.yaml
             echo "✅ docker-compose.yaml 최신화 완료"
 
-            # .env 파일 생성 (application-secret.yaml에서 비밀번호 추출)
-            MYSQL_PW=$(grep -A3 "prod:" /home/ec2-user/secrets/application-secret.yaml | grep "password" | head -1 | awk '{print $2}' | tr -d '"')
-            REDIS_PW=$(grep -A5 "prod:" /home/ec2-user/secrets/application-secret.yaml | grep "password" | tail -1 | awk '{print $2}' | tr -d '"')
-            printf "MYSQL_ROOT_PASSWORD=%s\nREDIS_PASSWORD=%s\n" "${MYSQL_PW}" "${REDIS_PW}" > /home/ec2-user/app/.env
+            # .env 파일 생성 (application-secret.yaml에서 prod 블록 비밀번호 추출)
+            SECRET_FILE=/home/ec2-user/secrets/application-secret.yaml
+            MYSQL_PW=$(awk '/^  prod:/{found=1} found && /db:/{db=1} found && db && /password:/{gsub(/"/, "", $2); print $2; exit}' "$SECRET_FILE")
+            REDIS_PW=$(awk '/^  prod:/{found=1} found && /redis:/{redis=1} found && redis && /password:/{gsub(/"/, "", $2); print $2; exit}' "$SECRET_FILE")
+            printf "MYSQL_ROOT_PASSWORD=%s\nMYSQL_PASSWORD=%s\nREDIS_PASSWORD=%s\n" "${MYSQL_PW}" "${MYSQL_PW}" "${REDIS_PW}" > /home/ec2-user/app/.env
             chmod 600 /home/ec2-user/app/.env
             echo "✅ .env 파일 생성 완료"
 
