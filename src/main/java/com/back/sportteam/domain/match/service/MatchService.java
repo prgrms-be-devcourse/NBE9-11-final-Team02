@@ -25,6 +25,8 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
@@ -58,6 +60,7 @@ public class MatchService {
     private final MatchQueryRepository matchQueryRepository;
     private final FacilitySlotRepository facilitySlotRepository;
     private final FacilityRepository facilityRepository;
+    private final ReservationRepository reservationRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
 
@@ -72,12 +75,16 @@ public class MatchService {
                 request.participantCancelDeadline(),
                 request.hostCancelDeadline()
         );
-        FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
-        validateReservationAvailable(request.reservationId());
-        facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
+        String facilitySlotId = request.reservationId();
+        FacilitySlot facilitySlot = getFacilitySlotForUpdate(facilitySlotId);
+        validateReservationAvailable(facilitySlotId);
+
+        LocalDateTime reservedAt = LocalDateTime.now(SERVICE_ZONE);
+        facilitySlot.holdUntil(reservedAt.plus(paymentHoldDuration()));
+        Reservation reservation = reservationRepository.save(Reservation.pending(facilitySlotId, reservedAt));
 
         Match match = Match.create(MatchCreateCommand.builder()
-                .reservationId(request.reservationId())
+                .reservationId(reservation.getId())
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
@@ -218,8 +225,7 @@ public class MatchService {
     }
 
     private Facility getFacility(Match match) {
-        FacilitySlot facilitySlot = facilitySlotRepository.findById(match.getReservationId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        FacilitySlot facilitySlot = getFacilitySlotByReservationId(match.getReservationId());
         return facilityRepository.findById(facilitySlot.getFacilityId())
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
@@ -276,14 +282,17 @@ public class MatchService {
         }
     }
 
-    private void validateReservationAvailable(String reservationId) {
-        if (matchRepository.existsByReservationId(reservationId)) {
-            throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
-        }
+    private void validateReservationAvailable(String facilitySlotId) {
+        reservationRepository.findByFacilitySlotId(facilitySlotId)
+                .map(Reservation::getId)
+                .filter(matchRepository::existsByReservationId)
+                .ifPresent(reservationId -> {
+                    throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
+                });
     }
 
-    private FacilitySlot getFacilitySlotForUpdate(String reservationId) {
-        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(reservationId)
+    private FacilitySlot getFacilitySlotForUpdate(String facilitySlotId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(facilitySlotId)
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
         if (!facilitySlot.isReservable()) {
             throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
@@ -292,9 +301,16 @@ public class MatchService {
     }
 
     private void releaseFacilitySlot(String reservationId) {
-        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservationId)
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        FacilitySlot facilitySlot = getFacilitySlotByReservationId(reservationId);
         facilitySlot.release();
+    }
+
+    private FacilitySlot getFacilitySlotByReservationId(String reservationId) {
+        return reservationRepository.findById(reservationId)
+                .map(Reservation::getFacilitySlotId)
+                .flatMap(facilitySlotRepository::findById)
+                .or(() -> facilitySlotRepository.findById(reservationId))
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
     }
 
     private void validateDeadlineRange(
