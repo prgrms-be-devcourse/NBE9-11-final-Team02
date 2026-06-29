@@ -112,6 +112,11 @@ public class WaitingQueueService {
         );
     }
 
+    public void consumeEnterableToken(String token, String userId) {
+        String facilitySlotId = getFacilitySlotIdFromToken(token);
+        consumeEnterableToken(token, facilitySlotId, userId);
+    }
+
     public void consumeEnterableToken(String token, String facilitySlotId, String userId) {
         if (token == null || token.isBlank()) {
             throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_REQUIRED);
@@ -141,6 +146,18 @@ public class WaitingQueueService {
         redisTemplate.opsForZSet().remove(queueKey, token);
         redisTemplate.delete(tokenKey);
         redisTemplate.delete(WaitingQueueKeys.userToken(facilitySlotId, userId));
+    }
+
+    private String getFacilitySlotIdFromToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_REQUIRED);
+        }
+
+        String tokenValue = redisTemplate.opsForValue().get(WaitingQueueKeys.token(token));
+        if (tokenValue == null) {
+            throw new BusinessException(SystemErrorCode.QUEUE_TOKEN_EXPIRED);
+        }
+        return parseFacilitySlotId(tokenValue);
     }
 
     private void cleanupExpiredTokens(String queueKey) {

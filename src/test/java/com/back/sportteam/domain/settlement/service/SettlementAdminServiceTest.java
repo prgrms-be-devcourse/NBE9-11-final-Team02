@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.back.sportteam.domain.settlement.repository.SettlementQueryRepository;
+import com.back.sportteam.global.util.TimeUtils;
 import java.time.LocalDate;
 import java.time.Month;
 import org.junit.jupiter.api.Test;
@@ -38,8 +39,8 @@ class SettlementAdminServiceTest {
 
     @Test
     void 종료일이_오늘_이후면_예외가_발생한다() {
-        LocalDate from = LocalDate.now().minusDays(7);
-        LocalDate to = LocalDate.now().plusDays(1);
+        LocalDate from = LocalDate.now(TimeUtils.SERVICE_ZONE).minusDays(7);
+        LocalDate to = LocalDate.now(TimeUtils.SERVICE_ZONE).plusDays(1);
 
         assertThatThrownBy(() -> settlementAdminService.getSummary(from, to))
                 .isInstanceOf(IllegalArgumentException.class)

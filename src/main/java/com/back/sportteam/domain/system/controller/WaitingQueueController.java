@@ -7,11 +7,11 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,7 +26,7 @@ public class WaitingQueueController {
     @PostMapping("/facility-slots/{facilitySlotId}/tokens")
     public ResponseEntity<ApiResponse<WaitingQueueTokenResponse>> issueToken(
             @PathVariable String facilitySlotId,
-            @RequestHeader("X-USER-ID") @NotBlank(message = "사용자 ID는 필수입니다.") String userId
+            @AuthenticationPrincipal @NotBlank(message = "사용자 ID는 필수입니다.") String userId
     ) {
         WaitingQueueTokenResponse response = waitingQueueService.issueToken(facilitySlotId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
@@ -34,9 +34,19 @@ public class WaitingQueueController {
 
     @GetMapping("/tokens/{token}")
     public ResponseEntity<ApiResponse<WaitingQueueTokenResponse>> getStatus(
-            @PathVariable String token
+            @PathVariable String token,
+            @AuthenticationPrincipal @NotBlank(message = "사용자 ID는 필수입니다.") String userId
     ) {
         WaitingQueueTokenResponse response = waitingQueueService.getStatus(token);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PostMapping("/tokens/{token}/consume")
+    public ResponseEntity<ApiResponse<Void>> consumeToken(
+            @PathVariable String token,
+            @AuthenticationPrincipal @NotBlank(message = "사용자 ID는 필수입니다.") String userId
+    ) {
+        waitingQueueService.consumeEnterableToken(token, userId);
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 }

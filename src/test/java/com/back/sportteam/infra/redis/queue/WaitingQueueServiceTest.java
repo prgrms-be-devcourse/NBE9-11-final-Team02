@@ -169,6 +169,95 @@ class WaitingQueueServiceTest {
                 .isEqualTo(SystemErrorCode.QUEUE_TOKEN_INVALID);
     }
 
+    @Test
+    void getStatusReturnsZeroWaitingCountWhenQueueSizeIsNull() {
+        String token = "token-id";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id");
+        when(zSetOperations.range(WaitingQueueKeys.queue("slot-id"), 0, -1)).thenReturn(Set.of(token));
+        when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(0L);
+        when(zSetOperations.size(WaitingQueueKeys.queue("slot-id"))).thenReturn(null);
+
+        WaitingQueueTokenResponse response = waitingQueueService.getStatus(token);
+
+        assertThat(response.position()).isEqualTo(1);
+        assertThat(response.waitingCount()).isZero();
+        assertThat(response.enterable()).isTrue();
+    }
+
+    @Test
+    void consumeEnterableTokenRemovesTokenAndUserToken() {
+        String token = "token-id";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id");
+        when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn(token);
+        when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(0L);
+
+        waitingQueueService.consumeEnterableToken(token, "user-id");
+
+        verify(zSetOperations).remove(WaitingQueueKeys.queue("slot-id"), token);
+        verify(redisTemplate).delete(WaitingQueueKeys.token(token));
+        verify(redisTemplate).delete(WaitingQueueKeys.userToken("slot-id", "user-id"));
+    }
+
+    @Test
+    void consumeEnterableTokenThrowsWhenTokenIsBlank() {
+        assertThatThrownBy(() -> waitingQueueService.consumeEnterableToken(" ", "slot-id", "user-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SystemErrorCode.QUEUE_TOKEN_REQUIRED);
+    }
+
+    @Test
+    void consumeEnterableTokenThrowsWhenTokenExpired() {
+        String token = "expired-token";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn(null);
+
+        assertThatThrownBy(() -> waitingQueueService.consumeEnterableToken(token, "slot-id", "user-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SystemErrorCode.QUEUE_TOKEN_EXPIRED);
+    }
+
+    @Test
+    void consumeEnterableTokenThrowsWhenTokenBelongsToDifferentSlot() {
+        String token = "token-id";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("other-slot-id");
+        when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn(token);
+
+        assertThatThrownBy(() -> waitingQueueService.consumeEnterableToken(token, "slot-id", "user-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SystemErrorCode.QUEUE_TOKEN_INVALID);
+    }
+
+    @Test
+    void consumeEnterableTokenThrowsWhenTokenIsNotInQueue() {
+        String token = "token-id";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id");
+        when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn(token);
+        when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(null);
+
+        assertThatThrownBy(() -> waitingQueueService.consumeEnterableToken(token, "slot-id", "user-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SystemErrorCode.QUEUE_TOKEN_INVALID);
+    }
+
+    @Test
+    void consumeEnterableTokenThrowsWhenTokenIsNotEnterableYet() {
+        String token = "token-id";
+        when(valueOperations.get(WaitingQueueKeys.token(token))).thenReturn("slot-id");
+        when(valueOperations.get(WaitingQueueKeys.userToken("slot-id", "user-id"))).thenReturn(token);
+        when(zSetOperations.rank(WaitingQueueKeys.queue("slot-id"), token)).thenReturn(1L);
+
+        assertThatThrownBy(() -> waitingQueueService.consumeEnterableToken(token, "slot-id", "user-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SystemErrorCode.QUEUE_NOT_ENTERABLE);
+
+        verify(zSetOperations, never()).remove(WaitingQueueKeys.queue("slot-id"), token);
+        verify(redisTemplate, never()).delete(WaitingQueueKeys.token(token));
+    }
+
     private void stubFacilitySlotExists(String facilitySlotId) {
         FacilitySlot facilitySlot = facilitySlot(facilitySlotId);
         when(facilitySlotRepository.findById(facilitySlotId)).thenReturn(Optional.of(facilitySlot));
