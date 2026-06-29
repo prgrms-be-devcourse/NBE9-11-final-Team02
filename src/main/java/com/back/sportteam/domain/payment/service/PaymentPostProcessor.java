@@ -75,6 +75,8 @@ public class PaymentPostProcessor {
     private void confirmFacilitySlot(Payment payment) {
         FacilitySlot facilitySlot = getFacilitySlot(payment.getFacilitySlotId());
         facilitySlot.reserve();
+        reservationRepository.findByFacilitySlotId(payment.getFacilitySlotId())
+                .ifPresent(Reservation::confirm);
     }
 
     private void cancelParticipant(Payment payment, LocalDateTime processedAt) {
