@@ -27,7 +27,7 @@ class MatchStatusSubscriberTest {
     @DisplayName("Redis 메시지 수신 시 STOMP 토픽으로 브로드캐스트")
     @Test
     void Redis_메시지_수신_시_STOMP_토픽으로_브로드캐스트() throws Exception {
-        MatchStatusMessage message = new MatchStatusMessage(50L, 5, 10);
+        MatchStatusMessage message = new MatchStatusMessage("50", 5, 10);
         byte[] payload = new ObjectMapper().writeValueAsBytes(message);
         DefaultMessage redisMessage = new DefaultMessage("match:status:50".getBytes(), payload);
 
