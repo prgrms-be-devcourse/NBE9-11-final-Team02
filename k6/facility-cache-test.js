@@ -67,14 +67,12 @@ export function handleSummary(data) {
     ? (data.metrics.facility_query_failed.values.rate * 100).toFixed(2)
     : 'N/A';
 
-  console.log('\n========== FAC-01 결과 요약 (500건 / VUs 300) ==========');
+  console.log('\n========== 캐싱 테스트 결과 요약 (500건 / VUs 300) ==========');
   console.log(`총 요청 수   : ${reqs}`);
   console.log(`평균 응답시간: ${avg.toFixed(2)}ms`);
   console.log(`p95 응답시간 : ${p95.toFixed(2)}ms`);
   console.log(`실패율       : ${failed}%`);
   console.log('======================================================');
-  console.log('측정 직후 아래로 DB 쿼리 수를 확인하세요:');
-  console.log('  /actuator/prometheus 에서 hibernate_query 또는 hikaricp 지표');
   console.log('  캐시 ON: 인기조건 5개만 DB 조회 → 쿼리 수 적음');
   console.log('  캐시 OFF: 매 요청 DB 조회 → 쿼리 수 = 총 요청 수에 근접\n');
 
