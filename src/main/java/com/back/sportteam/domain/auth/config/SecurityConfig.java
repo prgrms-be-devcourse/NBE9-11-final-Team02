@@ -53,7 +53,8 @@ public class SecurityConfig {
                                     "/api/v1/payments/webhook/**",
                                     "/api/v1/health",
                                     "/actuator/health",
-                                    "/actuator/prometheus"
+                                    "/actuator/prometheus",
+                                    "/api/v1/facilities/**"
                             ).permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/v1/matches").permitAll()
                             .requestMatchers(RegexRequestMatcher.regexMatcher(
