@@ -26,6 +26,7 @@ import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.util.TimeUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FacilityService {
@@ -93,6 +95,8 @@ public class FacilityService {
         Facility facility = getFacilityOrThrow(facilityId);
         validateOwnership(facility, managerId);
 
+        List<String> removedImageUrls = resolveRemovedImageUrls(facility.getImageUrls(), request.imageUrls());
+
         facility.update(
                 FacilityDetails.builder()
                         .phone(request.phone())
@@ -111,7 +115,27 @@ public class FacilityService {
         facilitySlotRepository.updateWeekdayPrice(facilityId, PRICE_UPDATABLE_STATUSES, request.defaultWeekdayPrice());
         facilitySlotRepository.updateWeekendPrice(facilityId, PRICE_UPDATABLE_STATUSES, request.defaultWeekendPrice());
 
+        cleanupRemovedImages(removedImageUrls);
+
         return FacilityResponse.from(facility);
+    }
+
+    private List<String> resolveRemovedImageUrls(List<String> current, List<String> updated) {
+        // null은 엔티티 갱신과 동일하게 전체 비움으로 해석한다.
+        List<String> next = updated != null ? updated : List.of();
+        return current.stream()
+                .filter(url -> !next.contains(url))
+                .toList();
+    }
+
+    private void cleanupRemovedImages(List<String> imageUrls) {
+        for (String imageUrl : imageUrls) {
+            try {
+                s3Service.deleteFile(imageUrl);
+            } catch (Exception e) {
+                log.warn("[Facility] S3 이미지 정리 실패 - 고아 객체 발생 가능. imageUrl={}", imageUrl, e);
+            }
+        }
     }
 
     @Transactional
