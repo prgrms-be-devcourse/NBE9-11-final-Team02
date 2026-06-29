@@ -3,6 +3,8 @@ package com.back.sportteam.domain.review.controller;
 import com.back.sportteam.domain.review.dto.request.ReviewSubmitRequest;
 import com.back.sportteam.domain.review.dto.response.FacilityReviewResponse;
 import com.back.sportteam.domain.review.service.ReviewService;
+import com.back.sportteam.global.exception.BusinessException;
+import com.back.sportteam.global.exception.errorcode.CommonErrorCode;
 import com.back.sportteam.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -13,12 +15,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -33,10 +36,10 @@ public class ReviewController {
     @PostMapping("/api/v1/matches/{matchId}/reviews")
     public ResponseEntity<ApiResponse<Void>> submitReview(
             @PathVariable String matchId,
-            @RequestHeader("X-USER-ID") @NotBlank String userId,
+            @AuthenticationPrincipal @NotBlank String userId,
             @Valid @RequestBody ReviewSubmitRequest request
     ) {
-        reviewService.submitReview(matchId, userId, request);
+        reviewService.submitReview(matchId, requireUserId(userId), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok());
     }
 
@@ -51,9 +54,16 @@ public class ReviewController {
 
     @GetMapping("/api/v1/users/me/reviews/facilities")
     public ResponseEntity<ApiResponse<List<FacilityReviewResponse>>> getMyFacilityReviews(
-            @RequestHeader("X-USER-ID") @NotBlank String userId
+            @AuthenticationPrincipal @NotBlank String userId
     ) {
-        List<FacilityReviewResponse> response = reviewService.getMyFacilityReviews(userId);
+        List<FacilityReviewResponse> response = reviewService.getMyFacilityReviews(requireUserId(userId));
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    private String requireUserId(String userId) {
+        if (!StringUtils.hasText(userId)) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return userId;
     }
 }

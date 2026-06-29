@@ -99,6 +99,25 @@ class MyPagePaymentServiceTest {
     }
 
     @Test
+    void 구데이터처럼_match_reservationId가_시설슬롯ID여도_방장_결제내역을_조회한다() {
+        Match match = hostMatch(SLOT_ID);
+        String matchId = match.getId();
+        Payment payment = paidFacilityPayment();
+
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(reservationRepository.findById(SLOT_ID)).thenReturn(Optional.empty());
+        when(paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
+                HOST_ID, SLOT_ID, PaymentType.FACILITY, PaymentStatus.PAID))
+                .thenReturn(Optional.of(payment));
+        when(settlementRepository.findByMatchId(matchId)).thenReturn(Optional.empty());
+
+        MatchPaymentResponse response = myPagePaymentService.getMatchPayment(HOST_ID, matchId);
+
+        assertThat(response.role()).isEqualTo("HOST");
+        assertThat(response.hostDetail().facilityPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
     void 방장_경기_미완료시_정산_필드는_null이다() {
         Match match = hostMatch();
         String matchId = match.getId();
@@ -287,8 +306,12 @@ class MyPagePaymentServiceTest {
     }
 
     private Match hostMatch() {
+        return hostMatch(RESERVATION_ID);
+    }
+
+    private Match hostMatch(String reservationId) {
         return Match.create(MatchCreateCommand.builder()
-                .reservationId(RESERVATION_ID)
+                .reservationId(reservationId)
                 .hostId(HOST_ID)
                 .title("테스트 경기")
                 .sportType(SportType.FUTSAL)

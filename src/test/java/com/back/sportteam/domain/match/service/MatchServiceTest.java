@@ -40,6 +40,8 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
+import com.back.sportteam.domain.reservation.entity.Reservation;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
@@ -98,6 +100,9 @@ class MatchServiceTest {
     private FacilityRepository facilityRepository;
 
     @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
     private PaymentRefundRequestService paymentRefundRequestService;
 
     @Mock
@@ -117,6 +122,7 @@ class MatchServiceTest {
                 .thenReturn(Optional.of(sportStat));
         when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(createFutureSlot()));
         when(facilityRepository.findById(FACILITY_ID)).thenReturn(Optional.of(createFacility()));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -131,12 +137,18 @@ class MatchServiceTest {
         MatchCreateResponse response = matchService.createMatch("host-id", request);
 
         assertThat(response.matchId()).isNotBlank();
-        assertThat(response.reservationId()).isEqualTo("reservation-id");
         assertThat(response.hostId()).isEqualTo("host-id");
         assertThat(response.currentCount()).isEqualTo(1);
         assertThat(response.status()).isEqualTo(MatchStatus.RECRUITING);
         assertThat(facilitySlot.getStatus()).isEqualTo(SlotStatus.PENDING);
         assertThat(facilitySlot.getPendingUntil()).isNotNull();
+
+        ArgumentCaptor<Reservation> reservationCaptor = ArgumentCaptor.forClass(Reservation.class);
+        verify(reservationRepository).save(reservationCaptor.capture());
+
+        Reservation reservation = reservationCaptor.getValue();
+        assertThat(response.reservationId()).isEqualTo(reservation.getId());
+        assertThat(reservation.getFacilitySlotId()).isEqualTo("reservation-id");
 
         ArgumentCaptor<MatchParticipant> participantCaptor = ArgumentCaptor.forClass(MatchParticipant.class);
         verify(matchParticipantRepository).save(participantCaptor.capture());
@@ -150,9 +162,11 @@ class MatchServiceTest {
     @Test
     void 이미_선점된_예약이면_매칭방을_생성하지_않는다() {
         MatchCreateRequest request = createRequest(10);
+        Reservation reservation = Reservation.pending(request.reservationId(), CREATED_AT);
         when(facilitySlotRepository.findByIdForUpdate(request.reservationId()))
                 .thenReturn(Optional.of(createFutureSlot()));
-        when(matchRepository.existsByReservationId(request.reservationId())).thenReturn(true);
+        when(reservationRepository.findByFacilitySlotId(request.reservationId())).thenReturn(Optional.of(reservation));
+        when(matchRepository.existsByReservationId(reservation.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> matchService.createMatch("host-id", request))
                 .isInstanceOf(BusinessException.class)

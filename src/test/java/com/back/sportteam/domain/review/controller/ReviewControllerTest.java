@@ -10,10 +10,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -33,8 +41,32 @@ class ReviewControllerTest {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new ReviewController(reviewService))
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setCustomArgumentResolvers(
+                        new PageableHandlerMethodArgumentResolver(),
+                        authenticationPrincipalResolver())
                 .build();
+    }
+
+    private HandlerMethodArgumentResolver authenticationPrincipalResolver() {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(
+                    MethodParameter parameter,
+                    ModelAndViewContainer mavContainer,
+                    NativeWebRequest webRequest,
+                    WebDataBinderFactory binderFactory
+            ) {
+                if (webRequest.getUserPrincipal() instanceof Authentication authentication) {
+                    return authentication.getPrincipal();
+                }
+                return null;
+            }
+        };
     }
 
     @Test
@@ -47,7 +79,7 @@ class ReviewControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/matches/match-1/reviews")
-                        .header("X-USER-ID", "user-1")
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
@@ -56,7 +88,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void X_USER_ID_헤더가_없으면_400을_반환한다() throws Exception {
+    void 인증_사용자가_없으면_400을_반환한다() throws Exception {
         String body = """
                 {
                   "facilityReview": { "rating": 4.5, "comment": "좋아요" },
@@ -81,7 +113,7 @@ class ReviewControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/matches/match-1/reviews")
-                        .header("X-USER-ID", "user-1")
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
@@ -97,7 +129,7 @@ class ReviewControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/matches/match-1/reviews")
-                        .header("X-USER-ID", "user-1")
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -113,7 +145,7 @@ class ReviewControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/matches/match-1/reviews")
-                        .header("X-USER-ID", "user-1")
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -128,7 +160,7 @@ class ReviewControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/matches/match-1/reviews")
-                        .header("X-USER-ID", "user-1")
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
@@ -171,13 +203,13 @@ class ReviewControllerTest {
                 .thenReturn(List.of(FacilityReviewResponse.from(review)));
 
         mockMvc.perform(get("/api/v1/users/me/reviews/facilities")
-                        .header("X-USER-ID", "user-1"))
+                        .principal(new UsernamePasswordAuthenticationToken("user-1", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].rating").value(4.0));
     }
 
     @Test
-    void 내_리뷰_조회_시_X_USER_ID_헤더가_없으면_400을_반환한다() throws Exception {
+    void 내_리뷰_조회_시_인증_사용자가_없으면_400을_반환한다() throws Exception {
         mockMvc.perform(get("/api/v1/users/me/reviews/facilities"))
                 .andExpect(status().isBadRequest());
     }

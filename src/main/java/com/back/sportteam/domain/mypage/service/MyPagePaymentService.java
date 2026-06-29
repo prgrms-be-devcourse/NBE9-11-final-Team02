@@ -7,7 +7,6 @@ import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.mypage.dto.response.MatchPaymentResponse;
 import com.back.sportteam.domain.mypage.exception.MyPageErrorCode;
-import com.back.sportteam.domain.reservation.exception.ReservationErrorCode;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.global.exception.errorcode.CommonErrorCode;
 import com.back.sportteam.domain.payment.entity.Payment;
@@ -58,17 +57,16 @@ public class MyPagePaymentService {
     }
 
     private MatchPaymentResponse buildHostResponse(String userId, Match match) {
-        Reservation reservation = reservationRepository.findById(match.getReservationId())
-                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        String facilitySlotId = resolveFacilitySlotId(match);
 
         Payment facilityPayment = paymentRepository
                 .findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-                        userId, reservation.getFacilitySlotId(), PaymentType.FACILITY, PaymentStatus.PAID)
+                        userId, facilitySlotId, PaymentType.FACILITY, PaymentStatus.PAID)
                 .or(() -> paymentRepository.findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-                        userId, reservation.getFacilitySlotId(), PaymentType.FACILITY, PaymentStatus.REFUNDED))
+                        userId, facilitySlotId, PaymentType.FACILITY, PaymentStatus.REFUNDED))
                 .orElseGet(() -> paymentRepository
                         .findFirstByUserIdAndFacilitySlotIdAndPaymentTypeAndStatus(
-                                userId, reservation.getFacilitySlotId(), PaymentType.FACILITY, PaymentStatus.PENDING)
+                                userId, facilitySlotId, PaymentType.FACILITY, PaymentStatus.PENDING)
                         .orElseThrow(() -> new BusinessException(MyPageErrorCode.FACILITY_PAYMENT_NOT_FOUND)));
 
         LocalDateTime refundedAt = null;
@@ -96,6 +94,12 @@ public class MyPagePaymentService {
                 settlementVisible ? settlement.getPlatformFee() : null,
                 settlementVisible ? settlement.getStatus() : null
         );
+    }
+
+    private String resolveFacilitySlotId(Match match) {
+        return reservationRepository.findById(match.getReservationId())
+                .map(Reservation::getFacilitySlotId)
+                .orElse(match.getReservationId());
     }
 
     private MatchPaymentResponse buildParticipantResponse(String userId, String matchId) {
