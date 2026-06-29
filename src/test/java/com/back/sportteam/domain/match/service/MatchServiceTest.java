@@ -32,6 +32,8 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.user.entity.User;
+import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
@@ -106,6 +108,9 @@ class MatchServiceTest {
     private PaymentRefundRequestService paymentRefundRequestService;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private UserSportStatRepository userSportStatRepository;
 
     @InjectMocks
@@ -120,6 +125,11 @@ class MatchServiceTest {
         when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(createFutureSlot()));
         when(facilityRepository.findById(FACILITY_ID)).thenReturn(Optional.of(createFacility()));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findById(anyString())).thenAnswer(invocation -> {
+            User user = org.mockito.Mockito.mock(User.class);
+            when(user.getNickname()).thenReturn(invocation.getArgument(0) + "-nickname");
+            return Optional.of(user);
+        });
     }
 
     @Test
@@ -373,6 +383,7 @@ class MatchServiceTest {
         assertThat(response).hasSize(1);
         assertThat(response.getFirst().participantId()).isNotBlank();
         assertThat(response.getFirst().userId()).isEqualTo("host-id");
+        assertThat(response.getFirst().nickname()).isEqualTo("host-id-nickname");
         assertThat(response.getFirst().role()).isEqualTo(MatchParticipantRole.HOST);
         assertThat(response.getFirst().status()).isEqualTo(MatchParticipantStatus.ACTIVE);
     }
