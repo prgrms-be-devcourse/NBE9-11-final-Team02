@@ -5,6 +5,8 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,7 +17,15 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI openAPI() {
+        Server localServer = new Server()
+                .url("http://localhost:8090")
+                .description("Local Server");
+        Server awsServer = new Server()
+                .url("http://3.36.243.212")
+                .description("AWS Server");
+
         return new OpenAPI()
+                .servers(List.of(localServer, awsServer))
                 .info(new Info()
                         .title("SportTeam API")
                         .description("Sports facility reservation and matching platform API documentation")
