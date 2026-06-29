@@ -27,8 +27,10 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
+import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +64,7 @@ public class MatchService {
     private final FacilityRepository facilityRepository;
     private final ReservationRepository reservationRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
+    private final UserRepository userRepository;
     private final UserSportStatRepository userSportStatRepository;
 
     @Value("${match.payment-hold.duration-minutes:1}")
@@ -155,7 +158,7 @@ public class MatchService {
 
         return matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .stream()
-                .map(MatchParticipantResponse::from)
+                .map(participant -> MatchParticipantResponse.from(participant, getNickname(participant.getUserId())))
                 .toList();
     }
 
@@ -176,7 +179,7 @@ public class MatchService {
         match.increaseCurrentCount();
         MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
 
-        return MatchParticipantResponse.from(participant);
+        return MatchParticipantResponse.from(participant, getNickname(userId));
     }
 
     @Transactional
@@ -216,12 +219,22 @@ public class MatchService {
 
     private MatchSummaryResponse toSummaryResponse(Match match) {
         Facility facility = getFacility(match);
-        return MatchSummaryResponse.from(match, facility.getName(), facility.getAddress());
+        return MatchSummaryResponse.from(match, getHostNickname(match), facility.getName(), facility.getAddress());
     }
 
     private MatchDetailResponse toDetailResponse(Match match) {
         Facility facility = getFacility(match);
-        return MatchDetailResponse.from(match, facility.getName(), facility.getAddress());
+        return MatchDetailResponse.from(match, getHostNickname(match), facility.getName(), facility.getAddress());
+    }
+
+    private String getHostNickname(Match match) {
+        return getNickname(match.getHostId());
+    }
+
+    private String getNickname(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getNickname)
+                .orElse("알 수 없음");
     }
 
     private Facility getFacility(Match match) {
@@ -371,7 +384,7 @@ public class MatchService {
         applyGenderScore(match, gender, score);
         applySeatScore(match, score);
         applyDeadlineScore(match, now, score);
-        return MatchRecommendationResponse.of(match, facility.getName(), facility.getAddress(), score.value, score.reasons);
+        return MatchRecommendationResponse.of(match, getHostNickname(match), facility.getName(), facility.getAddress(), score.value, score.reasons);
     }
 
     private void applySkillScore(Match match, BigDecimal userSkillScore, RecommendationScore score) {

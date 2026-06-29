@@ -14,6 +14,7 @@ public record MatchDetailResponse(
         String matchId,
         String reservationId,
         String hostId,
+        String hostNickname,
         String title,
         String facilityName,
         String facilityAddress,
@@ -37,11 +38,12 @@ public record MatchDetailResponse(
         LocalDateTime updatedAt
 ) {
 
-    public static MatchDetailResponse from(Match match, String facilityName, String facilityAddress) {
+    public static MatchDetailResponse from(Match match, String hostNickname, String facilityName, String facilityAddress) {
         return new MatchDetailResponse(
                 match.getId(),
                 match.getReservationId(),
                 match.getHostId(),
+                hostNickname,
                 match.getTitle(),
                 facilityName,
                 facilityAddress,
