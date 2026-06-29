@@ -246,6 +246,7 @@ class MatchControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].participantId").value("participant-id"))
                 .andExpect(jsonPath("$.data[0].userId").value("host-id"))
+                .andExpect(jsonPath("$.data[0].nickname").value("host-nickname"))
                 .andExpect(jsonPath("$.data[0].role").value("HOST"))
                 .andExpect(jsonPath("$.data[0].status").value("ACTIVE"));
 
@@ -443,6 +444,7 @@ class MatchControllerTest {
         return new MatchSummaryResponse(
                 "match-id",
                 "풋살 매칭",
+                "host-nickname",
                 "강남 풋살장",
                 "서울시 강남구",
                 MATCH_DATE,
@@ -464,6 +466,7 @@ class MatchControllerTest {
         return new MatchRecommendationResponse(
                 "match-id",
                 "풋살 매칭",
+                "host-nickname",
                 "강남 풋살장",
                 "서울시 강남구",
                 MATCH_DATE,
@@ -488,6 +491,7 @@ class MatchControllerTest {
                 "match-id",
                 "reservation-id",
                 "host-id",
+                "host-nickname",
                 "풋살 매칭",
                 "강남 풋살장",
                 "서울시 강남구",
@@ -517,6 +521,7 @@ class MatchControllerTest {
                 "match-id",
                 "reservation-id",
                 "host-id",
+                "host-nickname",
                 "풋살 매칭",
                 "강남 풋살장",
                 "서울시 강남구",
@@ -571,6 +576,7 @@ class MatchControllerTest {
         return new MatchParticipantResponse(
                 participantId,
                 userId,
+                userId.equals("host-id") ? "host-nickname" : "participant-nickname",
                 role,
                 status,
                 CREATED_AT

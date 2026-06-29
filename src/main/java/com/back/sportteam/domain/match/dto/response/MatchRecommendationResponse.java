@@ -14,6 +14,7 @@ import java.util.List;
 public record MatchRecommendationResponse(
         String matchId,
         String title,
+        String hostNickname,
         String facilityName,
         String facilityAddress,
         LocalDate matchDate,
@@ -34,6 +35,7 @@ public record MatchRecommendationResponse(
 
     public static MatchRecommendationResponse of(
             Match match,
+            String hostNickname,
             String facilityName,
             String facilityAddress,
             int recommendationScore,
@@ -42,6 +44,7 @@ public record MatchRecommendationResponse(
         return new MatchRecommendationResponse(
                 match.getId(),
                 match.getTitle(),
+                hostNickname,
                 facilityName,
                 facilityAddress,
                 match.getMatchDate(),

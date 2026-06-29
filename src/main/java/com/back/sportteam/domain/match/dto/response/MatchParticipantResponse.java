@@ -9,15 +9,17 @@ import java.time.LocalDateTime;
 public record MatchParticipantResponse(
         String participantId,
         String userId,
+        String nickname,
         MatchParticipantRole role,
         MatchParticipantStatus status,
         LocalDateTime joinedAt
 ) {
 
-    public static MatchParticipantResponse from(MatchParticipant participant) {
+    public static MatchParticipantResponse from(MatchParticipant participant, String nickname) {
         return new MatchParticipantResponse(
                 participant.getId(),
                 participant.getUserId(),
+                nickname,
                 participant.getRole(),
                 participant.getStatus(),
                 participant.getJoinedAt()

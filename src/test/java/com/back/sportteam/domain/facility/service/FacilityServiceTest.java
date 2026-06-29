@@ -742,6 +742,42 @@ class FacilityServiceTest {
                 .isEqualTo(FacilityErrorCode.FACILITY_IMAGE_DELETE_FAILED);
     }
 
+    @Test
+    void 시설_수정_시_리스트에서_빠진_이미지는_S3에서도_정리된다() {
+        String removed = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/removed";
+        String kept = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/kept";
+        Facility facility = createFacilityWithImages("manager-id", List.of(removed, kept));
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        FacilityUpdateRequest request = new FacilityUpdateRequest(
+                null, null, 20, 60, 50000, 70000, null, null, null, List.of(kept)
+        );
+
+        facilityService.updateFacility("manager-id", facility.getId(), request);
+
+        verify(s3Service).deleteFile(removed);
+        verify(s3Service, never()).deleteFile(kept);
+        assertThat(facility.getImageUrls()).containsExactly(kept);
+    }
+
+    @Test
+    void 시설_수정_중_S3_정리에_실패해도_수정은_완료된다() {
+        String removed = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/removed";
+        Facility facility = createFacilityWithImages("manager-id", List.of(removed));
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        doThrow(new RuntimeException("S3 error")).when(s3Service).deleteFile(removed);
+        FacilityUpdateRequest request = new FacilityUpdateRequest(
+                "02-0000-0000", null, 20, 60, 50000, 70000, null, null, null, List.of()
+        );
+
+        FacilityResponse response = facilityService.updateFacility("manager-id", facility.getId(), request);
+
+        assertThat(response.phone()).isEqualTo("02-0000-0000");
+        assertThat(facility.getImageUrls()).isEmpty();
+        verify(s3Service).deleteFile(removed);
+    }
+
     private Facility createFacility(String managerId) {
         return Facility.create(
                 managerId,
@@ -760,8 +796,11 @@ class FacilityServiceTest {
     }
 
     private Facility createFacilityWithImage(String managerId, String imageUrl) {
-        List<String> images = new ArrayList<>();
-        images.add(imageUrl);
+        return createFacilityWithImages(managerId, List.of(imageUrl));
+    }
+
+    private Facility createFacilityWithImages(String managerId, List<String> imageUrls) {
+        List<String> images = new ArrayList<>(imageUrls);
         return Facility.create(
                 managerId,
                 "테스트 풋살장",

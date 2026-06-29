@@ -13,6 +13,7 @@ import java.time.LocalTime;
 public record MatchSummaryResponse(
         String matchId,
         String title,
+        String hostNickname,
         String facilityName,
         String facilityAddress,
         LocalDate matchDate,
@@ -28,10 +29,11 @@ public record MatchSummaryResponse(
         LocalDateTime recruitDeadline,
         MatchStatus status
 ) {
-    public static MatchSummaryResponse from(Match match, String facilityName, String facilityAddress) {
+    public static MatchSummaryResponse from(Match match, String hostNickname, String facilityName, String facilityAddress) {
         return new MatchSummaryResponse(
                 match.getId(),
                 match.getTitle(),
+                hostNickname,
                 facilityName,
                 facilityAddress,
                 match.getMatchDate(),

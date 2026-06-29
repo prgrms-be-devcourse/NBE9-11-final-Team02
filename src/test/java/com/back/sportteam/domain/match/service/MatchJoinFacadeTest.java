@@ -24,6 +24,7 @@ class MatchJoinFacadeTest {
         MatchParticipantResponse participantResponse = new MatchParticipantResponse(
                 "participant-id",
                 "user-id",
+                "user-nickname",
                 MatchParticipantRole.PARTICIPANT,
                 MatchParticipantStatus.ACTIVE,
                 JOINED_AT
