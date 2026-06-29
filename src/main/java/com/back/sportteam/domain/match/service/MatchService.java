@@ -5,6 +5,7 @@ import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.match.dto.MatchStatusMessage;
 import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
 import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
@@ -21,6 +22,7 @@ import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
+import com.back.sportteam.domain.match.publisher.MatchStatusPublisher;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
@@ -60,6 +62,7 @@ public class MatchService {
     private final FacilityRepository facilityRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
+    private final MatchStatusPublisher matchStatusPublisher;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
@@ -169,6 +172,8 @@ public class MatchService {
         match.increaseCurrentCount();
         MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
 
+        publishMatchStatus(match);
+
         return MatchParticipantResponse.from(participant);
     }
 
@@ -193,6 +198,8 @@ public class MatchService {
                 PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
                 leftAt
         );
+
+        publishMatchStatus(match);
     }
 
     @Transactional
@@ -205,23 +212,6 @@ public class MatchService {
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
 
         return toDetailResponse(match);
-    }
-
-    private MatchSummaryResponse toSummaryResponse(Match match) {
-        Facility facility = getFacility(match);
-        return MatchSummaryResponse.from(match, facility.getName(), facility.getAddress());
-    }
-
-    private MatchDetailResponse toDetailResponse(Match match) {
-        Facility facility = getFacility(match);
-        return MatchDetailResponse.from(match, facility.getName(), facility.getAddress());
-    }
-
-    private Facility getFacility(Match match) {
-        FacilitySlot facilitySlot = facilitySlotRepository.findById(match.getReservationId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
-        return facilityRepository.findById(facilitySlot.getFacilityId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
 
     @Transactional
@@ -245,6 +235,33 @@ public class MatchService {
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 cancelledAt
         );
+
+        publishMatchStatus(match);
+    }
+
+    private void publishMatchStatus(Match match) {
+        matchStatusPublisher.publish(new MatchStatusMessage(
+                match.getId(),
+                match.getCurrentCount(),
+                match.getCapacity()
+        ));
+    }
+
+    private MatchSummaryResponse toSummaryResponse(Match match) {
+        Facility facility = getFacility(match);
+        return MatchSummaryResponse.from(match, facility.getName(), facility.getAddress());
+    }
+
+    private MatchDetailResponse toDetailResponse(Match match) {
+        Facility facility = getFacility(match);
+        return MatchDetailResponse.from(match, facility.getName(), facility.getAddress());
+    }
+
+    private Facility getFacility(Match match) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return facilityRepository.findById(facilitySlot.getFacilityId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
 
     private void validateSportStatExists(String userId, Match match) {

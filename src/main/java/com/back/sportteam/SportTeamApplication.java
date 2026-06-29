@@ -13,5 +13,4 @@ public class SportTeamApplication {
     public static void main(String[] args) {
         SpringApplication.run(SportTeamApplication.class, args);
     }
-
 }
