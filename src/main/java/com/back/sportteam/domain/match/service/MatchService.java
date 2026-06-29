@@ -29,8 +29,10 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
+import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.math.BigDecimal;
@@ -62,6 +64,7 @@ public class MatchService {
     private final FacilitySlotRepository facilitySlotRepository;
     private final FacilityRepository facilityRepository;
     private final ReservationRepository reservationRepository;
+    private final UserRepository userRepository;
     private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
     private final MatchStatusPublisher matchStatusPublisher;
@@ -157,7 +160,7 @@ public class MatchService {
 
         return matchParticipantRepository.findByMatchIdAndStatus(matchId, MatchParticipantStatus.ACTIVE)
                 .stream()
-                .map(MatchParticipantResponse::from)
+                .map(participant -> MatchParticipantResponse.from(participant, getNickname(participant.getUserId())))
                 .toList();
     }
 
@@ -180,7 +183,7 @@ public class MatchService {
 
         publishMatchStatus(match);
 
-        return MatchParticipantResponse.from(participant);
+        return MatchParticipantResponse.from(participant, getNickname(userId));
     }
 
     @Transactional
@@ -255,12 +258,14 @@ public class MatchService {
 
     private MatchSummaryResponse toSummaryResponse(Match match) {
         Facility facility = getFacility(match);
-        return MatchSummaryResponse.from(match, facility.getName(), facility.getAddress());
+        String hostNickname = getNickname(match.getHostId());
+        return MatchSummaryResponse.from(match, hostNickname, facility.getName(), facility.getAddress());
     }
 
     private MatchDetailResponse toDetailResponse(Match match) {
         Facility facility = getFacility(match);
-        return MatchDetailResponse.from(match, facility.getName(), facility.getAddress());
+        String hostNickname = getNickname(match.getHostId());
+        return MatchDetailResponse.from(match, hostNickname, facility.getName(), facility.getAddress());
     }
 
     private Facility getFacility(Match match) {
@@ -270,6 +275,12 @@ public class MatchService {
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
         return facilityRepository.findById(facilitySlot.getFacilityId())
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+    }
+
+    private String getNickname(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getNickname)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private void validateSportStatExists(String userId, Match match) {
@@ -385,7 +396,8 @@ public class MatchService {
         applyGenderScore(match, gender, score);
         applySeatScore(match, score);
         applyDeadlineScore(match, now, score);
-        return MatchRecommendationResponse.of(match, facility.getName(), facility.getAddress(), score.value, score.reasons);
+        String hostNickname = getNickname(match.getHostId());
+        return MatchRecommendationResponse.of(match, hostNickname, facility.getName(), facility.getAddress(), score.value, score.reasons);
     }
 
     private void applySkillScore(Match match, BigDecimal userSkillScore, RecommendationScore score) {

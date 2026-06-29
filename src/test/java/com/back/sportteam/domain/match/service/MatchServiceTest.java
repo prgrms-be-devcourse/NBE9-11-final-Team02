@@ -42,7 +42,9 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
 import java.math.BigDecimal;
@@ -106,6 +108,9 @@ class MatchServiceTest {
     private PaymentRefundRequestService paymentRefundRequestService;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private UserSportStatRepository userSportStatRepository;
 
     @Mock
@@ -125,6 +130,9 @@ class MatchServiceTest {
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Reservation defaultReservation = Reservation.pending("reservation-id", CREATED_AT);
         when(reservationRepository.findById("reservation-id")).thenReturn(Optional.of(defaultReservation));
+        User mockUser = org.mockito.Mockito.mock(User.class);
+        when(mockUser.getNickname()).thenReturn("테스트유저");
+        when(userRepository.findById(anyString())).thenReturn(Optional.of(mockUser));
     }
 
     @Test
