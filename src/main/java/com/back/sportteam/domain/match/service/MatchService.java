@@ -27,6 +27,7 @@ import com.back.sportteam.domain.match.repository.MatchRepository;
 import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
+import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserRepository;
@@ -232,7 +233,7 @@ public class MatchService {
 
     private String getNickname(String userId) {
         return userRepository.findById(userId)
-                .map(user -> user.getNickname())
+                .map(User::getNickname)
                 .orElse("알 수 없음");
     }
 
