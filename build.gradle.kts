@@ -45,6 +45,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
     implementation("org.redisson:redisson:$redissonVersion")
     implementation(platform("software.amazon.awssdk:bom:2.31.12"))
     implementation("software.amazon.awssdk:s3")
