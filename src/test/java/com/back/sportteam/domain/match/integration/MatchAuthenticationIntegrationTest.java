@@ -23,6 +23,7 @@ import com.back.sportteam.domain.match.entity.MatchParticipantStatus;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
+import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.user.entity.UserRole;
 import com.back.sportteam.domain.user.entity.UserSportStat;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
@@ -77,6 +78,9 @@ class MatchAuthenticationIntegrationTest {
     @Autowired
     private MatchParticipantRepository matchParticipantRepository;
 
+    @Autowired
+    private ReservationRepository reservationRepository;
+
     @MockitoBean
     private StringRedisTemplate redisTemplate;
 
@@ -110,13 +114,18 @@ class MatchAuthenticationIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.hostId").value(host.userId()))
-                .andExpect(jsonPath("$.data.reservationId").value(slot.getId()))
                 .andReturn();
 
         String matchId = read(result, "$.data.matchId");
+        String reservationId = read(result, "$.data.reservationId");
         Match match = matchRepository.findById(matchId).orElseThrow();
 
         assertThat(match.getHostId()).isEqualTo(host.userId());
+        assertThat(match.getReservationId()).isEqualTo(reservationId);
+        assertThat(reservationRepository.findById(reservationId))
+                .isPresent()
+                .get()
+                .satisfies(reservation -> assertThat(reservation.getFacilitySlotId()).isEqualTo(slot.getId()));
         assertThat(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
                 matchId,
                 host.userId(),
