@@ -73,6 +73,10 @@ public class AdminManagementService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new BusinessException(UserErrorCode.ADMIN_RESTRICTION_NOT_ALLOWED);
+        }
+
         if (Boolean.TRUE.equals(restricted)) {
             user.restrict(resolveRestrictionReason(reason));
         } else {
