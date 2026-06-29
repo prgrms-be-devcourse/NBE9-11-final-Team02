@@ -13,7 +13,8 @@ public enum UserErrorCode implements ErrorCode {
     DUPLICATE_NICKNAME("USER_003", "이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT),
     ALREADY_WITHDRAWN("USER_004", "이미 탈퇴한 회원입니다.", HttpStatus.BAD_REQUEST),
     SPORT_STAT_NOT_FOUND("USER_005", "해당 종목에 대한 실력 점수가 등록되지 않았습니다.", HttpStatus.BAD_REQUEST),
-    SPORT_STAT_ALREADY_EXISTS("USER_006", "이미 실력 점수가 등록된 종목입니다.", HttpStatus.CONFLICT);
+    SPORT_STAT_ALREADY_EXISTS("USER_006", "이미 실력 점수가 등록된 종목입니다.", HttpStatus.CONFLICT),
+    ADMIN_RESTRICTION_NOT_ALLOWED("USER_007", "관리자 계정은 이용 제한할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
