@@ -182,6 +182,10 @@ jobs:
               mysql redis nginx kafka prometheus loki promtail grafana
             echo "✅ 인프라·모니터링 컨테이너 기동 확인"
 
+            # prometheus 스크랩 타겟 변경 반영. up -d로는 마운트 파일 변경이
+            # 재적용되지 않으므로 SIGHUP으로 핫 리로드한다(미실행이면 무시).
+            docker kill --signal=HUP prometheus_1 2>/dev/null || true
+
             OWNER_LC="${{ github.repository_owner }}"
             OWNER_LC="${OWNER_LC,,}"
             IMAGE_TAG="${{ needs.calculateTag.outputs.tag_name }}"
