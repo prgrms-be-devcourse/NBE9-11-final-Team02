@@ -96,6 +96,16 @@ public class FacilityManagerController {
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
+    @GetMapping("/{facilityId}/slots")
+    public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> getSlots(
+            @AuthenticationPrincipal @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        List<FacilitySlotResponse> response = facilityService.getManagerSlotsByDate(requireManagerId(managerId), facilityId, date);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @PostMapping("/{facilityId}/slots")
     public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> setupSlots(
             @AuthenticationPrincipal @NotBlank String managerId,

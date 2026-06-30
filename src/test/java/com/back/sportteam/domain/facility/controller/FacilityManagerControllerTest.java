@@ -162,4 +162,26 @@ class FacilityManagerControllerTest {
                         .param("imageUrl", "https://bucket.s3.ap-northeast-2.amazonaws.com/facilities/uuid"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void 슬롯_목록을_조회하면_200_응답을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/manager/facilities/facility-id/slots")
+                        .principal(new UsernamePasswordAuthenticationToken("manager-id", null))
+                        .param("date", "2026-07-01"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 슬롯_조회_날짜가_없으면_400_응답을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/manager/facilities/facility-id/slots")
+                        .principal(new UsernamePasswordAuthenticationToken("manager-id", null)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 지원하지_않는_메서드로_요청하면_405_응답을_반환한다() throws Exception {
+        mockMvc.perform(put("/api/v1/manager/facilities/facility-id/slots")
+                        .principal(new UsernamePasswordAuthenticationToken("manager-id", null)))
+                .andExpect(status().isMethodNotAllowed());
+    }
 }

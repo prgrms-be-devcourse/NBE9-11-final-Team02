@@ -603,6 +603,45 @@ class FacilityServiceTest {
     }
 
     @Test
+    void 매니저는_본인_시설의_날짜별_슬롯_목록을_조회할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        LocalDate date = LocalDate.of(2026, Month.JULY, 1);
+        FacilitySlot slot = FacilitySlot.create(
+                facility.getId(),
+                date,
+                LocalTime.of(9, 0),
+                LocalTime.of(11, 0),
+                50000
+        );
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        when(facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(facility.getId(), date))
+                .thenReturn(List.of(slot));
+
+        List<FacilitySlotResponse> response = facilityService.getManagerSlotsByDate("manager-id", facility.getId(), date);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.getFirst().startTime()).isEqualTo(LocalTime.of(9, 0));
+        assertThat(response.getFirst().status()).isEqualTo(SlotStatus.AVAILABLE);
+    }
+
+    @Test
+    void 다른_매니저는_시설의_슬롯_목록을_조회할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        LocalDate date = LocalDate.of(2026, Month.JULY, 1);
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.getManagerSlotsByDate("other-manager-id", facilityId, date))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+
+        verify(facilitySlotRepository, never()).findAllByFacilityIdAndSlotDateOrderByStartTime(any(), any());
+    }
+
+    @Test
     void 시설_예약_현황과_수익과_잔여_타임을_조회한다() {
         Facility facility = createFacility("manager-id");
         LocalDate date = LocalDate.of(2026, Month.JULY, 1);
