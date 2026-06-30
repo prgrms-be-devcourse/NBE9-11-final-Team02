@@ -104,8 +104,7 @@ services:
       - common
     environment:
       TZ: Asia/Seoul
-      # 블루-그린 전환을 nginx 한 곳에서만 관리하도록 백엔드 호출을 nginx 경유로 보낸다.
-      BACKEND_API_URL: http://nginx_1
+      BACKEND_API_URL: http://nginx
     mem_limit: 300m
     profiles:
       - prod
