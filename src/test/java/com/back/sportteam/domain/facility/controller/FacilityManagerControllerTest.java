@@ -164,6 +164,13 @@ class FacilityManagerControllerTest {
     }
 
     @Test
+    void 매니저_경기장_상세를_조회하면_200_응답을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/v1/manager/facilities/facility-id")
+                        .principal(new UsernamePasswordAuthenticationToken("manager-id", null)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void 슬롯_목록을_조회하면_200_응답을_반환한다() throws Exception {
         mockMvc.perform(get("/api/v1/manager/facilities/facility-id/slots")
                         .principal(new UsernamePasswordAuthenticationToken("manager-id", null))

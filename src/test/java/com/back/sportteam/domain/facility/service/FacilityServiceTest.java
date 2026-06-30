@@ -110,6 +110,42 @@ class FacilityServiceTest {
     }
 
     @Test
+    void 매니저는_본인_시설의_상세_정보를_조회할_수_있다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+
+        FacilityResponse response = facilityService.getManagerFacility("manager-id", facility.getId());
+
+        assertThat(response.id()).isEqualTo(facility.getId());
+        assertThat(response.name()).isEqualTo("테스트 풋살장");
+    }
+
+    @Test
+    void 다른_매니저는_시설_상세_정보를_조회할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+                .thenReturn(Optional.of(facility));
+        String facilityId = facility.getId();
+
+        assertThatThrownBy(() -> facilityService.getManagerFacility("other-manager-id", facilityId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_ACCESS_DENIED);
+    }
+
+    @Test
+    void 존재하지_않는_시설은_매니저가_상세_조회할_수_없다() {
+        when(facilityRepository.findByIdAndStatusNot("missing-id", FacilityStatus.CLOSED))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> facilityService.getManagerFacility("manager-id", "missing-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
+    }
+
+    @Test
     void 매니저는_본인이_등록한_시설_목록을_요약_정보로_조회한다() {
         Facility withImage = Facility.create(
                 "manager-id", "이미지 있는 풋살장", "서울시 강남구",
