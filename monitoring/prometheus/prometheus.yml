@@ -8,3 +8,4 @@ scrape_configs:
     static_configs:
       - targets:
           - app1_1:8090
+          - app1_2:8090

@@ -17,6 +17,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       MYSQL_DATABASE: team02_prod
+      MYSQL_USER: team02
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-}
       TZ: Asia/Seoul
     ports:
       - "3306:3306"
@@ -67,8 +69,10 @@ services:
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml
       SPRING_PROFILES_ACTIVE: prod
       KAFKA_BOOTSTRAP_SERVERS: kafka_1:9092
+      LOGGING_FILE_NAME: /app/logs/app1_1.log
     volumes:
       - /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro
+      - ./logs:/app/logs
     mem_limit: 600m
     profiles:
       - prod
@@ -84,11 +88,90 @@ services:
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml
       SPRING_PROFILES_ACTIVE: prod
       KAFKA_BOOTSTRAP_SERVERS: kafka_1:9092
+      LOGGING_FILE_NAME: /app/logs/app1_2.log
     volumes:
       - /home/ec2-user/secrets/application-secret.yaml:/app/application-secret.yaml:ro
+      - ./logs:/app/logs
     mem_limit: 600m
     profiles:
       - prod
+
+  frontend_1:
+    image: ${FRONTEND_IMAGE:-ghcr.io/prgrms-be-devcourse/nbe9-11-team02-frontend:latest}
+    container_name: frontend_1
+    restart: unless-stopped
+    networks:
+      - common
+    environment:
+      TZ: Asia/Seoul
+      # 블루-그린 전환을 nginx 한 곳에서만 관리하도록 백엔드 호출을 nginx 경유로 보낸다.
+      BACKEND_API_URL: http://nginx_1
+    mem_limit: 300m
+    profiles:
+      - prod
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: prometheus_1
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 256m
+    networks:
+      - common
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki_1
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    mem_limit: 256m
+    networks:
+      - common
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail_1
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml -config.expand-env=true
+    environment:
+      ENVIRONMENT: prod
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ./logs:/var/log/sportteam:ro
+    depends_on:
+      - loki
+    mem_limit: 128m
+    networks:
+      - common
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana_1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      TZ: Asia/Seoul
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    mem_limit: 256m
+    networks:
+      - common
 
 networks:
   common:
@@ -97,3 +180,6 @@ networks:
 
 volumes:
   mysql_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:
