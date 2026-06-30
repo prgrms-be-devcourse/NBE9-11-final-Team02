@@ -1,13 +1,14 @@
 package com.back.sportteam.domain.match.service;
 
-import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.entity.Facility;
+import com.back.sportteam.domain.facility.entity.FacilitySlot;
 import com.back.sportteam.domain.facility.exception.FacilityErrorCode;
 import com.back.sportteam.domain.facility.repository.FacilityRepository;
 import com.back.sportteam.domain.facility.repository.FacilitySlotRepository;
+import com.back.sportteam.domain.match.dto.MatchStatusMessage;
+import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.request.MatchRecommendationRequest;
 import com.back.sportteam.domain.match.dto.request.MatchSearchCondition;
-import com.back.sportteam.domain.match.dto.request.MatchCreateRequest;
 import com.back.sportteam.domain.match.dto.response.MatchCreateResponse;
 import com.back.sportteam.domain.match.dto.response.MatchDetailResponse;
 import com.back.sportteam.domain.match.dto.response.MatchParticipantResponse;
@@ -21,6 +22,7 @@ import com.back.sportteam.domain.match.entity.MatchStatus;
 import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
+import com.back.sportteam.domain.match.publisher.MatchStatusPublisher;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
@@ -33,19 +35,18 @@ import com.back.sportteam.domain.user.exception.UserErrorCode;
 import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -63,9 +64,10 @@ public class MatchService {
     private final FacilitySlotRepository facilitySlotRepository;
     private final FacilityRepository facilityRepository;
     private final ReservationRepository reservationRepository;
-    private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserRepository userRepository;
+    private final PaymentRefundRequestService paymentRefundRequestService;
     private final UserSportStatRepository userSportStatRepository;
+    private final MatchStatusPublisher matchStatusPublisher;
 
     @Value("${match.payment-hold.duration-minutes:1}")
     private long paymentHoldMinutes = 1L;
@@ -78,16 +80,16 @@ public class MatchService {
                 request.participantCancelDeadline(),
                 request.hostCancelDeadline()
         );
-        String facilitySlotId = request.reservationId();
-        FacilitySlot facilitySlot = getFacilitySlotForUpdate(facilitySlotId);
-        validateReservationAvailable(facilitySlotId);
+        FacilitySlot facilitySlot = getFacilitySlotForUpdate(request.reservationId());
+        validateReservationAvailable(request.reservationId());
+        facilitySlot.holdUntil(LocalDateTime.now(SERVICE_ZONE).plus(paymentHoldDuration()));
 
-        LocalDateTime reservedAt = LocalDateTime.now(SERVICE_ZONE);
-        facilitySlot.holdUntil(reservedAt.plus(paymentHoldDuration()));
-        Reservation reservation = reservationRepository.save(Reservation.pending(facilitySlotId, reservedAt));
+        Reservation savedReservation = reservationRepository.save(
+                Reservation.pending(request.reservationId(), LocalDateTime.now(SERVICE_ZONE))
+        );
 
         Match match = Match.create(MatchCreateCommand.builder()
-                .reservationId(reservation.getId())
+                .reservationId(savedReservation.getId())
                 .hostId(hostId)
                 .title(request.title())
                 .sportType(request.sportType())
@@ -179,6 +181,8 @@ public class MatchService {
         match.increaseCurrentCount();
         MatchParticipant participant = matchParticipantRepository.save(MatchParticipant.participant(match, userId));
 
+        publishMatchStatus(match);
+
         return MatchParticipantResponse.from(participant, getNickname(userId));
     }
 
@@ -203,6 +207,8 @@ public class MatchService {
                 PaymentRefundRequestService.MATCH_PARTICIPANT_LEFT,
                 leftAt
         );
+
+        publishMatchStatus(match);
     }
 
     @Transactional
@@ -215,32 +221,6 @@ public class MatchService {
         match.confirm(LocalDateTime.now(SERVICE_ZONE));
 
         return toDetailResponse(match);
-    }
-
-    private MatchSummaryResponse toSummaryResponse(Match match) {
-        Facility facility = getFacility(match);
-        return MatchSummaryResponse.from(match, getHostNickname(match), facility.getName(), facility.getAddress());
-    }
-
-    private MatchDetailResponse toDetailResponse(Match match) {
-        Facility facility = getFacility(match);
-        return MatchDetailResponse.from(match, getHostNickname(match), facility.getName(), facility.getAddress());
-    }
-
-    private String getHostNickname(Match match) {
-        return getNickname(match.getHostId());
-    }
-
-    private String getNickname(String userId) {
-        return userRepository.findById(userId)
-                .map(User::getNickname)
-                .orElse("알 수 없음");
-    }
-
-    private Facility getFacility(Match match) {
-        FacilitySlot facilitySlot = getFacilitySlotByReservationId(match.getReservationId());
-        return facilityRepository.findById(facilitySlot.getFacilityId())
-                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
 
     @Transactional
@@ -264,6 +244,43 @@ public class MatchService {
                 PaymentRefundRequestService.MATCH_CANCELLED_BY_HOST,
                 cancelledAt
         );
+
+        publishMatchStatus(match);
+    }
+
+    private void publishMatchStatus(Match match) {
+        matchStatusPublisher.publish(new MatchStatusMessage(
+                match.getId(),
+                match.getCurrentCount(),
+                match.getCapacity()
+        ));
+    }
+
+    private MatchSummaryResponse toSummaryResponse(Match match) {
+        Facility facility = getFacility(match);
+        String hostNickname = getNickname(match.getHostId());
+        return MatchSummaryResponse.from(match, hostNickname, facility.getName(), facility.getAddress());
+    }
+
+    private MatchDetailResponse toDetailResponse(Match match) {
+        Facility facility = getFacility(match);
+        String hostNickname = getNickname(match.getHostId());
+        return MatchDetailResponse.from(match, hostNickname, facility.getName(), facility.getAddress());
+    }
+
+    private Facility getFacility(Match match) {
+        Reservation reservation = reservationRepository.findById(match.getReservationId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservation.getFacilitySlotId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        return facilityRepository.findById(facilitySlot.getFacilityId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+    }
+
+    private String getNickname(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getNickname)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private void validateSportStatExists(String userId, Match match) {
@@ -297,15 +314,15 @@ public class MatchService {
 
     private void validateReservationAvailable(String facilitySlotId) {
         reservationRepository.findByFacilitySlotId(facilitySlotId)
-                .map(Reservation::getId)
-                .filter(matchRepository::existsByReservationId)
-                .ifPresent(reservationId -> {
-                    throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
+                .ifPresent(reservation -> {
+                    if (matchRepository.existsByReservationId(reservation.getId())) {
+                        throw new BusinessException(MatchErrorCode.SLOT_ALREADY_RESERVED);
+                    }
                 });
     }
 
-    private FacilitySlot getFacilitySlotForUpdate(String facilitySlotId) {
-        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(facilitySlotId)
+    private FacilitySlot getFacilitySlotForUpdate(String reservationId) {
+        FacilitySlot facilitySlot = facilitySlotRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
         if (!facilitySlot.isReservable()) {
             throw new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_AVAILABLE);
@@ -314,16 +331,11 @@ public class MatchService {
     }
 
     private void releaseFacilitySlot(String reservationId) {
-        FacilitySlot facilitySlot = getFacilitySlotByReservationId(reservationId);
-        facilitySlot.release();
-    }
-
-    private FacilitySlot getFacilitySlotByReservationId(String reservationId) {
-        return reservationRepository.findById(reservationId)
-                .map(Reservation::getFacilitySlotId)
-                .flatMap(facilitySlotRepository::findById)
-                .or(() -> facilitySlotRepository.findById(reservationId))
+        Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        FacilitySlot facilitySlot = facilitySlotRepository.findById(reservation.getFacilitySlotId())
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_SLOT_NOT_FOUND));
+        facilitySlot.release();
     }
 
     private void validateDeadlineRange(
@@ -384,7 +396,8 @@ public class MatchService {
         applyGenderScore(match, gender, score);
         applySeatScore(match, score);
         applyDeadlineScore(match, now, score);
-        return MatchRecommendationResponse.of(match, getHostNickname(match), facility.getName(), facility.getAddress(), score.value, score.reasons);
+        String hostNickname = getNickname(match.getHostId());
+        return MatchRecommendationResponse.of(match, hostNickname, facility.getName(), facility.getAddress(), score.value, score.reasons);
     }
 
     private void applySkillScore(Match match, BigDecimal userSkillScore, RecommendationScore score) {

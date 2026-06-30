@@ -26,7 +26,7 @@ class MatchStatusPublisherTest {
     @DisplayName("모집 현황 메시지를 Redis 채널에 발행")
     @Test
     void 모집_현황_메시지를_Redis_채널에_발행() {
-        MatchStatusMessage message = new MatchStatusMessage(50L, 5, 10);
+        MatchStatusMessage message = new MatchStatusMessage("50", 5, 10);
 
         publisher.publish(message);
 

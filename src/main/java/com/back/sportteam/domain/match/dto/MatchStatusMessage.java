@@ -1,7 +1,7 @@
 package com.back.sportteam.domain.match.dto;
 
 public record MatchStatusMessage(
-        Long matchId,
+        String matchId,
         int currentParticipants,
         int maxParticipants
 ) {}

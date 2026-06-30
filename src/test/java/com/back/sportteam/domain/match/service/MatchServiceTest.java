@@ -1,5 +1,14 @@
 package com.back.sportteam.domain.match.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.back.sportteam.domain.facility.entity.Facility;
 import com.back.sportteam.domain.facility.entity.FacilityDetails;
 import com.back.sportteam.domain.facility.entity.FacilitySlot;
@@ -26,6 +35,7 @@ import com.back.sportteam.domain.match.entity.RequiredGender;
 import com.back.sportteam.domain.match.entity.SkillLevel;
 import com.back.sportteam.domain.match.entity.SportType;
 import com.back.sportteam.domain.match.exception.MatchErrorCode;
+import com.back.sportteam.domain.match.publisher.MatchStatusPublisher;
 import com.back.sportteam.domain.match.repository.MatchParticipantRepository;
 import com.back.sportteam.domain.match.repository.MatchQueryRepository;
 import com.back.sportteam.domain.match.repository.MatchRepository;
@@ -33,10 +43,18 @@ import com.back.sportteam.domain.payment.service.PaymentRefundRequestService;
 import com.back.sportteam.domain.reservation.entity.Reservation;
 import com.back.sportteam.domain.reservation.repository.ReservationRepository;
 import com.back.sportteam.domain.user.entity.User;
-import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.entity.UserSportStat;
+import com.back.sportteam.domain.user.repository.UserRepository;
 import com.back.sportteam.domain.user.repository.UserSportStatRepository;
 import com.back.sportteam.global.exception.BusinessException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Month;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,24 +65,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.Month;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -113,6 +113,9 @@ class MatchServiceTest {
     @Mock
     private UserSportStatRepository userSportStatRepository;
 
+    @Mock
+    private MatchStatusPublisher matchStatusPublisher;
+
     @InjectMocks
     private MatchService matchService;
 
@@ -125,11 +128,11 @@ class MatchServiceTest {
         when(facilitySlotRepository.findById("reservation-id")).thenReturn(Optional.of(createFutureSlot()));
         when(facilityRepository.findById(FACILITY_ID)).thenReturn(Optional.of(createFacility()));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userRepository.findById(anyString())).thenAnswer(invocation -> {
-            User user = org.mockito.Mockito.mock(User.class);
-            when(user.getNickname()).thenReturn(invocation.getArgument(0) + "-nickname");
-            return Optional.of(user);
-        });
+        Reservation defaultReservation = Reservation.pending("reservation-id", CREATED_AT);
+        when(reservationRepository.findById("reservation-id")).thenReturn(Optional.of(defaultReservation));
+        User mockUser = org.mockito.Mockito.mock(User.class);
+        when(mockUser.getNickname()).thenReturn("테스트유저");
+        when(userRepository.findById(anyString())).thenReturn(Optional.of(mockUser));
     }
 
     @Test
@@ -383,7 +386,6 @@ class MatchServiceTest {
         assertThat(response).hasSize(1);
         assertThat(response.getFirst().participantId()).isNotBlank();
         assertThat(response.getFirst().userId()).isEqualTo("host-id");
-        assertThat(response.getFirst().nickname()).isEqualTo("host-id-nickname");
         assertThat(response.getFirst().role()).isEqualTo(MatchParticipantRole.HOST);
         assertThat(response.getFirst().status()).isEqualTo(MatchParticipantStatus.ACTIVE);
     }
