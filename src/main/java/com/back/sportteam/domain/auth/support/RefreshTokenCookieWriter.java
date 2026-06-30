@@ -10,18 +10,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class RefreshTokenCookieWriter {
 
-    private static final String REFRESH_TOKEN_PATH = "/api/v1/auth/refresh";
-
     private final String cookieName;
+    private final String cookiePath;
     private final boolean secureCookie;
     private final String sameSite;
 
     public RefreshTokenCookieWriter(
             @Value("${app.jwt.refresh-token-cookie-name}") String cookieName,
+            @Value("${app.jwt.refresh-token-cookie-path}") String cookiePath,
             @Value("${app.jwt.secure-cookie}") boolean secureCookie,
             @Value("${app.jwt.same-site}") String sameSite
     ) {
         this.cookieName = cookieName;
+        this.cookiePath = cookiePath;
         this.secureCookie = secureCookie;
         this.sameSite = sameSite;
     }
@@ -47,6 +48,6 @@ public class RefreshTokenCookieWriter {
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite(sameSite)
-                .path(REFRESH_TOKEN_PATH);
+                .path(cookiePath);
     }
 }
