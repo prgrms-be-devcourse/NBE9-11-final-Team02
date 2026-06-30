@@ -43,7 +43,8 @@ class AuthRefreshServiceTest {
                 jwtProvider,
                 redisTemplate,
                 1209600L,
-                false
+                false,
+                "Lax"
         );
     }
 
@@ -65,7 +66,7 @@ class AuthRefreshServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("new-access-token");
         verify(valueOperations).set(anyString(), anyString(), anyLong(), any());
-        verify(httpResponse).addCookie(any());
+        verify(httpResponse).addHeader(anyString(), anyString());
     }
 
     @DisplayName("유효하지 않은 토큰일 시 예외 발생")

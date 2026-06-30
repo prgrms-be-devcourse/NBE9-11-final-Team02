@@ -8,11 +8,12 @@ import com.back.sportteam.domain.auth.security.PasswordHasher;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.repository.UserRepository;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class AuthLoginService {
     private final StringRedisTemplate redisTemplate;
     private final long refreshTokenExpiry;
     private final boolean secureCookie;
+    private final String sameSite;
 
     public AuthLoginService(
             UserRepository userRepository,
@@ -35,7 +37,8 @@ public class AuthLoginService {
             JwtProvider jwtProvider,
             StringRedisTemplate redisTemplate,
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry,
-            @Value("${app.jwt.secure-cookie}") boolean secureCookie
+            @Value("${app.jwt.secure-cookie}") boolean secureCookie,
+            @Value("${app.jwt.same-site}") String sameSite
     ) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
@@ -43,6 +46,7 @@ public class AuthLoginService {
         this.redisTemplate = redisTemplate;
         this.refreshTokenExpiry = refreshTokenExpiry * 1000;
         this.secureCookie = secureCookie;
+        this.sameSite = sameSite;
     }
 
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {
@@ -63,12 +67,14 @@ public class AuthLoginService {
                 TimeUnit.MILLISECONDS
         );
 
-        Cookie cookie = new Cookie("refreshToken", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) (refreshTokenExpiry / 1000));
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .path("/api/v1/auth/refresh")
+                .maxAge(refreshTokenExpiry / 1000)
+                .sameSite(sameSite)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         return LoginResponse.of(accessToken, user.getRole().name());
     }

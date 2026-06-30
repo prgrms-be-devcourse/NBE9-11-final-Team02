@@ -53,7 +53,8 @@ class AuthLoginServiceTest {
                 jwtProvider,
                 redisTemplate,
                 1209600L,
-                false
+                false,
+                "Lax"
         );
     }
 
@@ -72,7 +73,7 @@ class AuthLoginServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         verify(valueOperations).set(anyString(), anyString(), anyLong(), any());
-        verify(httpResponse).addCookie(any());
+        verify(httpResponse).addHeader(anyString(), anyString());
     }
 
     @DisplayName("존재하지 않는 이메일이면 예외 발생")
