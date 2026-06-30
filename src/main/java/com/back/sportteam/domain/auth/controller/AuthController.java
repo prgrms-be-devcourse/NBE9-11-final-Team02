@@ -61,10 +61,11 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader("Authorization") String authorizationHeader
+            @RequestHeader("Authorization") String authorizationHeader,
+            HttpServletResponse response
     ) {
         String accessToken = authorizationHeader.substring(7);
-        authLogoutService.logout(accessToken);
+        authLogoutService.logout(accessToken, response);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.ok());

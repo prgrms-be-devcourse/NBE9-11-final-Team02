@@ -14,6 +14,7 @@ import com.back.sportteam.domain.auth.dto.request.LoginRequest;
 import com.back.sportteam.domain.auth.dto.response.LoginResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.security.JwtProvider;
+import com.back.sportteam.domain.auth.support.RefreshTokenCookieWriter;
 import com.back.sportteam.global.exception.BusinessException;
 import com.back.sportteam.domain.user.entity.User;
 import com.back.sportteam.domain.user.entity.UserRole;
@@ -33,6 +34,7 @@ class AuthLoginServiceTest {
     private JwtProvider jwtProvider;
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOperations;
+    private RefreshTokenCookieWriter refreshTokenCookieWriter;
     private HttpServletResponse httpResponse;
     private AuthLoginService authLoginService;
 
@@ -43,6 +45,7 @@ class AuthLoginServiceTest {
         jwtProvider = mock(JwtProvider.class);
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
+        refreshTokenCookieWriter = mock(RefreshTokenCookieWriter.class);
         httpResponse = mock(HttpServletResponse.class);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -52,8 +55,8 @@ class AuthLoginServiceTest {
                 passwordHasher,
                 jwtProvider,
                 redisTemplate,
-                1209600L,
-                false
+                refreshTokenCookieWriter,
+                1209600L
         );
     }
 
@@ -72,7 +75,7 @@ class AuthLoginServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         verify(valueOperations).set(anyString(), anyString(), anyLong(), any());
-        verify(httpResponse).addCookie(any());
+        verify(refreshTokenCookieWriter).add(httpResponse, "refresh-token", 1209600000L);
     }
 
     @DisplayName("존재하지 않는 이메일이면 예외 발생")

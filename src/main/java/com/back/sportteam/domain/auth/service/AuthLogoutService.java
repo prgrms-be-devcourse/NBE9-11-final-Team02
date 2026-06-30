@@ -2,8 +2,10 @@ package com.back.sportteam.domain.auth.service;
 
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.security.JwtProvider;
+import com.back.sportteam.domain.auth.support.RefreshTokenCookieWriter;
 import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,19 +19,22 @@ public class AuthLogoutService {
 
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
+    private final RefreshTokenCookieWriter refreshTokenCookieWriter;
     private final long accessTokenExpiry;
 
     public AuthLogoutService(
             JwtProvider jwtProvider,
             StringRedisTemplate redisTemplate,
+            RefreshTokenCookieWriter refreshTokenCookieWriter,
             @Value("${app.jwt.access-token-validity-seconds}") long accessTokenExpiry
     ) {
         this.jwtProvider = jwtProvider;
         this.redisTemplate = redisTemplate;
+        this.refreshTokenCookieWriter = refreshTokenCookieWriter;
         this.accessTokenExpiry = accessTokenExpiry * 1000;
     }
 
-    public void logout(String accessToken) {
+    public void logout(String accessToken, HttpServletResponse response) {
         if (!jwtProvider.isValid(accessToken)) {
             throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
         }
@@ -45,5 +50,7 @@ public class AuthLogoutService {
                 accessTokenExpiry,
                 TimeUnit.MILLISECONDS
         );
+
+        refreshTokenCookieWriter.clear(response);
     }
 }
