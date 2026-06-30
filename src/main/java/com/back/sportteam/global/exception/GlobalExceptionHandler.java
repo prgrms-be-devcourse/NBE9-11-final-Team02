@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -117,6 +118,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT, detail, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupportedException(
+            HttpRequestMethodNotSupportedException e,
+            HttpServletRequest request
+    ) {
+        String detail = "지원하지 않는 요청 메서드입니다: " + e.getMethod();
+
+        return ResponseEntity
+                .status(CommonErrorCode.METHOD_NOT_ALLOWED.getStatus())
+                .body(ApiResponse.error(CommonErrorCode.METHOD_NOT_ALLOWED, detail, request.getRequestURI()));
     }
 
     // 인증/인가, DB 무결성 예외는 Security/JPA 도입 후 전용 핸들러로 분리합니다.
