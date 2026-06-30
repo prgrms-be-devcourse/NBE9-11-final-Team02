@@ -179,6 +179,16 @@ public class FacilityService {
     }
 
     @Transactional(readOnly = true)
+    public List<FacilitySlotResponse> getManagerSlotsByDate(String managerId, String facilityId, LocalDate date) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+        return facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(facilityId, date)
+                .stream()
+                .map(FacilitySlotResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public FacilityReservationOverviewResponse getReservations(
             String managerId,
             String facilityId,
