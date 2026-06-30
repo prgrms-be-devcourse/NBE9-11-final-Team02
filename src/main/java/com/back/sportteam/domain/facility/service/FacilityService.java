@@ -83,6 +83,13 @@ public class FacilityService {
     }
 
     @Transactional(readOnly = true)
+    public FacilityResponse getManagerFacility(String managerId, String facilityId) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+        return FacilityResponse.from(facility);
+    }
+
+    @Transactional(readOnly = true)
     public List<FacilitySummaryResponse> getMyFacilities(String managerId) {
         return facilityRepository.findAllByManagerIdAndStatusNot(managerId, FacilityStatus.CLOSED)
                 .stream()
