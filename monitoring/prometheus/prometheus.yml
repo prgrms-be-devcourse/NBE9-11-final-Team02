@@ -6,6 +6,8 @@ scrape_configs:
   - job_name: spring-boot
     metrics_path: /actuator/prometheus
     static_configs:
+      # 컨테이너명(app1_1)이 아닌 하이픈 별칭으로 스크랩한다
+      # Tomcat이 Host 헤더의 언더스코어를 400으로 거부하기 때문
       - targets:
-          - app1_1:8090
-          - app1_2:8090
+          - app1-1:8090
+          - app1-2:8090
