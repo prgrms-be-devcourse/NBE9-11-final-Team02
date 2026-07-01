@@ -34,7 +34,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -107,13 +106,11 @@ public class JourneyFactory {
     }
 
     // ─── J3: RECRUITING + FULL (미래, 정원 가득) ─────────────────────
+    // req.participants().size() + 1(host) == req.capacity() 를 호출측이 보장
+    // 로직은 J1과 동일 — 상태 차이는 capacity가 가득 찬 것으로 호출측이 보장
     @Transactional
     public void createJ3Full(JourneyRequest req) {
-        // req.participants().size() + 1(host) == req.capacity() 를 호출측이 보장
-        MatchBase base = buildMatchBase(req, false);
-        addPaidParticipants(base, req);
-        matchRepository.save(base.match());
-        // status = RECRUITING 유지 (가득 찼지만 방장이 confirm 안 함)
+        createJ1Recruiting(req);
     }
 
     // ─── J4: COMPLETED + SETTLED (과거) ─────────────────────────────

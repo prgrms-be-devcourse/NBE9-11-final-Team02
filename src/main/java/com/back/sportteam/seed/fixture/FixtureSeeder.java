@@ -111,10 +111,9 @@ public class FixtureSeeder implements SeedTask {
     }
 
     private void addStatIfAbsent(User user, SportType sport, SelfReportedLevel level) {
-        userSportStatRepository.findByUser_IdAndSportType(user.getId(), sport)
-            .orElseGet(() -> userSportStatRepository.save(
-                UserSportStat.create(user, sport, level)
-            ));
+        if (userSportStatRepository.findByUser_IdAndSportType(user.getId(), sport).isEmpty()) {
+            userSportStatRepository.save(UserSportStat.create(user, sport, level));
+        }
     }
 
     // ─── 방장 전용 Journey 10개 ───────────────────────────────────────
@@ -123,50 +122,50 @@ public class FixtureSeeder implements SeedTask {
         LocalDate today = SeedConstants.today();
 
         // J1 × 2: 모집중 (미래)
-        journeyFactory.createJ1Recruiting(req(u.host, List.of(u.middle, u.beginner),
+        journeyFactory.createJ1Recruiting(new JourneyRequest(u.host, List.of(u.middle, u.beginner),
             today.plusDays(7), LocalTime.of(19, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "방장의 퇴근후 풋살", "풋살파크 강남점", rng));
 
-        journeyFactory.createJ1Recruiting(req(u.host, List.of(u.rising),
+        journeyFactory.createJ1Recruiting(new JourneyRequest(u.host, List.of(u.rising),
             today.plusDays(14), LocalTime.of(10, 0), SportType.SOCCER, 8, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "주말 오전 축구", "강남 축구장", rng));
 
         // J2 × 1: 확정 (미래)
-        journeyFactory.createJ2Confirmed(req(u.host, List.of(u.middle, u.beginner, u.rising),
+        journeyFactory.createJ2Confirmed(new JourneyRequest(u.host, List.of(u.middle, u.beginner, u.rising),
             today.plusDays(3), LocalTime.of(20, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "방장 확정 풋살", "서초 풋살센터", rng));
 
         // J3 × 1: 정원가득 (미래)
-        journeyFactory.createJ3Full(req(u.host,
+        journeyFactory.createJ3Full(new JourneyRequest(u.host,
             List.of(u.manager, u.middle, u.beginner, u.rising, u.declined),
             today.plusDays(10), LocalTime.of(18, 0), SportType.FUTSAL, 6, 12000,
             SkillLevel.LEVEL_2, SkillLevel.LEVEL_4, "정원 가득찬 풋살", "송파 풋살장", rng));
 
         // J4 × 3: 완료+정산 (과거)
-        journeyFactory.createJ4CompletedSettled(req(u.host, List.of(u.middle, u.beginner, u.rising),
+        journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host, List.of(u.middle, u.beginner, u.rising),
             today.minusDays(14), LocalTime.of(19, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "지난 풋살 (2주 전)", "마포 풋살센터", rng));
 
-        journeyFactory.createJ4CompletedSettled(req(u.host, List.of(u.declined, u.rising, u.middle),
+        journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host, List.of(u.declined, u.rising, u.middle),
             today.minusDays(30), LocalTime.of(20, 0), SportType.SOCCER, 8, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_5, "지난 축구 (1달 전)", "용산 축구장", rng));
 
-        journeyFactory.createJ4CompletedSettled(req(u.host, List.of(u.manager, u.beginner),
+        journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host, List.of(u.manager, u.beginner),
             today.minusDays(45), LocalTime.of(10, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.ANY, "지난 풋살 (45일 전)", "강서 풋살장", rng));
 
         // J5 × 1: 오늘, 정산 대기
-        journeyFactory.createJ5SettlementPending(req(u.host, List.of(u.middle, u.beginner),
+        journeyFactory.createJ5SettlementPending(new JourneyRequest(u.host, List.of(u.middle, u.beginner),
             today, LocalTime.of(9, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "오늘 풋살 (정산 대기)", "노원 풋살파크", rng));
 
         // J6 × 1: 취소 + 환불 (과거)
-        journeyFactory.createJCancelled(req(u.host, List.of(u.rising, u.declined),
+        journeyFactory.createJCancelled(new JourneyRequest(u.host, List.of(u.rising, u.declined),
             today.minusDays(21), LocalTime.of(19, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "취소된 풋살", "중구 풋살장", rng));
 
         // J7 × 1: 조기취소 (과거, 참가자 적음)
-        journeyFactory.createJCancelled(req(u.host, List.of(u.beginner),
+        journeyFactory.createJCancelled(new JourneyRequest(u.host, List.of(u.beginner),
             today.minusDays(28), LocalTime.of(14, 0), SportType.BASKETBALL, 8, 15000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "조기취소 농구", "영등포 체육관", rng));
     }
@@ -177,40 +176,26 @@ public class FixtureSeeder implements SeedTask {
         LocalDate today = SeedConstants.today();
 
         // 강남 퇴근후풋살: 이중수 방장, 모집중
-        journeyFactory.createJ1Recruiting(req(u.middle, List.of(u.beginner, u.rising),
+        journeyFactory.createJ1Recruiting(new JourneyRequest(u.middle, List.of(u.beginner, u.rising),
             today.plusDays(5), LocalTime.of(19, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "강남 퇴근후풋살", "강남 퇴근후풋살 센터", rng));
 
         // 마감임박 인기매칭: 한고수 방장, 거의 가득
-        journeyFactory.createJ1Recruiting(req(u.declined,
+        journeyFactory.createJ1Recruiting(new JourneyRequest(u.declined,
             List.of(u.manager, u.middle, u.beginner, u.rising),
             today.plusDays(2), LocalTime.of(20, 0), SportType.FUTSAL, 6, 12000,
             SkillLevel.LEVEL_2, SkillLevel.LEVEL_5, "마감임박 인기풋살", "서초 프리미엄 풋살", rng));
 
         // 모집완료 농구: 정성장 방장, 확정
-        journeyFactory.createJ2Confirmed(req(u.rising, List.of(u.host, u.middle, u.declined),
+        journeyFactory.createJ2Confirmed(new JourneyRequest(u.rising, List.of(u.host, u.middle, u.declined),
             today.plusDays(4), LocalTime.of(18, 0), SportType.BASKETBALL, 8, 15000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "모집완료 농구 경기", "송파 실내 농구장", rng));
 
         // 정원가득찬 배드민턴: 박매니저 방장, 정원 가득
-        journeyFactory.createJ3Full(req(u.manager,
+        journeyFactory.createJ3Full(new JourneyRequest(u.manager,
             List.of(u.host, u.middle, u.beginner, u.rising, u.declined),
             today.plusDays(6), LocalTime.of(14, 0), SportType.BADMINTON, 6, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "정원가득찬 배드민턴", "강남 배드민턴클럽", rng));
-    }
-
-    // ─── Helper ──────────────────────────────────────────────────────
-
-    private JourneyRequest req(
-        User host, List<User> participants,
-        LocalDate date, LocalTime start,
-        SportType sport, int capacity, int fee,
-        SkillLevel min, SkillLevel max,
-        String title, String facilityName,
-        Random rng
-    ) {
-        return new JourneyRequest(host, participants, date, start, sport, capacity, fee,
-            min, max, title, facilityName, rng);
     }
 
     /** 픽스처 유저 6명 묶음 레코드. */

@@ -147,7 +147,7 @@ public class BulkSeeder implements SeedTask {
             journeyFactory.createJ2Confirmed(buildReq(users, today.plusDays(randBetween(1, 30, rng)), true, rng));
         }
         for (int i = 0; i < j3; i++) {
-            journeyFactory.createJ3Full(buildReq(users, today.plusDays(randBetween(1, 30, rng)), true, rng, true));
+            journeyFactory.createJ3Full(buildReq(users, today.plusDays(randBetween(1, 30, rng)), rng, true));
         }
         for (int i = 0; i < j4; i++) {
             journeyFactory.createJ4CompletedSettled(buildReq(users, randomPast(start, today.minusDays(1), rng), false, rng));
@@ -188,7 +188,7 @@ public class BulkSeeder implements SeedTask {
     }
 
     /** J3용: 정원 가득(참가자 수 = capacity - 1) */
-    private JourneyRequest buildReq(List<User> users, LocalDate matchDate, boolean isFuture, Random rng, boolean full) {
+    private JourneyRequest buildReq(List<User> users, LocalDate matchDate, Random rng, boolean full) {
         int capacity    = pick(CAPACITIES, rng);
         int fee         = pick(FEES, rng);
         LocalTime start = pick(START_TIMES, rng);
