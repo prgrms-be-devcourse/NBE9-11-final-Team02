@@ -469,6 +469,9 @@ public class MatchService {
         if (participant.isHost()) {
             throw new BusinessException(MatchErrorCode.HOST_CANNOT_LEAVE);
         }
+        if (!match.isRecruiting()) {
+            throw new BusinessException(MatchErrorCode.MATCH_ALREADY_CONFIRMED);
+        }
         if (match.isParticipantCancelDeadlinePassed(now)) {
             throw new BusinessException(MatchErrorCode.LEAVE_DEADLINE_PASSED);
         }
