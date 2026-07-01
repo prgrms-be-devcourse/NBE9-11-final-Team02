@@ -54,6 +54,8 @@ public class FixtureSeeder implements SeedTask {
 
     @Override
     public void seed() {
+        guardAgainstPartialRun();
+
         Random rng = new Random(SeedConstants.RANDOM_SEED);
 
         log.info("[FixtureSeeder] 픽스처 유저 6명 생성");
@@ -64,6 +66,19 @@ public class FixtureSeeder implements SeedTask {
 
         log.info("[FixtureSeeder] 데모 매칭 4개 생성");
         createDemoMatches(users, rng);
+    }
+
+    // ─── 부분 실패 가드 ──────────────────────────────────────────────
+
+    private void guardAgainstPartialRun() {
+        // 마커(seed_run FIXTURE)가 없는데 픽스처 유저가 있다 = 이전 실행이 journey 도중 실패한 흔적.
+        // 재실행 시 journey가 중복 생성되므로 진행을 막는다.
+        // 복구: fixture 데이터(@seed.sportteam.local 유저 및 그 매칭)를 정리한 뒤 재실행할 것.
+        if (userRepository.existsByEmail("fixture.host@seed.sportteam.local")) {
+            throw new IllegalStateException(
+                "픽스처 유저가 이미 존재하나 FIXTURE 마커가 없습니다. 이전 실행이 중단된 상태로 추정됩니다. "
+                + "중복 방지를 위해 시딩을 중단합니다. 픽스처 데이터를 정리한 뒤 다시 실행하세요.");
+        }
     }
 
     // ─── 유저 생성 ────────────────────────────────────────────────────

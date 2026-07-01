@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -84,17 +83,25 @@ public class BulkSeeder implements SeedTask {
 
     // ─── 유저 생성 ────────────────────────────────────────────────────
 
-    @Transactional
     public List<User> createBulkUsers(int count, Random rng) {
+        String firstEmail = "bulk1" + SeedConstants.BULK_EMAIL_DOMAIN;
+        if (userRepository.existsByEmail(firstEmail)) {
+            // 마커(seed_run BULK)가 없는데 벌크 유저가 있다 = 이전 실행이 journey 도중 실패한 흔적.
+            // 이 상태로 재실행하면 journey가 중복 생성되므로 진행하지 않고 중단한다.
+            // 복구: 벌크 데이터(@seed.sportteam.local 유저 및 그 매칭)를 정리한 뒤 재실행할 것.
+            throw new IllegalStateException(
+                "벌크 유저가 이미 존재하나 BULK 마커가 없습니다. 이전 실행이 중단된 상태로 추정됩니다. "
+                + "중복 방지를 위해 시딩을 중단합니다. 벌크 데이터를 정리한 뒤 다시 실행하세요.");
+        }
+
         List<User> users = new ArrayList<>(count);
         for (int i = 1; i <= count; i++) {
-            User user = User.local(
+            users.add(User.local(
                 "bulk" + i + SeedConstants.BULK_EMAIL_DOMAIN,
                 "선수" + i,
-                "$2a$10$seedbulkpasswordhash00000000000000000000000000", // 더미 hash
+                "$2a$10$seedbulkpasswordhash00000000000000000000000000",
                 UserRole.USER
-            );
-            users.add(user);
+            ));
         }
         List<User> saved = userRepository.saveAll(users);
 
@@ -130,7 +137,6 @@ public class BulkSeeder implements SeedTask {
 
         LocalDate today = SeedConstants.today();
         LocalDate start = SeedConstants.periodStart();
-        LocalDate end   = SeedConstants.periodEnd();
 
         log.info("[BulkSeeder] J1={} J2={} J3={} J4={} J5={} J6={} J7={}", j1, j2, j3, j4, j5, j6, j7);
 

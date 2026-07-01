@@ -312,10 +312,12 @@ public class JourneyFactory {
                     )
                 );
 
-                reviewee.addMannerRating(mannerRating);
-                userRepository.save(reviewee);
+                // 다른 journey 트랜잭션이 이미 갱신했을 수 있으므로 DB에서 최신 값 로드
+                User freshReviewee = userRepository.findById(reviewee.getId()).orElse(reviewee);
+                freshReviewee.addMannerRating(mannerRating);
+                userRepository.save(freshReviewee);
 
-                updateSkillStat(reviewee, req.sportType(), skillRating);
+                updateSkillStat(freshReviewee, req.sportType(), skillRating);
             }
         }
     }
