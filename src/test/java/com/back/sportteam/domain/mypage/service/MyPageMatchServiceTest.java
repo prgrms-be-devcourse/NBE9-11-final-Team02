@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Set;
 
@@ -39,7 +40,7 @@ class MyPageMatchServiceTest {
     private MyPageMatchService myPageMatchService;
 
     private static final MyMatchCondition CONDITION = new MyMatchCondition(null, null, null, 0, 10);
-    private static final LocalDate DATE = LocalDate.of(2026, 6, 1);
+    private static final LocalDate DATE = LocalDate.of(2026, Month.JUNE, 1);
     private static final LocalTime START = LocalTime.of(10, 0);
     private static final LocalTime END = LocalTime.of(12, 0);
 
