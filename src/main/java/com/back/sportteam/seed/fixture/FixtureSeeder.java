@@ -13,6 +13,7 @@ import com.back.sportteam.seed.SeedTask;
 import com.back.sportteam.seed.journey.JourneyFactory;
 import com.back.sportteam.seed.journey.JourneyRequest;
 import com.back.sportteam.seed.support.SeedConstants;
+import com.back.sportteam.seed.support.SeedProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -51,10 +52,8 @@ import java.util.Random;
 @Profile("seed-fixture")
 public class FixtureSeeder implements SeedTask {
 
-    /** 팀원 시연용 공통 비밀번호. PBKDF2 해시는 유저 생성 시 PasswordHasher로 실시간 생성. */
-    private static final String FIXTURE_PASSWORD = "test1234!!";
-
     private final PasswordHasher passwordHasher;
+    private final SeedProperties seedProperties;
     private final UserRepository userRepository;
     private final UserSportStatRepository userSportStatRepository;
     private final JourneyFactory journeyFactory;
@@ -128,7 +127,7 @@ public class FixtureSeeder implements SeedTask {
     private User upsertUser(String email, String nickname, UserRole role) {
         return userRepository.findByEmail(email)
             .orElseGet(() -> userRepository.save(
-                User.local(email, nickname, passwordHasher.hash(FIXTURE_PASSWORD), role)
+                User.local(email, nickname, passwordHasher.hash(seedProperties.fixture().password()), role)
             ));
     }
 

@@ -40,3 +40,5 @@ seed:
   bulk:
     users: 100    # 벌크 유저 수
     matches: 155  # 벌크 매칭 수 (부하 테스트 시 500으로 변경)
+  fixture:
+    password: "${SEED_FIXTURE_PASSWORD}"
