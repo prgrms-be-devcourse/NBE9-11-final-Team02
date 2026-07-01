@@ -8,7 +8,6 @@ import com.back.sportteam.domain.settlement.dto.response.SettlementSummaryRespon
 import com.back.sportteam.domain.settlement.entity.Settlement;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.Month;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class SettlementQueryRepositoryImplTest {
 
-    private static final LocalDate FROM = LocalDate.of(2026, Month.JUNE, 1);
-    private static final LocalDate TO = LocalDate.of(2026, Month.JUNE, 30);
+    private static final LocalDate FROM = LocalDate.now().withDayOfMonth(1);
+    private static final LocalDate TO = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
     private static final BigDecimal FEE_RATE = new BigDecimal("0.0700");
 
     @Autowired
@@ -65,8 +64,9 @@ class SettlementQueryRepositoryImplTest {
         saveSettlement("match-1", SportType.FUTSAL, 30_000);
 
         SettlementSummaryResponse result = settlementQueryRepository.summarize(
-                LocalDate.of(2026, Month.JULY, 1),
-                LocalDate.of(2026, Month.JULY, 31)
+                LocalDate.now().minusMonths(1).withDayOfMonth(1),
+                LocalDate.now().minusMonths(1).withDayOfMonth(
+                        LocalDate.now().minusMonths(1).lengthOfMonth())
         );
 
         assertThat(result.total().count()).isZero();

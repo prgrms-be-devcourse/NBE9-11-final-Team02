@@ -13,8 +13,10 @@ import static org.mockito.Mockito.when;
 
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.security.JwtProvider;
+import com.back.sportteam.domain.auth.support.RefreshTokenCookieWriter;
 import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ class AuthLogoutServiceTest {
     private JwtProvider jwtProvider;
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOperations;
+    private RefreshTokenCookieWriter refreshTokenCookieWriter;
+    private HttpServletResponse httpResponse;
     private AuthLogoutService authLogoutService;
 
     @BeforeEach
@@ -33,12 +37,15 @@ class AuthLogoutServiceTest {
         jwtProvider = mock(JwtProvider.class);
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
+        refreshTokenCookieWriter = mock(RefreshTokenCookieWriter.class);
+        httpResponse = mock(HttpServletResponse.class);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         authLogoutService = new AuthLogoutService(
                 jwtProvider,
                 redisTemplate,
+                refreshTokenCookieWriter,
                 1800L
         );
     }
@@ -52,7 +59,7 @@ class AuthLogoutServiceTest {
         when(jwtProvider.isValid("valid-access-token")).thenReturn(true);
         when(jwtProvider.parse("valid-access-token")).thenReturn(claims);
 
-        authLogoutService.logout("valid-access-token");
+        authLogoutService.logout("valid-access-token", httpResponse);
 
         verify(redisTemplate).delete("refresh:user-id");
         verify(valueOperations).set(
@@ -61,6 +68,7 @@ class AuthLogoutServiceTest {
                 anyLong(),
                 any()
         );
+        verify(refreshTokenCookieWriter).clear(httpResponse);
     }
 
     @DisplayName("유효하지 않은 토큰일 시 예외 발생")
@@ -68,7 +76,7 @@ class AuthLogoutServiceTest {
     void 유효하지_않은_토큰일_시_예외_발생() {
         when(jwtProvider.isValid("invalid-token")).thenReturn(false);
 
-        assertThatThrownBy(() -> authLogoutService.logout("invalid-token"))
+        assertThatThrownBy(() -> authLogoutService.logout("invalid-token", httpResponse))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_TOKEN)
                 );

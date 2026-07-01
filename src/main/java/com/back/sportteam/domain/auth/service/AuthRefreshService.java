@@ -3,9 +3,9 @@ package com.back.sportteam.domain.auth.service;
 import com.back.sportteam.domain.auth.dto.response.TokenRefreshResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.security.JwtProvider;
+import com.back.sportteam.domain.auth.support.RefreshTokenCookieWriter;
 import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,19 +19,19 @@ public class AuthRefreshService {
 
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
+    private final RefreshTokenCookieWriter refreshTokenCookieWriter;
     private final long refreshTokenExpiry;
-    private final boolean secureCookie;
 
     public AuthRefreshService(
             JwtProvider jwtProvider,
             StringRedisTemplate redisTemplate,
-            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry,
-            @Value("${app.jwt.secure-cookie}") boolean secureCookie
+            RefreshTokenCookieWriter refreshTokenCookieWriter,
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenExpiry
     ) {
         this.jwtProvider = jwtProvider;
         this.redisTemplate = redisTemplate;
+        this.refreshTokenCookieWriter = refreshTokenCookieWriter;
         this.refreshTokenExpiry = refreshTokenExpiry * 1000;
-        this.secureCookie = secureCookie;
     }
 
     public TokenRefreshResponse refresh(String refreshToken, HttpServletResponse response) {
@@ -62,12 +62,7 @@ public class AuthRefreshService {
                 TimeUnit.MILLISECONDS
         );
 
-        Cookie cookie = new Cookie("refreshToken", newRefreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) (refreshTokenExpiry / 1000));
-        response.addCookie(cookie);
+        refreshTokenCookieWriter.add(response, newRefreshToken, refreshTokenExpiry);
 
         return TokenRefreshResponse.of(newAccessToken);
     }
