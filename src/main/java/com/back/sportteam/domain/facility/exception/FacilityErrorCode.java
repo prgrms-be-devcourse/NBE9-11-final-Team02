@@ -21,7 +21,8 @@ public enum FacilityErrorCode implements ErrorCode {
     FACILITY_SLOT_NOT_AVAILABLE("FACILITY_011", "예약 가능한 슬롯이 아닙니다.", HttpStatus.CONFLICT),
     FACILITY_RESERVATION_INVALID_DATE_RANGE("FACILITY_012", "예약 조회 시작 날짜는 종료 날짜보다 늦을 수 없습니다.", HttpStatus.BAD_REQUEST),
     FACILITY_IMAGE_NOT_FOUND("FACILITY_013", "해당 이미지를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    FACILITY_IMAGE_DELETE_FAILED("FACILITY_014", "이미지 삭제에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+    FACILITY_IMAGE_DELETE_FAILED("FACILITY_014", "이미지 삭제에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    FACILITY_CLOSED("FACILITY_015", "운영 종료된 시설은 수정할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
