@@ -53,6 +53,7 @@ app:
     refresh-token-validity-seconds: ${JWT_REFRESH_TOKEN_VALIDITY_SECONDS:1209600}
     access-token-cookie-name: ${JWT_ACCESS_COOKIE_NAME:accessToken}
     refresh-token-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refreshToken}
+    refresh-token-cookie-path: ${JWT_REFRESH_COOKIE_PATH:/api/v1/auth/refresh}
     secure-cookie: ${JWT_SECURE_COOKIE:false}
     same-site: ${JWT_COOKIE_SAME_SITE:Lax}
   payment:

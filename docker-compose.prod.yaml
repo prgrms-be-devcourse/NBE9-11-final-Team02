@@ -63,7 +63,11 @@ services:
     container_name: app1_1
     restart: unless-stopped
     networks:
-      - common
+      # Tomcat은 Host 헤더의 언더스코어를 400으로 거부
+      # Prometheus가 하이픈 별칭으로 스크랩하도록 별칭 추가(컨테이너명은 유지).
+      common:
+        aliases:
+          - app1-1
     environment:
       TZ: Asia/Seoul
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml
@@ -82,7 +86,9 @@ services:
     container_name: app1_2
     restart: unless-stopped
     networks:
-      - common
+      common:
+        aliases:
+          - app1-2
     environment:
       TZ: Asia/Seoul
       SPRING_CONFIG_IMPORT: optional:file:/app/application-secret.yaml

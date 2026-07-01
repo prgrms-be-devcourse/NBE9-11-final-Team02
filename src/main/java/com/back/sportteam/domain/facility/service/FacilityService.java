@@ -83,6 +83,13 @@ public class FacilityService {
     }
 
     @Transactional(readOnly = true)
+    public FacilityResponse getManagerFacility(String managerId, String facilityId) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
+        return FacilityResponse.from(facility);
+    }
+
+    @Transactional(readOnly = true)
     public List<FacilitySummaryResponse> getMyFacilities(String managerId) {
         return facilityRepository.findAllByManagerIdAndStatusNot(managerId, FacilityStatus.CLOSED)
                 .stream()
@@ -172,6 +179,16 @@ public class FacilityService {
     @Transactional(readOnly = true)
     public List<FacilitySlotResponse> getSlotsByDate(String facilityId, LocalDate date) {
         getFacilityOrThrow(facilityId);
+        return facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(facilityId, date)
+                .stream()
+                .map(FacilitySlotResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FacilitySlotResponse> getManagerSlotsByDate(String managerId, String facilityId, LocalDate date) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        validateOwnership(facility, managerId);
         return facilitySlotRepository.findAllByFacilityIdAndSlotDateOrderByStartTime(facilityId, date)
                 .stream()
                 .map(FacilitySlotResponse::from)

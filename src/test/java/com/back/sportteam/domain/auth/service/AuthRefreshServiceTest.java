@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.back.sportteam.domain.auth.dto.response.TokenRefreshResponse;
 import com.back.sportteam.domain.auth.exception.AuthErrorCode;
 import com.back.sportteam.domain.auth.security.JwtProvider;
+import com.back.sportteam.domain.auth.support.RefreshTokenCookieWriter;
 import com.back.sportteam.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +28,7 @@ class AuthRefreshServiceTest {
     private JwtProvider jwtProvider;
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOperations;
+    private RefreshTokenCookieWriter refreshTokenCookieWriter;
     private HttpServletResponse httpResponse;
     private AuthRefreshService authRefreshService;
 
@@ -35,6 +37,7 @@ class AuthRefreshServiceTest {
         jwtProvider = mock(JwtProvider.class);
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
+        refreshTokenCookieWriter = mock(RefreshTokenCookieWriter.class);
         httpResponse = mock(HttpServletResponse.class);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -42,8 +45,8 @@ class AuthRefreshServiceTest {
         authRefreshService = new AuthRefreshService(
                 jwtProvider,
                 redisTemplate,
-                1209600L,
-                false
+                refreshTokenCookieWriter,
+                1209600L
         );
     }
 
@@ -65,7 +68,7 @@ class AuthRefreshServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("new-access-token");
         verify(valueOperations).set(anyString(), anyString(), anyLong(), any());
-        verify(httpResponse).addCookie(any());
+        verify(refreshTokenCookieWriter).add(httpResponse, "new-refresh-token", 1209600000L);
     }
 
     @DisplayName("유효하지 않은 토큰일 시 예외 발생")

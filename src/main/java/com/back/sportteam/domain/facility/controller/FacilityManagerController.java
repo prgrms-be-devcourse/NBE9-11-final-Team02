@@ -42,6 +42,15 @@ public class FacilityManagerController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @GetMapping("/{facilityId}")
+    public ResponseEntity<ApiResponse<FacilityResponse>> getFacility(
+            @AuthenticationPrincipal @NotBlank String managerId,
+            @PathVariable String facilityId
+    ) {
+        FacilityResponse response = facilityService.getManagerFacility(requireManagerId(managerId), facilityId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @GetMapping("/{facilityId}/reservations")
     public ResponseEntity<ApiResponse<FacilityReservationOverviewResponse>> getReservations(
             @AuthenticationPrincipal @NotBlank String managerId,
@@ -94,6 +103,16 @@ public class FacilityManagerController {
     ) {
         facilityService.deleteImage(requireManagerId(managerId), facilityId, imageUrl);
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @GetMapping("/{facilityId}/slots")
+    public ResponseEntity<ApiResponse<List<FacilitySlotResponse>>> getSlots(
+            @AuthenticationPrincipal @NotBlank String managerId,
+            @PathVariable String facilityId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        List<FacilitySlotResponse> response = facilityService.getManagerSlotsByDate(requireManagerId(managerId), facilityId, date);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @PostMapping("/{facilityId}/slots")
