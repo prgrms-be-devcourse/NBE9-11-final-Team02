@@ -144,13 +144,15 @@ public class BulkSeeder implements SeedTask {
             journeyFactory.createJ1Recruiting(buildReq(users, today.plusDays(randBetween(1, 30, rng)), true, rng));
         }
         for (int i = 0; i < j2; i++) {
-            journeyFactory.createJ2Confirmed(buildReq(users, today.plusDays(randBetween(1, 30, rng)), true, rng));
+            // CONFIRMED는 마감 시 정원이 가득 찬 경기만 도달 가능(MatchDeadlineProcessor) → full
+            journeyFactory.createJ2Confirmed(buildReq(users, today.plusDays(randBetween(1, 30, rng)), rng, true));
         }
         for (int i = 0; i < j3; i++) {
             journeyFactory.createJ3Full(buildReq(users, today.plusDays(randBetween(1, 30, rng)), rng, true));
         }
         for (int i = 0; i < j4; i++) {
-            journeyFactory.createJ4CompletedSettled(buildReq(users, randomPast(start, today.minusDays(1), rng), false, rng));
+            // COMPLETED는 CONFIRMED(정원 충족)를 거친 경기만 도달 가능 → full
+            journeyFactory.createJ4CompletedSettled(buildReq(users, randomPast(start, today.minusDays(1), rng), rng, true));
         }
         for (int i = 0; i < j5; i++) {
             journeyFactory.createJ5SettlementPending(buildReqToday(users, today, rng));
@@ -216,7 +218,8 @@ public class BulkSeeder implements SeedTask {
         SkillLevel max  = adjustMax(min, rng);
 
         User host = pickUser(users, rng);
-        int participantCount = randBetween(2, capacity - 1, rng);
+        // J5는 COMPLETED(정산 대기) → 정원이 가득 찼던 경기여야 함
+        int participantCount = capacity - 1;
         List<User> participants = pickParticipants(users, host, participantCount, rng);
 
         return new JourneyRequest(

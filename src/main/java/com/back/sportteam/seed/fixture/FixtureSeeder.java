@@ -155,43 +155,43 @@ public class FixtureSeeder implements SeedTask {
 
         // 풋살 방장 1: J4 완료+정산 (1주 전) — 정원10, 8명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.middle, u.beginner, u.rising), pickBulk(bulk, 4, rng, u, u.host, u.middle, u.beginner, u.rising)),
+            prepend(List.of(u.middle, u.beginner, u.rising), pickBulk(bulk, 6, rng, u, u.host, u.middle, u.beginner, u.rising)),
             today.minusDays(7), LocalTime.of(19, 0), SportType.FUTSAL, 10, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "지난 풋살 (1주 전)", "마포 풋살센터", rng));
 
         // 풋살 방장 2: J4 완료+정산 (3주 전) — 정원8, 6명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.middle, u.beginner), pickBulk(bulk, 3, rng, u, u.host, u.middle, u.beginner)),
+            prepend(List.of(u.middle, u.beginner), pickBulk(bulk, 5, rng, u, u.host, u.middle, u.beginner)),
             today.minusDays(20), LocalTime.of(20, 0), SportType.FUTSAL, 8, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "지난 풋살 (3주 전)", "서초 풋살센터", rng));
 
         // 풋살 방장 3: J4 완료+정산 (약 6주 전) — 정원6, 5명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.rising), pickBulk(bulk, 3, rng, u, u.host, u.rising)),
+            prepend(List.of(u.rising), pickBulk(bulk, 4, rng, u, u.host, u.rising)),
             today.minusDays(40), LocalTime.of(19, 0), SportType.FUTSAL, 6, 12000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "지난 풋살 (6주 전)", "노원 풋살파크", rng));
 
         // 풋살 방장 4: J5 오늘 정산대기 (COMPLETED, Settlement 없음) — 정원6, 5명
         journeyFactory.createJ5SettlementPending(new JourneyRequest(u.host,
-            prepend(List.of(u.middle, u.beginner), pickBulk(bulk, 2, rng, u, u.host, u.middle, u.beginner)),
+            prepend(List.of(u.middle, u.beginner), pickBulk(bulk, 3, rng, u, u.host, u.middle, u.beginner)),
             today, LocalTime.of(9, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "오늘 풋살 (정산 대기)", "중구 풋살장", rng));
 
         // 축구 방장 1: J4 완료+정산 (2주 전) — 정원10, 8명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.declined, u.rising), pickBulk(bulk, 5, rng, u, u.host, u.declined, u.rising)),
+            prepend(List.of(u.declined, u.rising), pickBulk(bulk, 7, rng, u, u.host, u.declined, u.rising)),
             today.minusDays(14), LocalTime.of(10, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "지난 축구 (2주 전)", "용산 축구장", rng));
 
         // 축구 방장 2: J4 완료+정산 (1달 전) — 정원10, 8명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.middle, u.declined), pickBulk(bulk, 5, rng, u, u.host, u.middle, u.declined)),
+            prepend(List.of(u.middle, u.declined), pickBulk(bulk, 7, rng, u, u.host, u.middle, u.declined)),
             today.minusDays(30), LocalTime.of(20, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_5, "지난 축구 (1달 전)", "강남 축구장", rng));
 
         // 축구 방장 3: J4 완료+정산 (약 8주 전) — 정원10, 8명
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(u.host,
-            prepend(List.of(u.rising), pickBulk(bulk, 6, rng, u, u.host, u.rising)),
+            prepend(List.of(u.rising), pickBulk(bulk, 8, rng, u, u.host, u.rising)),
             today.minusDays(55), LocalTime.of(18, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.ANY, "지난 축구 (8주 전)", "송파 축구장", rng));
     }
@@ -205,70 +205,70 @@ public class FixtureSeeder implements SeedTask {
         // 풋살 참가 1: J4 (5일 전) 정원8, 6명
         User fh1 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(fh1,
-            prepend(List.of(u.host, u.beginner), pickBulk(bulk, 3, rng, u, fh1, u.host, u.beginner)),
+            prepend(List.of(u.host, u.beginner), pickBulk(bulk, 5, rng, u, fh1, u.host, u.beginner)),
             today.minusDays(5), LocalTime.of(19, 0), SportType.FUTSAL, 8, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "완료 풋살 참가 1", "풋살장 A", rng));
 
         // 풋살 참가 2: J4 (12일 전) 정원8, 5명
         User fh2 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(fh2,
-            prepend(List.of(u.host, u.middle), pickBulk(bulk, 2, rng, u, fh2, u.host, u.middle)),
+            prepend(List.of(u.host, u.middle), pickBulk(bulk, 5, rng, u, fh2, u.host, u.middle)),
             today.minusDays(12), LocalTime.of(20, 0), SportType.FUTSAL, 8, 10000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "완료 풋살 참가 2", "풋살장 B", rng));
 
         // 풋살 참가 3: J4 (25일 전) 정원10, 8명
         User fh3 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(fh3,
-            prepend(List.of(u.host, u.rising, u.declined), pickBulk(bulk, 4, rng, u, fh3, u.host, u.rising, u.declined)),
+            prepend(List.of(u.host, u.rising, u.declined), pickBulk(bulk, 6, rng, u, fh3, u.host, u.rising, u.declined)),
             today.minusDays(25), LocalTime.of(18, 0), SportType.FUTSAL, 10, 12000,
             SkillLevel.LEVEL_2, SkillLevel.LEVEL_4, "완료 풋살 참가 3", "풋살장 C", rng));
 
         // 풋살 참가 4: J4 (50일 전) 정원6, 5명
         User fh4 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(fh4,
-            prepend(List.of(u.host), pickBulk(bulk, 3, rng, u, fh4, u.host)),
+            prepend(List.of(u.host), pickBulk(bulk, 4, rng, u, fh4, u.host)),
             today.minusDays(50), LocalTime.of(20, 0), SportType.FUTSAL, 6, 10000,
             SkillLevel.ANY, SkillLevel.ANY, "완료 풋살 참가 4", "풋살장 D", rng));
 
         // 축구 참가 1: J4 (3일 전) 정원10, 8명
         User sh1 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(sh1,
-            prepend(List.of(u.host, u.declined), pickBulk(bulk, 5, rng, u, sh1, u.host, u.declined)),
+            prepend(List.of(u.host, u.declined), pickBulk(bulk, 7, rng, u, sh1, u.host, u.declined)),
             today.minusDays(3), LocalTime.of(10, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "완료 축구 참가 1", "축구장 A", rng));
 
         // 축구 참가 2: J4 (18일 전) 정원10, 8명
         User sh2 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(sh2,
-            prepend(List.of(u.host, u.rising), pickBulk(bulk, 5, rng, u, sh2, u.host, u.rising)),
+            prepend(List.of(u.host, u.rising), pickBulk(bulk, 7, rng, u, sh2, u.host, u.rising)),
             today.minusDays(18), LocalTime.of(14, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "완료 축구 참가 2", "축구장 B", rng));
 
         // 축구 참가 3: J4 (35일 전) 정원8, 6명
         User sh3 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(sh3,
-            prepend(List.of(u.host, u.middle), pickBulk(bulk, 3, rng, u, sh3, u.host, u.middle)),
+            prepend(List.of(u.host, u.middle), pickBulk(bulk, 5, rng, u, sh3, u.host, u.middle)),
             today.minusDays(35), LocalTime.of(19, 0), SportType.SOCCER, 8, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "완료 축구 참가 3", "축구장 C", rng));
 
         // 축구 참가 4: J4 (60일 전) 정원10, 8명
         User sh4 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(sh4,
-            prepend(List.of(u.host), pickBulk(bulk, 6, rng, u, sh4, u.host)),
+            prepend(List.of(u.host), pickBulk(bulk, 8, rng, u, sh4, u.host)),
             today.minusDays(60), LocalTime.of(20, 0), SportType.SOCCER, 10, 8000,
             SkillLevel.ANY, SkillLevel.ANY, "완료 축구 참가 4", "축구장 D", rng));
 
         // 배드민턴 참가 1: J4 (8일 전) 정원6, 5명
         User bh1 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(bh1,
-            prepend(List.of(u.host, u.middle), pickBulk(bulk, 2, rng, u, bh1, u.host, u.middle)),
+            prepend(List.of(u.host, u.middle), pickBulk(bulk, 3, rng, u, bh1, u.host, u.middle)),
             today.minusDays(8), LocalTime.of(15, 0), SportType.BADMINTON, 6, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "완료 배드민턴 참가 1", "배드민턴장 A", rng));
 
         // 배드민턴 참가 2: J4 (22일 전) 정원6, 5명
         User bh2 = pickOneHost(bulk, rng, u);
         journeyFactory.createJ4CompletedSettled(new JourneyRequest(bh2,
-            prepend(List.of(u.host), pickBulk(bulk, 3, rng, u, bh2, u.host)),
+            prepend(List.of(u.host), pickBulk(bulk, 4, rng, u, bh2, u.host)),
             today.minusDays(22), LocalTime.of(16, 0), SportType.BADMINTON, 6, 8000,
             SkillLevel.ANY, SkillLevel.LEVEL_4, "완료 배드민턴 참가 2", "배드민턴장 B", rng));
 
@@ -297,9 +297,9 @@ public class FixtureSeeder implements SeedTask {
             today.plusDays(2), LocalTime.of(20, 0), SportType.FUTSAL, 6, 12000,
             SkillLevel.LEVEL_2, SkillLevel.LEVEL_5, "마감임박 인기풋살", "서초 프리미엄 풋살", rng));
 
-        // 모집완료 농구: 정성장 방장, 정원10, 7명 확정 — 김방장 참가(진행중 탭)
+        // 모집완료 농구: 정성장 방장, 정원10 가득(방장1+참가9) 확정 — 김방장 참가(진행중 탭)
         journeyFactory.createJ2Confirmed(new JourneyRequest(u.rising,
-            prepend(List.of(u.host, u.middle, u.declined), pickBulk(bulk, 3, rng, u, u.rising, u.host, u.middle, u.declined)),
+            prepend(List.of(u.host, u.middle, u.declined), pickBulk(bulk, 6, rng, u, u.rising, u.host, u.middle, u.declined)),
             today.plusDays(4), LocalTime.of(18, 0), SportType.BASKETBALL, 10, 15000,
             SkillLevel.ANY, SkillLevel.LEVEL_3, "모집완료 농구 경기", "송파 실내 농구장", rng));
 
