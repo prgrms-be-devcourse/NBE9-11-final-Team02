@@ -91,7 +91,7 @@ public class FacilityService {
 
     @Transactional(readOnly = true)
     public List<FacilitySummaryResponse> getMyFacilities(String managerId) {
-        return facilityRepository.findAllByManagerIdAndStatusNot(managerId, FacilityStatus.CLOSED)
+        return facilityRepository.findAllByManagerId(managerId)
                 .stream()
                 .map(FacilitySummaryResponse::from)
                 .toList();
@@ -99,8 +99,11 @@ public class FacilityService {
 
     @Transactional
     public FacilityResponse updateFacility(String managerId, String facilityId, FacilityUpdateRequest request) {
-        Facility facility = getFacilityOrThrow(facilityId);
+        Facility facility = getFacilityIncludingClosedOrThrow(facilityId);
         validateOwnership(facility, managerId);
+        if (facility.getStatus() == FacilityStatus.CLOSED) {
+            throw new BusinessException(FacilityErrorCode.FACILITY_CLOSED);
+        }
 
         List<String> removedImageUrls = resolveRemovedImageUrls(facility.getImageUrls(), request.imageUrls());
 
@@ -202,7 +205,7 @@ public class FacilityService {
             LocalDate fromDate,
             LocalDate toDate
     ) {
-        Facility facility = getFacilityOrThrow(facilityId);
+        Facility facility = getFacilityIncludingClosedOrThrow(facilityId);
         validateOwnership(facility, managerId);
         if (fromDate.isAfter(toDate)) {
             throw new BusinessException(FacilityErrorCode.FACILITY_RESERVATION_INVALID_DATE_RANGE);
@@ -377,6 +380,11 @@ public class FacilityService {
 
     private Facility getFacilityOrThrow(String facilityId) {
         return facilityRepository.findByIdAndStatusNot(facilityId, FacilityStatus.CLOSED)
+                .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
+    }
+
+    private Facility getFacilityIncludingClosedOrThrow(String facilityId) {
+        return facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new BusinessException(FacilityErrorCode.FACILITY_NOT_FOUND));
     }
 

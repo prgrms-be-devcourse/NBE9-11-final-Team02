@@ -15,5 +15,7 @@ public interface FacilityRepository extends JpaRepository<Facility, String> {
 
     List<Facility> findAllByManagerIdAndStatusNot(String managerId, FacilityStatus status);
 
+    List<Facility> findAllByManagerId(String managerId);
+
     Page<Facility> findAllByStatus(FacilityStatus status, Pageable pageable);
 }

@@ -161,7 +161,7 @@ class FacilityServiceTest {
                         .build()
         );
         Facility withoutImage = createFacility("manager-id");
-        when(facilityRepository.findAllByManagerIdAndStatusNot("manager-id", FacilityStatus.CLOSED))
+        when(facilityRepository.findAllByManagerId("manager-id"))
                 .thenReturn(List.of(withImage, withoutImage));
 
         List<FacilitySummaryResponse> response = facilityService.getMyFacilities("manager-id");
@@ -173,7 +173,7 @@ class FacilityServiceTest {
 
     @Test
     void 등록한_시설이_없으면_빈_목록을_반환한다() {
-        when(facilityRepository.findAllByManagerIdAndStatusNot("manager-id", FacilityStatus.CLOSED))
+        when(facilityRepository.findAllByManagerId("manager-id"))
                 .thenReturn(List.of());
 
         List<FacilitySummaryResponse> response = facilityService.getMyFacilities("manager-id");
@@ -196,7 +196,7 @@ class FacilityServiceTest {
                 null,
                 null
         );
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
 
         FacilityResponse response = facilityService.updateFacility("manager-id", facility.getId(), request);
@@ -211,7 +211,7 @@ class FacilityServiceTest {
         FacilityUpdateRequest request = new FacilityUpdateRequest(
                 null, null, 20, 60, 50000, 70000, null, null, null, null
         );
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
 
         String facilityId = facility.getId();
@@ -226,13 +226,30 @@ class FacilityServiceTest {
         FacilityUpdateRequest request = new FacilityUpdateRequest(
                 null, null, 20, 60, 50000, 70000, null, null, null, null
         );
-        when(facilityRepository.findByIdAndStatusNot("missing-id", FacilityStatus.CLOSED))
+        when(facilityRepository.findById("missing-id"))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> facilityService.updateFacility("manager-id", "missing-id", request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(FacilityErrorCode.FACILITY_NOT_FOUND);
+    }
+
+    @Test
+    void 운영_종료된_시설은_수정할_수_없다() {
+        Facility facility = createFacility("manager-id");
+        facility.close();
+        FacilityUpdateRequest request = new FacilityUpdateRequest(
+                null, null, 20, 60, 50000, 70000, null, null, null, null
+        );
+        when(facilityRepository.findById(facility.getId()))
+                .thenReturn(Optional.of(facility));
+
+        String facilityId = facility.getId();
+        assertThatThrownBy(() -> facilityService.updateFacility("manager-id", facilityId, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(FacilityErrorCode.FACILITY_CLOSED);
     }
 
     @Test
@@ -695,7 +712,7 @@ class FacilityServiceTest {
         reservation.confirm();
         FacilityRevenueProjection revenue = mock(FacilityRevenueProjection.class);
 
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
         when(facilitySlotRepository.findAllByFacilityIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                 facility.getId(), date, date
@@ -728,7 +745,7 @@ class FacilityServiceTest {
     void 다른_매니저는_시설_예약_현황을_조회할_수_없다() {
         Facility facility = createFacility("manager-id");
         LocalDate date = LocalDate.of(2026, Month.JULY, 1);
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
         String facilityId = facility.getId();
 
@@ -745,7 +762,7 @@ class FacilityServiceTest {
         Facility facility = createFacility("manager-id");
         LocalDate fromDate = LocalDate.of(2026, Month.JULY, 2);
         LocalDate toDate = LocalDate.of(2026, Month.JULY, 1);
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
         String facilityId = facility.getId();
 
@@ -822,7 +839,7 @@ class FacilityServiceTest {
         String removed = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/removed";
         String kept = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/kept";
         Facility facility = createFacilityWithImages("manager-id", List.of(removed, kept));
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
         FacilityUpdateRequest request = new FacilityUpdateRequest(
                 null, null, 20, 60, 50000, 70000, null, null, null, List.of(kept)
@@ -839,7 +856,7 @@ class FacilityServiceTest {
     void 시설_수정_중_S3_정리에_실패해도_수정은_완료된다() {
         String removed = "https://team02-bucket-8282.s3.ap-northeast-2.amazonaws.com/facilities/removed";
         Facility facility = createFacilityWithImages("manager-id", List.of(removed));
-        when(facilityRepository.findByIdAndStatusNot(facility.getId(), FacilityStatus.CLOSED))
+        when(facilityRepository.findById(facility.getId()))
                 .thenReturn(Optional.of(facility));
         doThrow(new RuntimeException("S3 error")).when(s3Service).deleteFile(removed);
         FacilityUpdateRequest request = new FacilityUpdateRequest(

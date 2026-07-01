@@ -222,7 +222,8 @@ class MyPageControllerTest {
                 MatchParticipantRole.HOST,
                 MATCH_DATE,
                 START_TIME,
-                END_TIME
+                END_TIME,
+                false
         );
     }
 

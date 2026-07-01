@@ -17,7 +17,8 @@ public record MyMatchResponse(
         MatchParticipantRole role,
         LocalDate matchDate,
         LocalTime startTime,
-        LocalTime endTime
+        LocalTime endTime,
+        boolean reviewed
 ) {
     public static MyMatchResponse of(
             String matchId,
@@ -38,7 +39,12 @@ public record MyMatchResponse(
                 role,
                 matchDate,
                 startTime,
-                endTime
+                endTime,
+                false
         );
+    }
+
+    public MyMatchResponse withReviewed(boolean reviewed) {
+        return new MyMatchResponse(matchId, title, sportType, myMatchStatus, role, matchDate, startTime, endTime, reviewed);
     }
 }
