@@ -106,11 +106,12 @@ public class JourneyFactory {
     }
 
     // ─── J3: RECRUITING + FULL (미래, 정원 가득) ─────────────────────
-    // req.participants().size() + 1(host) == req.capacity() 를 호출측이 보장
-    // 로직은 J1과 동일 — 상태 차이는 capacity가 가득 찬 것으로 호출측이 보장
+    // J1과 DB 조작은 동일. 차이는 호출측이 participants.size()+1 == capacity를 보장한다는 것.
     @Transactional
     public void createJ3Full(JourneyRequest req) {
-        createJ1Recruiting(req);
+        MatchBase base = buildMatchBase(req, false);
+        addPaidParticipants(base, req);
+        matchRepository.save(base.match());
     }
 
     // ─── J4: COMPLETED + SETTLED (과거) ─────────────────────────────
