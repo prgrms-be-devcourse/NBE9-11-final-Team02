@@ -11,6 +11,7 @@ sonarqube {
         property("sonar.projectKey", "prgrms-be-devcourse_NBE9-11-final-Team02")
         property("sonar.organization", "prgrms-be-devcourse")
         property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.exclusions", "**/seed/**")
     }
 }
 
@@ -18,6 +19,9 @@ tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
     }
+    classDirectories.setFrom(files(classDirectories.files.map {
+        fileTree(it) { exclude("**/seed/**") }
+    }))
 }
 
 group = "com.back"
