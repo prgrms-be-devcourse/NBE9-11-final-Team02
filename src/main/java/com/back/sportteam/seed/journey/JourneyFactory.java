@@ -191,10 +191,12 @@ public class JourneyFactory {
         base.reservation().cancel(cancelledAt);
         base.slot().release();
         base.match().cancel(cancelledAt);
+        base.facilityPayment().refund(base.slot().getPrice(), refundedAt);
 
         reservationRepository.save(base.reservation());
         facilitySlotRepository.save(base.slot());
         matchRepository.save(base.match());
+        paymentRepository.save(base.facilityPayment());
     }
 
     // ─── Private: 공통 인프라 생성 ───────────────────────────────────
@@ -260,11 +262,24 @@ public class JourneyFactory {
             .build());
         matchRepository.save(match);
 
-        // 5. 방장 참가자 (ACTIVE, 결제 없음)
+        // 5. 방장 참가자 + 시설 예약 결제(FACILITY)
         MatchParticipant hostParticipant = MatchParticipant.host(match, req.host().getId());
         matchParticipantRepository.save(hostParticipant);
 
-        return new MatchBase(facility, slot, reservation, match, hostParticipant);
+        LocalDateTime facilityPaidAt = req.matchDate().minusDays(7).atTime(10, 30);
+        Payment facilityPayment = Payment.create(
+            hostParticipant.getId(),
+            req.host().getId(),
+            match.getId(),
+            slot.getId(),
+            PaymentType.FACILITY,
+            SeedConstants.MERCHANT_UID_PREFIX + UUID.randomUUID(),
+            slot.getPrice()
+        );
+        facilityPayment.complete("PG-SEED-FAC-" + UUID.randomUUID(), facilityPaidAt);
+        paymentRepository.save(facilityPayment);
+
+        return new MatchBase(facility, slot, reservation, match, hostParticipant, facilityPayment);
     }
 
     private void addPaidParticipants(MatchBase base, JourneyRequest req) {
@@ -354,6 +369,7 @@ public class JourneyFactory {
         FacilitySlot slot,
         Reservation reservation,
         Match match,
-        MatchParticipant hostParticipant
+        MatchParticipant hostParticipant,
+        Payment facilityPayment
     ) {}
 }

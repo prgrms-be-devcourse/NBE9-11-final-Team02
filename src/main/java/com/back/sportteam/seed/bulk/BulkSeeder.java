@@ -69,8 +69,8 @@ public class BulkSeeder implements SeedTask {
     @Override
     public void seed() {
         Random rng = new Random(SeedConstants.RANDOM_SEED);
-        int userCount    = seedProperties.users();
-        int matchCount   = seedProperties.matches();
+        int userCount    = seedProperties.bulk().users();
+        int matchCount   = seedProperties.bulk().matches();
 
         log.info("[BulkSeeder] 유저 {}명 생성 시작", userCount);
         List<User> users = createBulkUsers(userCount, rng);

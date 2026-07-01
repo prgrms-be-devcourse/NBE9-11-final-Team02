@@ -666,6 +666,29 @@ class MatchServiceTest {
     }
 
     @Test
+    void 확정된_매칭방은_참가자가_이탈할_수_없다() {
+        Match match = createMatch();
+        String matchId = match.getId();
+        MatchParticipant participant = MatchParticipant.participant(match, "participant-id");
+        participant.activate();
+        match.confirm(CREATED_AT);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchParticipantRepository.findByMatchIdAndUserIdAndStatus(
+                matchId,
+                "participant-id",
+                MatchParticipantStatus.ACTIVE
+        )).thenReturn(Optional.of(participant));
+
+        assertThatThrownBy(() -> matchService.leaveMatch(matchId, "participant-id"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MatchErrorCode.MATCH_ALREADY_CONFIRMED);
+
+        assertThat(participant.getStatus()).isEqualTo(MatchParticipantStatus.ACTIVE);
+        verify(paymentRefundRequestService, never()).requestParticipantRefunds(any(), any(), any());
+    }
+
+    @Test
     void 매칭방_참가_취소시_이탈_가능_시간이_지났으면_예외를_던진다() {
         Match match = createMatch(10, RECRUIT_DEADLINE, CLOSED_RECRUIT_DEADLINE);
         String matchId = match.getId();
