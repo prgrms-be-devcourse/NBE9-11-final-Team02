@@ -76,6 +76,7 @@ SportTeam은 다음 흐름을 하나의 백엔드 시스템으로 통합합니�
 
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
 ![AWS EC2](https://img.shields.io/badge/AWS%20EC2-FF9900?logo=amazonec2&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 ![SonarCloud](https://img.shields.io/badge/SonarCloud-F3702A?logo=sonarcloud&logoColor=white)
@@ -125,6 +126,20 @@ GitHub Actions
   -> Blue/Green Deploy
   -> Nginx Reverse Proxy
 ```
+
+인프라 프로비저닝 (Terraform / IaC):
+
+```text
+Terraform
+  -> VPC / Subnet / Internet Gateway / Route Table
+  -> Security Group
+  -> IAM Role + Instance Profile (SSM 접근 / Parameter Store 읽기)
+  -> EC2 (Amazon Linux)
+  -> Elastic IP
+```
+
+- AWS 인프라를 Terraform으로 코드화하여 재현 가능하게 관리합니다.
+- SSH 대신 **SSM Session Manager**로 인스턴스에 접근하여, 인바운드 SSH 포트를 열지 않습니다.
 
 ---
 
@@ -245,7 +260,7 @@ src/main/java/com/back/sportteam
 Swagger UI:
 
 - Local: `http://localhost:8090/swagger-ui/index.html`
-- Production: `http://3.36.243.212/swagger-ui/index.html`
+- Production: `http://3.36.243.212/swagger-ui/index.html` (데모 서버, ~2026.07.22 운영)
 
 ---
 
@@ -270,4 +285,4 @@ Swagger UI:
 | 차우호 | 매칭 생성, 참가, 확정, 취소, 매칭 조회 |
 | 박현준 | 결제, 웹훅, 환불, 대기열, 알림, 헬스체크 |
 | 오상민 | 인증, 회원, 실시간 동기화, 시설 조회 |
-| 김은영 | 시설 관리, 리뷰, 마이페이지, 정산, 관리자 기능 |
+| 김은영 | 시설 관리, 리뷰, 마이페이지, 정산 / AWS 인프라 구축 |
