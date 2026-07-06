@@ -132,8 +132,9 @@ public class FacilityService {
 
     private List<String> resolveRemovedImageUrls(List<String> current, List<String> updated) {
         // null은 엔티티 갱신과 동일하게 전체 비움으로 해석한다.
+        List<String> prev = current != null ? current : List.of();
         List<String> next = updated != null ? updated : List.of();
-        return current.stream()
+        return prev.stream()
                 .filter(url -> !next.contains(url))
                 .toList();
     }
@@ -165,6 +166,7 @@ public class FacilityService {
         facility.removeImage(imageUrl);
     }
 
+    @Transactional
     public void deleteFacility(String managerId, String facilityId) {
         Facility facility = getFacilityOrThrow(facilityId);
         validateOwnership(facility, managerId);
